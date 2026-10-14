@@ -21,8 +21,14 @@
   <section id="screen-start" class="screen is-active" aria-labelledby="wordmark">
     <header class="start-head">
       <h1 id="wordmark" class="wordmark">SIGHT<span>LINE</span></h1>
-      <p class="tagline">Game Ready warm-up</p>
+      <div class="start-head__row">
+        <p class="tagline">Game Ready warm-up</p>
+        <button id="btn-guide" class="btn-link" type="button">How it works</button>
+      </div>
     </header>
+    <div id="update" class="update" hidden>
+      <button id="btn-update" class="update__btn" type="button">New version ready — tap to update</button>
+    </div>
 
     <form id="settings" class="settings" onsubmit="return false">
       <!-- segmented controls injected by settings.js -->
@@ -40,6 +46,7 @@
       <button id="btn-start" class="btn-start" type="button">START</button>
       <p class="disclaimer">A visual reaction &amp; cognitive warm-up. Not a medical, diagnostic, or treatment tool.</p>
       <div id="install" class="install" hidden></div>
+      <p id="version" class="version"></p>
     </div>
   </section>
 

@@ -34,8 +34,12 @@ After that it works with no signal.
 ## Updating
 
 The service worker caches every file. After changing anything, bump `CACHE_VERSION` in
-`sw.js` (for example `v1` to `v2`). If you add a new file, also add it to `ASSETS` in that
-file. Phones pick up the new version the next time they open the app online.
+`sw.js` and `APP_VERSION` in `js/main.js` to the same number (for example `1.1` to `1.2`).
+If you add a new file, also add it to `ASSETS` in `sw.js`.
+
+Phones download the new version in the background the next time the app is opened online.
+A "New version ready — tap to update" banner then appears on the start screen (never during
+a session). The version number shows at the bottom of the start screen.
 
 ## Adding questions
 
@@ -65,5 +69,7 @@ from 10–15 ft.
   `colorcall`, `gonogo`, `stroop`, `peripheral`, `math`, `questions`, `lockin`.
 - `?speed=20` fast-forwards time.
 - `?autostart=1` skips the Start tap.
+- `?autoready=1` skips the I'M READY taps on the how-to cards.
+- `?noguide=1` skips the first-run "How it works" guide.
 - `?sw=1` turns on offline caching on localhost. It is off there by default so edits show
   up right away.

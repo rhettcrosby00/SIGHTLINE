@@ -2,7 +2,7 @@
 // (targets pop up at random edges). Eyes only, no scoring, works the same in
 // Tap and Cone mode; Cone mode just draws everything bigger.
 
-import { intro, animate, INTRO_MS } from './common.js';
+import { howTo, countdown, animate } from './common.js';
 import { shuffle, randRange, randInt } from '../lib/rng.js';
 import { tone } from '../lib/audio.js';
 
@@ -41,15 +41,23 @@ const smooth = (x) => { const t = Math.min(1, Math.max(0, x)); return t * t * (3
 
 export const pursuit = {
   async run(ctx) {
-    const { el, settings, durationMs, sleep, now } = ctx;
-    await intro(ctx, {
+    const { el, settings, sleep, now, remaining, hold } = ctx;
+    await howTo(ctx, {
       kicker: 'Eye Warm-up',
       title: 'Smooth Pursuit',
-      lines: ['Keep your head still.', 'Follow the dot with your eyes only.'],
+      rule: 'Keep your head still. Follow the moving dot with your eyes only.',
+      demo: { html: `<div class="mini"><div class="mini__phone mini__phone--eyes"><i class="mini__dot mini__dot--pursuit"></i></div>
+        <p class="mini__cap">Head still — just your eyes follow the dot</p></div>` },
     });
 
     const hard = settings.difficulty === 'hard';
-    const avail = durationMs - INTRO_MS;
+    const root = board(el, settings, '<div class="eyes__dot"></div>');
+    const dot = root.querySelector('.eyes__dot');
+    const f0 = field(root);
+    dot.style.transform = `translate(${f0.cx}px, ${f0.cy}px) translate(-50%, -50%)`;
+    await hold(() => countdown(ctx, root, 'GET SET'));
+
+    const avail = remaining();
     const count = Math.max(2, Math.round(avail / 7000));
     const segMs = avail / count;
     const segments = shuffle(PATHS).slice(0, count).map((p) => ({
@@ -58,8 +66,6 @@ export const pursuit = {
       dir: Math.random() < 0.5 ? -1 : 1,
     }));
 
-    const root = board(el, settings, '<div class="eyes__dot"></div>');
-    const dot = root.querySelector('.eyes__dot');
     const start = now();
 
     const stop = animate(now, (t) => {
@@ -91,19 +97,22 @@ const SPOTS = [
 
 export const saccades = {
   async run(ctx) {
-    const { el, settings, durationMs, sleep } = ctx;
-    await intro(ctx, {
+    const { el, settings, sleep, remaining, hold } = ctx;
+    await howTo(ctx, {
       kicker: 'Eye Warm-up',
       title: 'Saccade Jumps',
-      lines: ['Head still. Snap your eyes to each target.', 'Call out the number.'],
+      rule: 'Keep your head still. A number pops up near the edge — snap your eyes to it and say the number out loud.',
+      demo: { html: `<div class="mini"><div class="mini__phone mini__phone--eyes"><i class="mini__target"><b>7</b></i></div>
+        <p class="mini__cap">Eyes jump to it → say “seven!”</p></div>` },
     });
 
     const hard = settings.difficulty === 'hard';
     const root = board(el, settings, '<div class="eyes__target" hidden><span></span></div>');
     const target = root.querySelector('.eyes__target');
     const label = target.querySelector('span');
+    await hold(() => countdown(ctx, root, 'GET SET'));
 
-    let left = durationMs - INTRO_MS;
+    let left = remaining();
     let lastSpot = -1;
     let lastNum = 0;
     let shown = 0;

@@ -1,7 +1,9 @@
 // Offline support: precache the whole app on install, then serve from cache.
-// Bump CACHE_VERSION whenever any file changes so phones pick up the update.
+// Bump CACHE_VERSION (and APP_VERSION in js/main.js) whenever any file
+// changes. Phones download the new version in the background and show a
+// "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v1.1';
 const CACHE = `sightline-${CACHE_VERSION}`;
 
 const ASSETS = [
@@ -10,6 +12,7 @@ const ASSETS = [
   './manifest.webmanifest',
   './css/styles.css',
   './js/main.js',
+  './js/guide.js',
   './js/settings.js',
   './js/routine.js',
   './js/engine.js',
@@ -33,7 +36,15 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  // Normally an update waits until the athlete taps the banner. v1 pages
+  // have no banner, so when replacing v1 take over right away (one time).
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS))
+    .then(() => caches.has('sightline-v1'))
+    .then((fromV1) => { if (fromV1) self.skipWaiting(); }));
+});
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

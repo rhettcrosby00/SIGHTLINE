@@ -5,6 +5,10 @@ import { buildRoutine } from './routine.js';
 import { runSession } from './engine.js';
 import { unlock as unlockAudio } from './lib/audio.js';
 import { renderSummary } from './stages/summary.js';
+import { showGuide, guideSeen } from './guide.js';
+
+// Keep in step with CACHE_VERSION in sw.js.
+export const APP_VERSION = '1.1';
 
 const $ = (id) => document.getElementById(id);
 
@@ -15,9 +19,16 @@ function show(name) {
 
 const getSettings = initSettings();
 // Dev aids: ?speed=20 fast-forwards a session; ?autostart=1 skips the Start tap;
-// ?only=lockin,stroop runs just those drill ids.
+// ?only=lockin,stroop runs just those drill ids; ?autoready=1 skips I'M READY
+// taps; ?noguide=1 skips the first-run guide.
 const params = new URLSearchParams(location.search);
 const speed = Math.max(1, Number(params.get('speed')) || 1);
+const autoReady = params.has('autoready');
+let inSession = false;
+
+$('version').textContent = `v${APP_VERSION}`;
+$('btn-guide').addEventListener('click', showGuide);
+if (!guideSeen() && !params.has('noguide') && !params.has('autostart')) showGuide();
 
 $('btn-start').addEventListener('click', async () => {
   const settings = getSettings();
@@ -25,7 +36,9 @@ $('btn-start').addEventListener('click', async () => {
   const only = params.get('only')?.split(',');
   const steps = buildRoutine(settings).filter((s) => !only || only.includes(s.id));
   show('session');
-  const { completed, results } = await runSession(steps, settings, { speed });
+  inSession = true;
+  const { completed, results } = await runSession(steps, settings, { speed, autoReady });
+  inSession = false;
   if (!completed) { show('start'); return; }
 
   const totalMs = steps.reduce((a, s) => a + s.durationMs, 0);
@@ -43,7 +56,32 @@ $('btn-done').addEventListener('click', () => {
 // add ?sw=1 to test it locally.
 const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 if ('serviceWorker' in navigator && (!isLocal || params.has('sw'))) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  // A new version downloads in the background; offer it on the start screen
+  // (never mid-session). Tapping swaps it in and reloads.
+  let waiting = null;
+  let updating = false;
+  const offer = (worker) => {
+    waiting = worker;
+    if (!inSession) $('update').hidden = false;
+  };
+  $('btn-update').addEventListener('click', () => {
+    updating = true;
+    waiting?.postMessage('SKIP_WAITING');
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (updating) location.reload();
+  });
+  navigator.serviceWorker.register('./sw.js').then((reg) => {
+    if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      w?.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) offer(w);
+      });
+    });
+  }).catch(() => {});
+  // Show a pending update once a session finishes.
+  $('btn-done').addEventListener('click', () => { if (waiting) $('update').hidden = false; });
 }
 
 // Install: Chrome/Android offers a prompt; iOS Safari gets a one-line tip.

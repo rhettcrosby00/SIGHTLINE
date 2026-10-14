@@ -6,7 +6,8 @@
 // Cone mode: drills completed, cues called, and time, plus a row per drill.
 
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
-const ms = (v) => (v == null ? '—' : `${v}`);
+// Reaction times read as seconds (0.41) — easier to follow than milliseconds.
+const sec = (v) => (v == null ? '—' : (v / 1000).toFixed(2));
 
 function tile(value, unit, label) {
   return `<div class="tile">
@@ -41,18 +42,18 @@ export function renderSummary(el, { results, settings, totalMs }) {
     const avgRt = rtN ? Math.round(reaction.reduce((a, r) => a + r.rtMs * r.rtCount, 0) / rtN) : null;
     const best = reaction.length ? Math.min(...reaction.map((r) => r.bestRtMs)) : null;
 
-    tiles = tile(pct(correct, trials), '%', 'accuracy') + tile(ms(avgRt), avgRt == null ? '' : 'ms', 'avg reaction') + tile(ms(best), best == null ? '' : 'ms', 'best reaction');
+    tiles = tile(pct(correct, trials), '%', 'accuracy') + tile(sec(avgRt), avgRt == null ? '' : 's', 'avg reaction') + tile(sec(best), best == null ? '' : 's', 'best reaction');
 
     rows = results.map((r) => {
       if (!r.trials) return row(r.name, '✓');
       const misses = [r.misses && `${r.misses} slow`, r.wrong && `${r.wrong} wrong`, r.falseAlarms && `${r.falseAlarms} on red`]
         .filter(Boolean).join(' · ');
-      return row(r.name, `${pct(r.correct, r.trials)}%${r.rtMs == null ? '' : ` · ${r.rtMs} ms`}`, `${r.correct}/${r.trials}${misses ? ` · ${misses}` : ''}`);
+      return row(r.name, `${pct(r.correct, r.trials)}%${r.rtMs == null ? '' : ` · ${sec(r.rtMs)} s`}`, `${r.correct}/${r.trials}${misses ? ` · ${misses}` : ''}`);
     }).join('');
 
     // One plain-language highlight: the quickest reaction drill.
     const quickest = reaction.slice().sort((a, b) => a.rtMs - b.rtMs)[0];
-    if (quickest) note = `Quickest drill today: <b>${quickest.name}</b> at ${quickest.rtMs} ms.`;
+    if (quickest) note = `Quickest drill today: <b>${quickest.name}</b> at ${sec(quickest.rtMs)} s. Lower is faster.`;
   }
 
   el.innerHTML = `

@@ -282,22 +282,125 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .breathe.is-final .breathe__word { color: var(--accent); font-size: clamp(3.5rem, 19vw, 6.5rem); }
 .breathe.is-final .breathe__count { display: none; }
 
-/* ---------- Drill intro card ---------- */
-.intro {
+/* ---------- How-to card ---------- */
+.howto {
   flex: 1;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  gap: 10px; text-align: center; padding: 0 var(--gutter);
+  gap: 10px; text-align: center; padding: 8px 4px 0;
 }
-.intro__kicker { color: var(--accent); font-size: 1.1rem; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
-.intro__title {
-  font-size: clamp(3rem, 15vw, 5.5rem); font-weight: 900; font-style: italic;
-  line-height: 0.92; text-transform: uppercase; margin-bottom: 6px;
+.howto__kicker { color: var(--accent); font-size: 1rem; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+.howto__title {
+  font-size: clamp(2.6rem, 13vw, 4.5rem); font-weight: 900; font-style: italic;
+  line-height: 0.92; text-transform: uppercase;
 }
-.intro__line { font-size: clamp(1.3rem, 6vw, 2rem); font-weight: 700; line-height: 1.2; max-width: 22ch; }
-.intro__count {
-  min-height: 1em; margin-top: 12px;
-  font-size: clamp(5rem, 32vw, 10rem); font-weight: 900; line-height: 1;
-  color: var(--accent); font-variant-numeric: tabular-nums;
+.howto__rule { font-size: clamp(1.3rem, 6vw, 1.9rem); font-weight: 700; line-height: 1.22; max-width: 24ch; }
+.howto__demo { width: 100%; display: grid; place-items: center; margin: 4px 0; }
+.howto__soon { color: var(--muted); font-size: 1.1rem; font-weight: 700; letter-spacing: 0.06em; }
+.btn-ready {
+  width: 100%; min-height: 76px; margin-top: auto; border-radius: var(--radius);
+  background: var(--accent); color: var(--accent-ink);
+  font-size: 2rem; font-weight: 900; font-style: italic; letter-spacing: 0.06em;
+}
+.btn-ready:active { transform: scale(0.98); }
+.howto--cone .howto__title { font-size: min(16vw, 9dvh); }
+.howto--cone .howto__rule { font-size: min(8vw, 4.4dvh); max-width: none; }
+
+/* 3-2-1 overlay */
+.count {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: #000;
+}
+.count__label { color: var(--accent); font-size: clamp(1.6rem, 8vw, 2.6rem); font-weight: 900; font-style: italic; letter-spacing: 0.06em; }
+.count__num { font-size: clamp(7rem, 42vw, 14rem); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+
+/* Mini examples on the how-to card */
+.mini { display: grid; justify-items: center; gap: 8px; }
+.mini__phone {
+  position: relative; width: 168px; padding: 8px; border-radius: 18px;
+  background: #0d0d0d; border: 2px solid #2e2e2e;
+  display: grid; gap: 6px;
+}
+.mini__cue {
+  position: relative; height: 92px; border-radius: 10px; overflow: hidden;
+  display: grid; place-items: stretch; background: #000;
+}
+.mini__pad { display: grid; gap: 4px; }
+.mini__pad--colors { grid-template-columns: 1fr 1fr; }
+.mini__pad--oddeven { grid-template-columns: 1fr 1fr; }
+.mini__pad--list { grid-template-columns: 1fr; }
+.mini__btn {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  height: 26px; border-radius: 6px; background: var(--c); color: var(--ink);
+  font-size: 0.7rem; font-weight: 900; letter-spacing: 0.04em;
+}
+.mini__btn b { font-size: 0.7rem; }
+.mini__cap { font-size: 1.05rem; font-weight: 800; color: var(--fg); min-height: 1.3em; }
+.mc { display: grid; place-items: center; width: 100%; height: 100%; font-weight: 900; }
+.mc--fill { background: var(--c); color: var(--ink); font-size: 2.6rem; }
+.mc--arrow { font-size: 3.4rem; color: #fff; }
+.mc--word { color: var(--c); font-size: 1.9rem; }
+.mc--text { color: #fff; font-size: 1.5rem; text-align: center; line-height: 1.1; padding: 0 6px; }
+.mc--text small { display: block; font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+.mc--periph { position: relative; }
+.mc__dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px #000, 0 0 0 5px var(--accent); }
+.mc__flash {
+  position: absolute; width: 26px; height: 26px; border-radius: 6px;
+  display: grid; place-items: center; font-style: normal; font-size: 0.8rem;
+  background: var(--c); color: var(--ink);
+  animation: mini-flash 3s steps(1) infinite;
+}
+.mc__flash--right { right: 6px; top: calc(50% - 13px); }
+.mc__flash--top { top: 6px; left: calc(50% - 13px); }
+@keyframes mini-flash { 0%, 10% { opacity: 0; } 12%, 40% { opacity: 1; } 42%, 100% { opacity: 0; } }
+
+/* the "tap" a beat after the cue appears */
+.mini .is-answer.is-tapped { animation: mini-tap 0.9s ease-out 2; position: relative; z-index: 1; }
+@keyframes mini-tap {
+  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.95); transform: scale(1); }
+  30% { transform: scale(0.92); }
+  100% { box-shadow: 0 0 0 12px rgba(255,255,255,0); transform: scale(1); }
+}
+.mini__cue.is-hold.is-tapped::after,
+.mini__you.is-hold.is-tapped::after {
+  content: '✋ HOLD'; position: absolute; inset: 0; display: grid; place-items: center;
+  background: rgba(0,0,0,0.55); color: #fff; font-size: 1.1rem; font-weight: 900; letter-spacing: 0.06em;
+}
+.mini__cue.is-hold.is-tapped { animation: none; }
+
+/* Cone-mode example: phone on a stand + the four cones around "YOU" */
+.mini--cone { gap: 6px; }
+.mini__phone--stand { width: 120px; }
+.mini__phone--stand .mini__cue { height: 70px; }
+.mini__field {
+  position: relative; width: 176px; height: 120px;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); place-items: center;
+}
+.mini__cone { color: var(--c); font-size: 1.6rem; line-height: 1; border-radius: 50%; padding: 2px 6px; }
+.mini__cone--front { grid-area: 1 / 2; }
+.mini__cone--left  { grid-area: 2 / 1; }
+.mini__cone--right { grid-area: 2 / 3; }
+.mini__cone--back  { grid-area: 3 / 2; }
+.mini__you {
+  grid-area: 2 / 2; position: relative; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center; border: 2px dashed var(--muted);
+  color: var(--muted); font-size: 0.65rem; font-weight: 900; overflow: hidden;
+}
+.mini__cone.is-answer.is-tapped { background: color-mix(in srgb, var(--c) 30%, transparent); }
+
+/* Eye-drill examples */
+.mini__phone--eyes { height: 120px; }
+.mini__dot { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); }
+.mini__dot--pursuit { top: calc(50% - 7px); animation: mini-pursuit 2.4s ease-in-out infinite alternate; }
+@keyframes mini-pursuit { from { left: 10px; } to { left: calc(100% - 24px); } }
+.mini__target {
+  position: absolute; width: 26px; height: 26px; border-radius: 50%; background: #fff; color: #000;
+  display: grid; place-items: center; font-style: normal; font-size: 0.9rem;
+  animation: mini-saccade 3.2s steps(1) infinite;
+}
+@keyframes mini-saccade {
+  0% { left: 8px; top: 8px; } 25% { left: calc(100% - 34px); top: 46px; }
+  50% { left: 66px; top: calc(100% - 34px); } 75% { left: 8px; top: 60px; }
 }
 
 /* ---------- Eye warm-up ---------- */
@@ -378,27 +481,39 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .flash--right { right: 6px; top: 50%; transform: translateY(-50%); }
 .flash--lure { background: none; color: #fff; }
 
-/* Tap pad: diamond laid out like the cones */
-.pad {
-  flex: none;
-  display: grid; gap: 8px;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, minmax(64px, 9.5dvh));
-  grid-template-areas: ". f ." "l . r" ". b .";
-  padding-top: 4px;
+/* Rule strip pinned above the cue */
+.rx__strip {
+  flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 40px; padding: 6px 12px; margin-bottom: 8px; border-radius: 10px;
+  background: var(--panel); border: 1px solid var(--line);
 }
+.rx__rule { font-size: 1rem; font-weight: 900; letter-spacing: 0.06em; line-height: 1.15; }
+.rx__count { flex: none; color: var(--muted); font-size: 1rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rx__fb.is-hint { color: var(--fg); }
+
+/* Answer buttons: big and simple */
+.pad { flex: none; display: grid; gap: 8px; padding-top: 2px; }
+.pad--colors, .pad--oddeven { grid-template-columns: 1fr 1fr; }
+.pad--colors .pad__btn { min-height: max(84px, 11dvh); }
+.pad--oddeven .pad__btn { min-height: max(110px, 15dvh); }
+.pad--list { grid-template-columns: 1fr; }
+.pad--list .pad__btn { min-height: 62px; flex-direction: row; justify-content: flex-start; gap: 14px; padding: 0 18px; }
 .pad__btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   border-radius: 16px; background: var(--c); color: var(--ink);
-  font-size: 1.05rem; font-weight: 900; letter-spacing: 0.06em;
+  font-size: 1.3rem; font-weight: 900; letter-spacing: 0.06em;
   touch-action: none;
 }
+.pad--oddeven .pad__label { font-size: 2.2rem; }
+.pad--list .pad__label { font-size: 1.5rem; letter-spacing: 0.02em; text-align: left; }
 .pad__btn:active { filter: brightness(1.25); transform: scale(0.97); }
-.pad__shape { font-size: 1.7rem; line-height: 1; }
-.pad__btn--front { grid-area: f; }
-.pad__btn--left  { grid-area: l; }
-.pad__btn--right { grid-area: r; }
-.pad__btn--back  { grid-area: b; }
+.pad__shape { font-size: 1.6rem; line-height: 1; }
+/* practice hint: the right button pulses */
+.pad__btn.is-hint { animation: pad-hint 0.9s ease-in-out infinite; }
+@keyframes pad-hint {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.9); }
+  50% { box-shadow: 0 0 0 8px rgba(255,255,255,0); transform: scale(1.03); }
+}
 
 /* Cone mode: everything full-bleed and huge */
 .rx--cone .rx__cue { border-radius: 0; margin: 0 calc(-1 * var(--gutter)); }
@@ -415,9 +530,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .rx__back p { color: var(--muted); font-size: min(9vw, 3rem); font-weight: 900; letter-spacing: 0.08em; }
 
 /* ---------- Brain drills ---------- */
-.pad--text .pad__btn { padding: 4px 6px; }
-.pad--text .pad__shape { font-size: 1.1rem; }
-.pad--text .pad__label { font-size: 1.45rem; line-height: 1.05; letter-spacing: 0.02em; text-align: center; }
 .cue--math, .cue--quiz { background: #000; color: #fff; padding: 0 var(--gutter); }
 .math__q { font-size: clamp(4rem, 22vw, 7.5rem); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .math__key {
@@ -436,3 +548,62 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .rx--cone .math__key { font-size: min(9vw, 5dvh); bottom: 24px; }
 .rx--cone .quiz__q { font-size: min(10vw, 6dvh); max-width: none; }
 .rx--cone .quiz__choices li { font-size: min(10vw, 6dvh); }
+
+/* Cone-mode strip: readable from a distance */
+.rx--cone .rx__strip { background: none; border: 0; padding: 0 0 6px; }
+.rx--cone .rx__rule { font-size: min(5.4vw, 1.6rem); color: var(--muted); }
+
+/* ---------- Start screen extras ---------- */
+.start-head__row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.start-head__row .tagline { margin-top: 0; }
+.btn-link {
+  flex: none; min-height: 40px; padding: 0 2px;
+  color: var(--accent); font-size: 1rem; font-weight: 800; letter-spacing: 0.04em;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.update { margin-top: 12px; }
+.update[hidden] { display: none; }
+.update__btn {
+  width: 100%; min-height: 48px; border-radius: 12px;
+  background: var(--fg); color: var(--bg); font-size: 1.05rem; font-weight: 800;
+}
+.version { text-align: center; color: #555; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; }
+.more { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.more > summary {
+  list-style: none; cursor: pointer; padding: 12px 14px;
+  color: var(--muted); font-size: 0.95rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::after { content: '+'; float: right; }
+.more[open] > summary::after { content: '–'; }
+.more__body { display: grid; gap: 12px; padding: 0 12px 12px; }
+.field__hint { margin-top: 6px; color: var(--muted); font-size: 0.9rem; line-height: 1.3; }
+
+/* ---------- First-run guide ---------- */
+.guide {
+  position: fixed; inset: 0; z-index: 10;
+  display: grid; place-items: end center;
+  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px);
+  background: rgba(0,0,0,0.85);
+}
+.guide__card {
+  width: 100%; max-width: 480px; max-height: 100%; overflow: auto;
+  display: grid; gap: 14px; padding: 20px 16px 16px;
+  background: #121212; border: 1px solid var(--line); border-radius: 20px;
+}
+.guide__step { color: var(--accent); font-size: 0.9rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.guide__title { font-size: clamp(2rem, 10vw, 2.8rem); font-weight: 900; font-style: italic; line-height: 0.95; text-transform: uppercase; }
+.guide__body { display: grid; gap: 10px; font-size: 1.1rem; font-weight: 600; line-height: 1.35; }
+.guide__body b { color: var(--fg); font-weight: 900; }
+.guide__muted { color: var(--muted); font-size: 0.95rem; }
+.guide__blocks { list-style: none; counter-reset: blk; display: grid; gap: 8px; }
+.guide__blocks li { counter-increment: blk; display: grid; grid-template-columns: 2em 6.5em 1fr; gap: 6px; align-items: baseline; }
+.guide__blocks li::before { content: counter(blk); color: var(--accent); font-weight: 900; }
+.guide__blocks b { text-transform: uppercase; letter-spacing: 0.04em; }
+.guide__blocks span { color: var(--muted); font-size: 1rem; }
+.guide__modes { display: grid; gap: 10px; }
+.guide__modes > div { padding: 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.guide__modes b { font-size: 1.3rem; font-style: italic; color: var(--accent); }
+.guide__modes p { margin-top: 4px; }
+.guide__nav { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.guide__nav .btn-big { min-height: 60px; font-size: 1.5rem; }

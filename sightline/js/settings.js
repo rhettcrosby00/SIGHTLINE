@@ -10,9 +10,13 @@ export const FIELDS = [
   { key: 'length',     label: 'Length',     options: [['quick', 'Quick'], ['standard', 'Standard'], ['full', 'Full']] },
   { key: 'difficulty', label: 'Difficulty', options: [['normal', 'Normal'], ['hard', 'Hard']] },
   { key: 'sound',      label: 'Sound',      options: [['on', 'On'], ['off', 'Off']] },
+  // Under "More options":
+  { key: 'guide',      label: 'Instructions', more: true,
+    options: [['full', 'Full + practice'], ['brief', 'Brief']],
+    hint: 'Full shows an example and a short practice before each drill. Brief is for athletes who know the drills.' },
 ];
 
-const DEFAULTS = { mode: 'tap', length: 'standard', difficulty: 'normal', sound: 'on' };
+const DEFAULTS = { mode: 'tap', length: 'standard', difficulty: 'normal', sound: 'on', guide: 'full' };
 
 function load() {
   try {
@@ -37,6 +41,12 @@ export function initSettings() {
   const coneSetup = document.getElementById('cone-setup');
   const lengthNote = document.getElementById('length-note');
 
+  // "More options" holds the less-used settings.
+  const more = document.createElement('details');
+  more.className = 'more';
+  more.innerHTML = '<summary>More options</summary><div class="more__body"></div>';
+  const moreBody = more.querySelector('.more__body');
+
   // Build segmented controls (radiogroups).
   for (const f of FIELDS) {
     const wrap = document.createElement('div');
@@ -57,8 +67,10 @@ export function initSettings() {
       seg.appendChild(b);
     }
     wrap.appendChild(seg);
-    form.appendChild(wrap);
+    if (f.hint) wrap.insertAdjacentHTML('beforeend', `<p class="field__hint">${f.hint}</p>`);
+    (f.more ? moreBody : form).appendChild(wrap);
   }
+  form.appendChild(more);
 
   // Cone diagram (cross layout around the athlete).
   const grid = coneSetup.querySelector('.cone-grid');
@@ -74,7 +86,8 @@ export function initSettings() {
       b.tabIndex = settings[b.dataset.key] === b.dataset.value ? 0 : -1;
     });
     coneSetup.hidden = settings.mode !== 'cones';
-    lengthNote.textContent = `About ${Math.round(totalMinutes(settings.length))} minutes · ${
+    lengthNote.textContent = `About ${Math.round(totalMinutes(settings.length))} min of drills${
+      settings.guide === 'full' ? ' + how-tos' : ''} · ${
       settings.mode === 'cones' ? 'phone on a stand, 10–15 ft away' : 'hold your phone'}`;
   }
 

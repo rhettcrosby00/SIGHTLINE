@@ -2,6 +2,7 @@
 // tied to a cone color). Both run on the shared tap/cone runner.
 
 import { runDrill } from './reaction.js';
+import { mini } from './common.js';
 import { CUES, cueById } from '../lib/colors.js';
 import { randInt, shuffle } from '../lib/rng.js';
 import { QUESTIONS } from '../data/questions.js';
@@ -43,15 +44,29 @@ export const quickMath = {
     return runDrill(ctx, {
       kicker: 'Brain',
       title: 'Quick Math',
-      tapLines: [`Solve it.`, `ODD → ${ODD.label} ${ODD.shape}`, `EVEN → ${EVEN.label} ${EVEN.shape}`],
-      coneLines: [`Solve it.`, `ODD → ${ODD.label} cone (left)`, `EVEN → ${EVEN.label} cone (right)`],
+      rule: 'Solve the problem in your head. Odd answer → tap ODD. Even answer → tap EVEN.',
+      ruleCone: `Solve the problem in your head. Odd answer → ${ODD.label} cone (left). Even answer → ${EVEN.label} cone (right).`,
+      strip: 'IS THE ANSWER ODD OR EVEN?',
+      stripCone: `ODD = ${ODD.label} ← · EVEN = ${EVEN.label} →`,
+      pad: 'oddeven',
+      practice: 2,
       tapWindow: 3000,
       coneShow: [3200, 2500],
-      fbMs: 600,
-      next({ hard, cone }) {
+      demo: {
+        pad: 'oddeven',
+        frames: [
+          { cue: mini.text('7 + 4'), answer: ODD.id, caption: '7 + 4 = 11 → ODD' },
+          { cue: mini.text('3 × 2'), answer: EVEN.id, caption: '3 × 2 = 6 → EVEN' },
+        ],
+        coneFrames: [
+          { cue: mini.text('7 + 4'), answer: ODD.id, caption: '11 is ODD → run to the blue cone' },
+          { cue: mini.text('3 × 2'), answer: EVEN.id, caption: '6 is EVEN → run to the red cone' },
+        ],
+      },
+      next({ hard, cone, practice }) {
         let p;
         // Avoid long same-parity runs so guessing doesn't pay.
-        do { p = problem(hard); } while (streak >= 3 && p.value % 2 === lastParity);
+        do { p = problem(hard && !practice); } while (streak >= 3 && p.value % 2 === lastParity);
         const parity = p.value % 2;
         streak = parity === lastParity ? streak + 1 : 1;
         lastParity = parity;
@@ -59,8 +74,7 @@ export const quickMath = {
         const c = odd ? ODD : EVEN;
         return {
           answer: c.id,
-          padLabels: { [ODD.id]: 'ODD', [EVEN.id]: 'EVEN' },
-          reveal: `= ${p.value}`,
+          answerLabel: `${odd ? 'ODD' : 'EVEN'} (${p.value})`,
           coneReveal: `${p.text} = ${p.value} · ${odd ? 'ODD' : 'EVEN'}`,
           html: `<div class="cue cue--math">
                    <span class="math__q">${p.text}</span>
@@ -82,11 +96,26 @@ export const quickQuestions = {
     return runDrill(ctx, {
       kicker: 'Brain',
       title: 'Quick Questions',
-      tapLines: ['Read it. Tap the right answer.'],
-      coneLines: ['Read it.', 'Go to the cone for the right answer.'],
+      rule: 'Read the question and tap the right answer.',
+      ruleCone: 'Each answer has a color. Run to the cone for the right answer.',
+      strip: 'TAP THE RIGHT ANSWER',
+      stripCone: 'RUN TO THE RIGHT ANSWER’S CONE',
+      pad: 'list',
+      practice: 0,
       tapWindow: 7000,
       coneShow: [6500, 5000],
-      fbMs: 1000,
+      fbMs: 1100,
+      demo: {
+        pad: 'list',
+        frames: [{
+          cue: mini.text('Days in a week?'), answer: 'red', caption: 'Tap the right answer',
+          buttons: [{ id: 'green', label: '5' }, { id: 'red', label: '7' }, { id: 'blue', label: '10' }],
+        }],
+        coneFrames: [{
+          cue: mini.text('Days in a week? <small>■ 5 · ▲ 7 · ● 10</small>'), answer: 'red',
+          caption: '7 is RED ▲ → run to the red cone',
+        }],
+      },
       next({ cone }) {
         if (!deck.length) deck = shuffle(QUESTIONS);
         const item = deck.pop();
@@ -98,8 +127,8 @@ export const quickQuestions = {
         const right = pairs.find((p) => p.text === item.a).c;
         return {
           answer: right.id,
-          padLabels: Object.fromEntries(pairs.map((p) => [p.c.id, p.text])),
-          reveal: item.a,
+          answerLabel: item.a,
+          buttons: pairs.map((p) => ({ id: p.c.id, label: p.text })),
           coneReveal: `Answer: <span style="color:${right.hex}">${right.shape} ${item.a}</span>`,
           html: `<div class="cue cue--quiz">
                    <p class="quiz__q">${item.q}</p>
