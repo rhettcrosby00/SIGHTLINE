@@ -1,8 +1,15 @@
 # Sightline
 
-A pre-game visual reaction and cognitive warm-up for athletes. One preset routine, "Game Ready":
-breathing, eye warm-up, reaction drills, and brain drills, followed by a short summary. There
-are no accounts and nothing is saved.
+A pre-game visual reaction and cognitive warm-up for athletes. One preset routine, "Game Ready",
+in four pillars that always run in this order:
+
+1. **Regulate**: Settle breathing.
+2. **Activate**: Smooth Pursuit, Saccade Jumps, Gaze Stabilization (shuffled each session).
+3. **Challenge**: Color Call, Go/No-Go, Stroop, Peripheral Flash, Quick Math, Quick Questions
+   (shuffled each session).
+4. **Rehearse**: Visualization, then Lock In breathing.
+
+A short summary follows. There are no accounts and no saved results.
 
 Sightline is a warm-up tool. It is not a medical, diagnostic, or treatment tool.
 
@@ -40,6 +47,38 @@ If you add a new file, also add it to `ASSETS` in `sw.js`.
 Phones download the new version in the background the next time the app is opened online.
 A "New version ready — tap to update" banner then appears on the start screen (never during
 a session). The version number shows at the bottom of the start screen.
+
+## Randomness and variety
+
+- All randomness comes from one seeded generator, `js/lib/rng.js`. `js/session.js` builds each
+  session's drill order and content from it.
+- Nothing repeats within a session: math problems, Stroop word/ink pairs, questions, scripts,
+  and cue-word suggestions.
+- Colors, sides, numbers and letters are never shown back-to-back, and never more than 2 of the
+  same in any 5.
+- The phone keeps a small "recently used" list (`js/lib/variety.js`, localStorage) of the last
+  4 sessions' content ids. That content rests for a few sessions. No results or personal info
+  are stored. **About → Reset variety** clears the list.
+- `?seed=12345` replays a session exactly, which helps when debugging. The session code is
+  shown at the bottom of the summary.
+
+## Running tests
+
+```bash
+node tests/run.js
+```
+
+The tests simulate 1,000 sessions and check the variety rules. Vercel runs them before every
+deploy (`vercel.json`), so a failing test stops the build and nothing goes live.
+
+## Logo files
+
+`assets/logo/` holds the original brand sheet (`sightline-brand-sheet.webp`) and SVGs traced
+from it:
+- `logo-mark`, `logo-horizontal` and `logo-wordmark` are for dark backgrounds.
+- The `-mono-dark` versions are for light backgrounds.
+
+If the designer provides the original vector files, replace these and regenerate the icons.
 
 ## Adding questions
 

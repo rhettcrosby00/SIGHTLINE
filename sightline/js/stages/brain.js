@@ -1,14 +1,12 @@
-// Brain drills: Quick Math (odd/even) and Quick Questions (2–4 choices, each
-// tied to a cone color). Both run on the shared tap/cone runner.
+// Challenge pillar, brain drills: Quick Math (odd/even) and Quick Questions
+// (2–4 choices, each tied to a cone color). Both run on the shared tap/cone
+// runner; problems and questions come from the session (no repeats).
 
 import { runDrill } from './reaction.js';
 import { mini } from './common.js';
-import { CUES, cueById } from '../lib/colors.js';
-import { randInt, shuffle } from '../lib/rng.js';
-import { QUESTIONS } from '../data/questions.js';
+import { cueById } from '../lib/colors.js';
 
 const ARROW = { front: '↑', right: '→', back: '↓', left: '←' };
-const DIR_ORDER = ['front', 'left', 'right', 'back'];   // list order for choices
 
 // ---- Quick Math ----------------------------------------------------------------
 // Odd → BLUE (left cone), Even → RED (right cone).
@@ -16,33 +14,10 @@ const DIR_ORDER = ['front', 'left', 'right', 'back'];   // list order for choice
 const ODD = cueById.blue;
 const EVEN = cueById.red;
 
-function problem(hard) {
-  const kind = randInt(0, hard ? 3 : 2);
-  let a, b, c, text, value;
-  switch (kind) {
-    case 0:
-      a = hard ? randInt(12, 49) : randInt(2, 15); b = hard ? randInt(12, 49) : randInt(2, 15);
-      text = `${a} + ${b}`; value = a + b; break;
-    case 1:
-      a = hard ? randInt(25, 70) : randInt(6, 20); b = randInt(hard ? 5 : 1, a - 1);
-      text = `${a} − ${b}`; value = a - b; break;
-    case 2:
-      a = hard ? randInt(3, 12) : randInt(2, 9); b = hard ? randInt(3, 9) : randInt(2, 5);
-      text = `${a} × ${b}`; value = a * b; break;
-    default:
-      a = randInt(2, 7); b = randInt(2, 7); c = randInt(1, 9);
-      if (Math.random() < 0.5 || a * b - c < 1) { text = `${a} × ${b} + ${c}`; value = a * b + c; }
-      else { text = `${a} × ${b} − ${c}`; value = a * b - c; }
-  }
-  return { text, value };
-}
-
 export const quickMath = {
   run(ctx) {
-    let lastParity = null;
-    let streak = 0;
     return runDrill(ctx, {
-      kicker: 'Brain',
+      kicker: 'Challenge',
       title: 'Quick Math',
       rule: 'Solve the problem in your head. Odd answer → tap ODD. Even answer → tap EVEN.',
       ruleCone: `Solve the problem in your head. Odd answer → ${ODD.label} cone (left). Even answer → ${EVEN.label} cone (right).`,
@@ -64,14 +39,10 @@ export const quickMath = {
         ],
       },
       next({ hard, cone, practice }) {
-        let p;
-        // Avoid long same-parity runs so guessing doesn't pay.
-        do { p = problem(hard && !practice); } while (streak >= 3 && p.value % 2 === lastParity);
-        const parity = p.value % 2;
-        streak = parity === lastParity ? streak + 1 : 1;
-        lastParity = parity;
-        const odd = parity === 1;
-        const c = odd ? ODD : EVEN;
+        // Odd/even stays balanced (never more than 3 in a row); no problem repeats.
+        const p = ctx.session.content.math({ hard: hard && !practice });
+        const odd = p.odd;
+        const c = cueById[p.answer];
         return {
           answer: c.id,
           answerLabel: `${odd ? 'ODD' : 'EVEN'} (${p.value})`,
@@ -92,9 +63,8 @@ export const quickMath = {
 
 export const quickQuestions = {
   run(ctx) {
-    let deck = shuffle(QUESTIONS);
     return runDrill(ctx, {
-      kicker: 'Brain',
+      kicker: 'Challenge',
       title: 'Quick Questions',
       rule: 'Read the question and tap the right answer.',
       ruleCone: 'Each answer has a color. Run to the cone for the right answer.',
@@ -117,14 +87,11 @@ export const quickQuestions = {
         }],
       },
       next({ cone }) {
-        if (!deck.length) deck = shuffle(QUESTIONS);
-        const item = deck.pop();
-        const choices = shuffle([item.a, ...shuffle(item.w).slice(0, 3)]);
-        // Random colors each time so positions can't be memorized.
-        const colors = shuffle(CUES).slice(0, choices.length);
-        const pairs = choices.map((text, i) => ({ text, c: colors[i] }))
-          .sort((x, y) => DIR_ORDER.indexOf(x.c.dir) - DIR_ORDER.indexOf(y.c.dir));
-        const right = pairs.find((p) => p.text === item.a).c;
+        // No question repeats in a session; answers and colors reshuffle every time.
+        const item = ctx.session.content.questions();
+        if (!item) return null;
+        const pairs = item.choices.map((ch) => ({ text: ch.text, c: cueById[ch.color] }));
+        const right = cueById[item.answer];
         return {
           answer: right.id,
           answerLabel: item.a,

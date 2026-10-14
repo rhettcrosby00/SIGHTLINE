@@ -3,7 +3,8 @@
 //
 // Every drill module exports:
 //   async run(ctx) -> { trials?, correct?, rtMs?, ... }
-// ctx: { el, settings, step, durationMs, signal, sleep, now, remaining, hold, ready, isPaused }
+// ctx: { el, settings, session, step, durationMs, signal, sleep, now, remaining, hold, ready, isPaused }
+//   session      this session's plan and content streams (js/session.js).
 //   sleep(ms)    waits unpaused time; rejects when the session is quit.
 //   now()        unpaused ms since the step began (animations, reaction times).
 //   remaining()  drill time left. Time spent inside hold() doesn't count, so
@@ -20,7 +21,7 @@ const $ = (id) => document.getElementById(id);
 
 export class AbortedError extends Error {}
 
-export async function runSession(steps, settings, { speed = 1, autoReady = false } = {}) {
+export async function runSession(steps, settings, { session, speed = 1, autoReady = false } = {}) {
   const stageEl = $('stage');
   const fill = $('progress-fill');
   const bar = fill.parentElement;
@@ -135,7 +136,7 @@ export async function runSession(steps, settings, { speed = 1, autoReady = false
       workMs = 0;
       stepCap = step.durationMs;
       const result = await step.module.run({
-        el: stageEl, settings, step, durationMs: step.durationMs, signal,
+        el: stageEl, settings, session, step, durationMs: step.durationMs, signal,
         sleep, now, remaining, hold, ready, isPaused,
       });
       doneMs += step.durationMs;

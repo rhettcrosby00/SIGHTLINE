@@ -16,28 +16,29 @@ const ease = (t) => 0.5 - Math.cos(Math.PI * t) / 2;   // ease-in-out
 //   count: 'secs' shows seconds left in the phase; a string shows as-is.
 //   showWord: also show the athlete's cue word (last Settle breath, Lock In end).
 
-function settleTimeline(durationMs) {
+// `text` is the session's rotating wording (js/content/breathing.js).
+function settleTimeline(durationMs, text) {
   const cycleMs = 16 * SEC;                                   // 4-4-4-4 box
   const cycles = Math.max(1, Math.floor((durationMs - 6 * SEC) / cycleMs));
   const introMs = durationMs - cycles * cycleMs;              // intro absorbs the remainder
   const phases = [{
-    word: 'SETTLE', sub: 'Stand tall. Drop your shoulders.<br>Breathe with the circle.',
+    word: 'SETTLE', sub: text.settleIntro,
     ms: introMs, from: SMALL, to: SMALL, count: 'secs', intro: true,
   }];
   for (let i = 1; i <= cycles; i++) {
-    const tag = `Breath ${i} of ${cycles}`;
+    const tag = (kind) => `${text.tip(kind)} · Breath ${i} of ${cycles}`;
     const showWord = i === cycles;
     phases.push(
-      { word: 'BREATHE IN',  sub: tag, ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs', showWord },
-      { word: 'HOLD',        sub: tag, ms: 4 * SEC, from: BIG,   to: BIG,   cue: 'hold',   count: 'secs', showWord },
-      { word: 'BREATHE OUT', sub: tag, ms: 4 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs', showWord },
-      { word: 'HOLD',        sub: tag, ms: 4 * SEC, from: SMALL, to: SMALL, cue: 'hold',   count: 'secs', showWord },
+      { word: 'BREATHE IN',  sub: tag('in'),   ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs', showWord },
+      { word: 'HOLD',        sub: tag('hold'), ms: 4 * SEC, from: BIG,   to: BIG,   cue: 'hold',   count: 'secs', showWord },
+      { word: 'BREATHE OUT', sub: tag('out'),  ms: 4 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs', showWord },
+      { word: 'HOLD',        sub: tag('rest'), ms: 4 * SEC, from: SMALL, to: SMALL, cue: 'hold',   count: 'secs', showWord },
     );
   }
   return phases;
 }
 
-function lockInTimeline(durationMs) {
+function lockInTimeline(durationMs, text) {
   const inMs = 1.5 * SEC;
   const outMs = 1 * SEC;
   const finalMs = (4 + 4 + 6) * SEC;
@@ -47,7 +48,7 @@ function lockInTimeline(durationMs) {
   const introMs = durationMs - finalMs - doneMs - breaths * (inMs + outMs);
 
   const phases = [{
-    word: 'LOCK IN', sub: 'Quick, sharp breaths.<br>In through the nose, out through the mouth.',
+    word: 'LOCK IN', sub: text.lockInIntro,
     ms: introMs, from: SMALL, to: SMALL, count: 'secs', intro: true,
   }];
   for (let i = 1; i <= breaths; i++) {
@@ -57,10 +58,10 @@ function lockInTimeline(durationMs) {
     );
   }
   phases.push(
-    { word: 'BREATHE IN',  sub: 'One steady breath', ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs' },
-    { word: 'HOLD',        sub: 'One steady breath', ms: 4 * SEC, from: BIG,   to: BIG,   cue: 'hold',   count: 'secs' },
-    { word: 'BREATHE OUT', sub: 'One steady breath', ms: 6 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs' },
-    { word: 'LOCKED IN',   sub: 'You’re ready. Go compete.', ms: doneMs, from: BIG, to: BIG, cue: 'done', count: '', final: true, showWord: true },
+    { word: 'BREATHE IN',  sub: text.lockInSteady, ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs' },
+    { word: 'HOLD',        sub: text.lockInSteady, ms: 4 * SEC, from: BIG,   to: BIG,   cue: 'hold',   count: 'secs' },
+    { word: 'BREATHE OUT', sub: text.lockInSteady, ms: 6 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs' },
+    { word: 'LOCKED IN',   sub: text.lockInFinal, ms: doneMs, from: BIG, to: BIG, cue: 'done', count: '', final: true, showWord: true },
   );
   return phases;
 }
@@ -121,11 +122,11 @@ async function play({ el, sleep, now, settings }, phases, theme) {
 }
 
 export const settle = {
-  run: (ctx) => play(ctx, settleTimeline(ctx.durationMs), 'settle'),
+  run: (ctx) => play(ctx, settleTimeline(ctx.durationMs, ctx.session.content.breathing), 'settle'),
 };
 
 export const lockIn = {
-  run: (ctx) => play(ctx, lockInTimeline(ctx.durationMs), 'lockin'),
+  run: (ctx) => play(ctx, lockInTimeline(ctx.durationMs, ctx.session.content.breathing), 'lockin'),
 };
 
 // Exposed for checking that timelines fill their slot exactly.

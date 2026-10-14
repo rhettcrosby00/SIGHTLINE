@@ -1,0 +1,9 @@
+{
+  "name": "sightline",
+  "private": true,
+  "type": "module",
+  "description": "Sightline: a pre-game visual reaction and cognitive warm-up (static site, no dependencies).",
+  "scripts": {
+    "test": "node tests/run.js"
+  }
+}

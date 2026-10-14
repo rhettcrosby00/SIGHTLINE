@@ -13,12 +13,10 @@
 // "back to center" pause.
 
 import { howTo, countdown, mini } from './common.js';
-import { CUES, cueById } from '../lib/colors.js';
-import { noRepeatPicker, randRange } from '../lib/rng.js';
+import { cueById } from '../lib/colors.js';
 import { tone, cues } from '../lib/audio.js';
 
 const ROT = { front: 0, right: 90, back: 180, left: 270 };
-const DIRS = ['front', 'right', 'back', 'left'];
 const GRID = ['green', 'red', 'blue', 'yellow'];   // 2×2 answer grid, reading order
 
 const arrow = (dir, cls = '') =>
@@ -31,6 +29,10 @@ const fill = (c, inner = '') =>
    </div>`;
 
 export const secs = (ms) => `${(ms / 1000).toFixed(2)} s`;
+
+// Place a flash at a point in -1..1 across the cue area, kept inside the edges.
+const at = (p) => `left:calc(50% + ${p.x.toFixed(3)} * (50% - var(--size) / 2 - 6px));`
+  + `top:calc(50% + ${p.y.toFixed(3)} * (50% - var(--size) / 2 - 6px));transform:translate(-50%, -50%)`;
 
 // Speed ramps down to 75% of the starting window by the end of a drill.
 const ramp = (prog) => 1 - 0.25 * Math.min(1, Math.max(0, prog));
@@ -46,11 +48,14 @@ const GENTLE_FACTOR = 1.5;  // …this much
 // Trial fields:
 //   html, answer (cue id, 'go', or null = hold), answerLabel (for "It was …"),
 //   kind?, flashMs?, buttons? [{ id, label }] for 'list' pads, coneReveal?
+// next() returns null when the drill's content pool is used up; the drill then
+// ends early rather than repeat anything. All randomness comes from
+// ctx.session (js/session.js), so a seed replays the session exactly.
 
 export async function runDrill(ctx, spec) {
   const cone = ctx.settings.mode === 'cones';
   await howTo(ctx, {
-    kicker: spec.kicker ?? 'Reaction',
+    kicker: spec.kicker ?? 'Challenge',
     title: spec.title,
     rule: cone ? spec.ruleCone : spec.rule,
     demo: spec.demo,
@@ -70,9 +75,10 @@ function padButtons(spec, trial) {
 }
 
 async function runTap(ctx, spec) {
-  const { el, settings, durationMs, sleep, now, remaining, hold } = ctx;
+  const { el, settings, session, step, durationMs, sleep, now, remaining, hold } = ctx;
   const hard = settings.difficulty === 'hard';
   const anywhere = spec.pad === 'anywhere';
+  const gapMs = session.content.gaps(step.id);
   const practiceN = settings.guide === 'brief' ? 0 : (spec.practice ?? 3);
 
   el.innerHTML = `
@@ -126,6 +132,7 @@ async function runTap(ctx, spec) {
         blank();
         await sleep(700);
         const trial = spec.next({ hard: false, cone: false, prog: 0, practice: true });
+        if (!trial) break;
         showTrial(trial);
         let answered = false;
         sleep(1500).then(() => {
@@ -162,13 +169,14 @@ async function runTap(ctx, spec) {
     const prog = 1 - left / durationMs;
     const gentle = stats.trials < GENTLE_CUES ? GENTLE_FACTOR : 1;
     const windowMs = spec.tapWindow * (hard ? 0.75 : 1) * ramp(prog) * gentle;
-    const gap = randRange(450, 900) * (hard ? 0.8 : 1);
+    const gap = gapMs(hard);
     if (left < gap + windowMs + 400) break;
 
     blank();
     await sleep(gap);
 
     const trial = spec.next({ hard, cone: false, prog, practice: false });
+    if (!trial) break;
     countEl.textContent = `#${stats.trials + 1}`;
     showTrial(trial);
     const shownAt = now();
@@ -211,9 +219,10 @@ async function runTap(ctx, spec) {
 }
 
 async function runCone(ctx, spec) {
-  const { el, settings, durationMs, sleep, remaining, hold } = ctx;
+  const { el, settings, session, step, durationMs, sleep, remaining, hold } = ctx;
   const hard = settings.difficulty === 'hard';
   const practiceN = settings.guide === 'brief' ? 0 : Math.min(2, spec.practice ?? 2);
+  const jitter = session.content.gaps(`${step.id}:back`);
 
   el.innerHTML = `
     <div class="rx rx--cone">
@@ -252,6 +261,7 @@ async function runCone(ctx, spec) {
         back('', 'GET READY');
         await sleep(1200);
         const trial = spec.next({ hard: false, cone: true, prog: 0, practice: true });
+        if (!trial) break;
         await playCue(trial, showN * 1.6, 2600);
       }
     });
@@ -267,9 +277,11 @@ async function runCone(ctx, spec) {
     const prog = 1 - left / durationMs;
     const gentle = n < GENTLE_CUES ? 1.25 : 1;
     const showMs = (hard ? showH : showN) * ramp(prog) * gentle;
-    const backMs = (hard ? 1700 : 2200) * ramp(prog) * randRange(0.8, 1.2);
+    // Time to get back to center, varied so the rhythm can't be guessed.
+    const backMs = (hard ? 1700 : 2200) * ramp(prog) * (jitter(false) / 1200);
     if (left < showMs + 600) break;
     const trial = spec.next({ hard, cone: true, prog, practice: false });
+    if (!trial) break;
     countEl.textContent = `#${++n}`;
     await playCue(trial, showMs, Math.min(backMs, Math.max(0, remaining() - showMs)));
   }
@@ -283,7 +295,6 @@ async function runCone(ctx, spec) {
 
 export const colorCall = {
   run(ctx) {
-    const nextCue = noRepeatPicker(CUES);
     return runDrill(ctx, {
       title: 'Color Call',
       rule: 'A color fills the screen. Tap the button with the same color — as fast as you can.',
@@ -303,10 +314,11 @@ export const colorCall = {
           { cue: mini.arrow('←'), answer: 'blue', caption: 'Arrow ← → run left (blue cone)' },
         ],
       },
-      next({ cone }) {
-        const c = nextCue();
+      next() {
+        const t = ctx.session.content.colorCall();
+        const c = cueById[t.color];
         // Cone mode mixes color fills with arrow flashes.
-        if (cone && Math.random() < 0.5) {
+        if (t.form === 'arrow') {
           return { answer: c.id, answerLabel: c.label, html: `<div class="cue cue--arrow">${arrow(c.dir)}</div>` };
         }
         return { answer: c.id, answerLabel: c.label, html: fill(c) };
@@ -317,10 +329,8 @@ export const colorCall = {
 
 export const goNoGo = {
   run(ctx) {
-    const nextDir = noRepeatPicker(DIRS);
     const go = cueById.green;
     const stop = cueById.red;
-    let streak = 0;   // cap no-go runs so it doesn't stall
     return runDrill(ctx, {
       title: 'Go / No-Go',
       rule: `GREEN ${go.shape} → tap anywhere on the screen, fast. RED ${stop.shape} → don’t touch it.`,
@@ -341,13 +351,13 @@ export const goNoGo = {
           { cue: mini.fill('red', '←'), answer: null, caption: 'RED → freeze' },
         ],
       },
-      next({ hard, cone, practice }) {
-        let isGo = practice ? Math.random() < 0.5 : Math.random() < (hard ? 0.6 : 0.7);
-        if (!isGo && ++streak > 2) isGo = true;
-        if (isGo) streak = 0;
+      next({ cone }) {
+        // About 65% go; never more than 3 go or 2 hold in a row.
+        const t = ctx.session.content.goNoGo();
+        const isGo = t.go;
         const c = isGo ? go : stop;
         const inner = cone
-          ? `${arrow(nextDir(), 'arrow--ink')}<span class="cue__tag">${c.shape}</span>`
+          ? `${arrow(t.side, 'arrow--ink')}<span class="cue__tag">${c.shape}</span>`
           : `<span class="cue__shape cue__shape--xl">${c.shape}</span>`;
         return { answer: isGo ? 'go' : null, answerLabel: 'GREEN', kind: isGo ? 'go' : 'nogo', html: fill(c, inner) };
       },
@@ -357,7 +367,6 @@ export const goNoGo = {
 
 export const stroop = {
   run(ctx) {
-    const nextInk = noRepeatPicker(CUES);
     return runDrill(ctx, {
       title: 'Stroop',
       rule: 'You’ll see a color word. Tap the color of the INK it’s written in — not what the word says.',
@@ -377,16 +386,16 @@ export const stroop = {
           { cue: mini.word('GREEN', 'red'), answer: 'red', caption: 'Ink is RED → run to the red cone' },
         ],
       },
-      next({ hard }) {
-        const ink = nextInk();
-        const congruent = !hard && Math.random() < 0.25;
-        const others = CUES.filter((c) => c !== ink);
-        const word = congruent ? ink : others[Math.floor(Math.random() * others.length)];
+      next() {
+        // Word and ink never match, and no word/ink pair repeats in a session.
+        const t = ctx.session.content.stroop();
+        if (!t) return null;
+        const ink = cueById[t.ink];
         return {
           answer: ink.id,
           answerLabel: ink.label,
           html: `<div class="cue cue--stroop" style="--c:${ink.hex}">
-                   <span class="stroop__word">${word.label}</span>
+                   <span class="stroop__word">${t.word}</span>
                    <span class="stroop__shape" aria-hidden="true">${ink.shape}</span>
                  </div>`,
         };
@@ -397,8 +406,6 @@ export const stroop = {
 
 export const peripheral = {
   run(ctx) {
-    const nextCue = noRepeatPicker(CUES);
-    const nextEdge = noRepeatPicker(DIRS);
     return runDrill(ctx, {
       title: 'Peripheral Flash',
       rule: 'Keep your eyes on the dot in the middle. A color flashes at the edge — tap that color.',
@@ -418,14 +425,11 @@ export const peripheral = {
         ],
       },
       next({ hard, cone, practice }) {
-        const c = nextCue();
-        const edge = nextEdge();
-        // Hard: a white number flashes at another edge as a distractor.
-        let lure = '';
-        if (hard && !practice) {
-          const other = DIRS.filter((d) => d !== edge)[Math.floor(Math.random() * 3)];
-          lure = `<div class="flash flash--${other} flash--lure">${1 + Math.floor(Math.random() * 9)}</div>`;
-        }
+        // Anywhere along an edge, never the same side twice in a row and well
+        // away from the last spot. Hard adds a white number as a distractor.
+        const t = ctx.session.content.peripheral({ lure: hard && !practice });
+        const c = cueById[t.color];
+        const lure = t.lure ? `<div class="flash flash--lure" style="${at(t.lure)}">${t.lure.digit}</div>` : '';
         const flashMs = practice ? 900 : cone ? (hard ? 400 : 600) : (hard ? 200 : 350);
         return {
           answer: c.id,
@@ -433,7 +437,7 @@ export const peripheral = {
           flashMs,
           html: `<div class="cue cue--periph">
                    <div class="rx__fix rx__fix--lock"></div>
-                   <div class="flash flash--${edge}" style="--c:${c.hex};--ink:${c.ink}">${c.shape}</div>
+                   <div class="flash" style="--c:${c.hex};--ink:${c.ink};${at(t)}">${c.shape}</div>
                    ${lure}
                  </div>`,
         };

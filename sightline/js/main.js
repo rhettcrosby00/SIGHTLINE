@@ -7,9 +7,11 @@ import { unlock as unlockAudio } from './lib/audio.js';
 import { renderSummary } from './stages/summary.js';
 import { showGuide, guideSeen } from './guide.js';
 import { askBefore, askAfter } from './stages/readiness.js';
+import { createSession } from './session.js';
+import { createVariety } from './lib/variety.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '1.2';
+export const APP_VERSION = '1.3';
 
 const $ = (id) => document.getElementById(id);
 
@@ -21,27 +23,52 @@ function show(name) {
 const getSettings = initSettings();
 // Dev aids: ?speed=20 fast-forwards a session; ?autostart=1 skips the Start tap;
 // ?only=lockin,stroop runs just those drill ids; ?autoready=1 skips I'M READY
-// taps; ?noguide=1 skips the first-run guide.
+// taps; ?noguide=1 skips the first-run guide; ?seed=N replays session N
+// exactly (ignores and doesn't update the "recently used" list).
 const params = new URLSearchParams(location.search);
 const speed = Math.max(1, Number(params.get('speed')) || 1);
 const autoReady = params.has('autoready');
+const replaySeed = params.get('seed');
+const variety = createVariety();
 let inSession = false;
 
 $('version').textContent = `v${APP_VERSION}`;
+$('about-version').textContent = `Version ${APP_VERSION}`;
 $('btn-guide').addEventListener('click', showGuide);
-if (!guideSeen() && !params.has('noguide') && !params.has('autostart')) showGuide();
+
+// Splash: show the logo for a beat, then fade (immediately for test runs).
+const splash = $('splash');
+const hideSplash = () => {
+  splash.classList.add('is-out');
+  setTimeout(() => splash.remove(), 400);
+  if (!guideSeen() && !params.has('noguide') && !params.has('autostart')) showGuide();
+};
+setTimeout(hideSplash, params.has('autostart') ? 0 : Math.max(0, 900 - performance.now()));
+
+// About screen, with "Reset variety".
+$('btn-about').addEventListener('click', () => { $('variety-status').textContent = ''; show('about'); });
+$('btn-about-back').addEventListener('click', () => show('start'));
+$('btn-about-guide').addEventListener('click', showGuide);
+$('btn-reset-variety').addEventListener('click', () => {
+  variety.reset();
+  $('variety-status').textContent = variety.available
+    ? 'Done — your next session can use everything again.'
+    : 'Nothing to reset on this device.';
+});
 
 $('btn-start').addEventListener('click', async () => {
   const settings = getSettings();
   unlockAudio(settings.sound === 'on');   // must happen inside the tap
+  // Every session is freshly shuffled; content from the last few sessions rests.
+  const session = createSession({ settings, seed: replaySeed, recent: replaySeed ? [] : variety.recent() });
   const only = params.get('only')?.split(',');
-  const steps = buildRoutine(settings).filter((s) => !only || only.includes(s.id));
+  const steps = buildRoutine(session).filter((s) => !only || only.includes(s.id));
 
   // Readiness + cue word before; readiness again after. Not timed, not saved.
   const readiness = { before: null, after: null };
   if (!autoReady) {
     show('check');
-    const pick = await askBefore($('check'), { cue: settings.cue });
+    const pick = await askBefore($('check'), { cue: settings.cue, suggestions: session.content.cueSuggestions });
     readiness.before = pick.level;
     settings.cue = pick.cue;
     updateSetting('cue', pick.cue);
@@ -49,8 +76,9 @@ $('btn-start').addEventListener('click', async () => {
 
   show('session');
   inSession = true;
-  const { completed, results } = await runSession(steps, settings, { speed, autoReady });
+  const { completed, results } = await runSession(steps, settings, { session, speed, autoReady });
   inSession = false;
+  if (!replaySeed) variety.add(session.record());   // also after a quit: they saw it
   if (!completed) { show('start'); return; }
 
   if (!autoReady) {
@@ -60,7 +88,7 @@ $('btn-start').addEventListener('click', async () => {
   $('check').innerHTML = '';
 
   const totalMs = steps.reduce((a, s) => a + s.durationMs, 0);
-  renderSummary($('summary'), { results, settings, totalMs, readiness });
+  renderSummary($('summary'), { results, settings, totalMs, readiness, seed: session.seed });
   show('done');
 });
 

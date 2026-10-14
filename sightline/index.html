@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#050505">
   <meta name="description" content="Sightline: a pre-game visual reaction and cognitive warm-up.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -15,16 +15,29 @@
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="css/styles.css">
+  <!-- Splash: inline so it paints before anything else loads -->
+  <style>
+    .splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 28px; background: #050505; transition: opacity .35s ease; }
+    .splash.is-out { opacity: 0; pointer-events: none; }
+    .splash img { display: block; height: auto; }
+    .splash__mark { width: min(42vw, 200px); }
+    .splash__word { width: min(74vw, 380px); }
+    @media (prefers-reduced-motion: reduce) { .splash { transition: none; } }
+  </style>
 </head>
 <body>
+  <div id="splash" class="splash" role="presentation">
+    <img class="splash__mark" src="assets/logo/logo-mark.svg" alt="Sightline logo" width="272" height="242">
+    <img class="splash__word" src="assets/logo/logo-wordmark.svg" alt="" width="807" height="123">
+  </div>
+
   <!-- Start screen -->
-  <section id="screen-start" class="screen is-active" aria-labelledby="wordmark">
-    <header class="start-head">
-      <h1 id="wordmark" class="wordmark">SIGHT<span>LINE</span></h1>
-      <div class="start-head__row">
-        <p class="tagline">Game Ready warm-up</p>
-        <button id="btn-guide" class="btn-link" type="button">How it works</button>
-      </div>
+  <section id="screen-start" class="screen is-active" aria-labelledby="app-title">
+    <h1 id="app-title" class="visually-hidden">Sightline — Game Ready warm-up</h1>
+    <header class="topbar">
+      <button id="btn-about" class="btn-link" type="button">About</button>
+      <button id="btn-guide" class="btn-link" type="button">How it works</button>
     </header>
     <div id="update" class="update" hidden>
       <button id="btn-update" class="update__btn" type="button">New version ready — tap to update</button>
@@ -42,11 +55,34 @@
     </div>
 
     <div class="start-foot">
+      <img class="brand-logo" src="assets/logo/logo-horizontal.svg" alt="Sightline logo" width="1182" height="242">
       <p id="length-note" class="length-note"></p>
       <button id="btn-start" class="btn-start" type="button">START</button>
       <p class="disclaimer">A visual reaction &amp; cognitive warm-up. Not a medical, diagnostic, or treatment tool.</p>
       <div id="install" class="install" hidden></div>
       <p id="version" class="version"></p>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="screen-about" class="screen" aria-labelledby="about-title">
+    <div class="about">
+      <img class="about__logo" src="assets/logo/logo-mark.svg" alt="Sightline logo" width="272" height="242">
+      <h2 id="about-title" class="about__title">About Sightline</h2>
+      <p>A pre-game warm-up for your eyes and mind, in four parts:</p>
+      <ol class="about__pillars">
+        <li><b>Regulate</b><span>Breathe to calm down and focus.</span></li>
+        <li><b>Activate</b><span>Wake up your eyes: tracking, jumps, and gaze holds.</span></li>
+        <li><b>Challenge</b><span>Fast reaction and brain drills.</span></li>
+        <li><b>Rehearse</b><span>Picture your best play, then lock in.</span></li>
+      </ol>
+      <p>Every session is shuffled so it feels new. To keep it fresh, this phone remembers which questions, scripts and problems you saw in your last few sessions and skips them for a while. No results or personal info are kept.</p>
+      <button id="btn-reset-variety" class="btn-ghost" type="button">Reset variety</button>
+      <p id="variety-status" class="about__status" aria-live="polite"></p>
+      <button id="btn-about-guide" class="btn-ghost" type="button">How it works</button>
+      <p class="disclaimer">A visual reaction &amp; cognitive warm-up. Not a medical, diagnostic, or treatment tool.</p>
+      <p id="about-version" class="version"></p>
+      <button id="btn-about-back" class="btn-big" type="button">BACK</button>
     </div>
   </section>
 

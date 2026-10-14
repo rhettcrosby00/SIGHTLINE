@@ -49,25 +49,13 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .screen.is-active { display: flex; }
 
 /* ---------- Start ---------- */
-.start-head { padding-top: 8px; }
-.wordmark {
-  font-size: clamp(3.25rem, 17vw, 5.5rem);
-  font-weight: 900;
-  font-style: italic;
-  letter-spacing: -0.02em;
-  line-height: 0.9;
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.wordmark span { color: var(--accent); }
-.tagline {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
+.topbar { display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
 
-.settings { display: grid; gap: 10px; margin-top: 16px; }
+.settings { display: grid; gap: 10px; margin-top: 8px; }
 .field__label {
   display: block;
   margin-bottom: 6px;
@@ -554,8 +542,6 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .rx--cone .rx__rule { font-size: min(5.4vw, 1.6rem); color: var(--muted); }
 
 /* ---------- Start screen extras ---------- */
-.start-head__row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 6px; }
-.start-head__row .tagline { margin-top: 0; }
 .btn-link {
   flex: none; min-height: 40px; padding: 0 2px;
   color: var(--accent); font-size: 1rem; font-weight: 800; letter-spacing: 0.04em;
@@ -659,3 +645,49 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .head__label { color: var(--muted); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
 .head__value { margin-top: 4px; font-size: 1.35rem; font-weight: 900; line-height: 1.1; }
 .head__value small { color: var(--muted); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
+
+/* ---------- Logo placements ---------- */
+.brand-logo { display: block; width: min(86%, 320px); height: auto; margin: 0 auto 2px; }
+.about { display: flex; flex-direction: column; gap: 12px; padding-bottom: 8px; font-size: 1.1rem; line-height: 1.4; }
+.about__logo { width: 96px; height: auto; align-self: center; margin-top: 4px; }
+.about__title { text-align: center; font-size: clamp(2rem, 10vw, 2.8rem); font-weight: 900; font-style: italic; line-height: 0.95; text-transform: uppercase; }
+.about__pillars { list-style: none; display: grid; gap: 6px; }
+.about__pillars li { display: grid; grid-template-columns: 6.5em 1fr; gap: 8px; padding: 8px 12px; border-radius: 10px; background: var(--panel); }
+.about__pillars b { color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; }
+.about__pillars span { color: var(--muted); }
+.about__status { min-height: 1.4em; text-align: center; color: var(--cue-green); font-weight: 800; }
+.about .btn-big { margin-top: 6px; }
+.head__item { position: relative; }
+.head__logo { position: absolute; top: 8px; right: 8px; width: 30px; height: auto; }
+.sum__seed { text-align: center; color: #555; font-size: 0.75rem; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+#screen-about .btn-ghost { width: 100%; }
+
+/* ---------- Gaze Stabilization ---------- */
+.gaze { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0 8px; position: relative; }
+.gaze__dir { color: var(--accent); font-size: clamp(1.2rem, 6vw, 1.8rem); font-weight: 900; letter-spacing: 0.08em; text-align: center; }
+.gaze__field { position: relative; flex: 1; width: 100%; display: grid; place-items: center; }
+.gaze__letter { font-size: clamp(9rem, 55vw, 18rem); font-weight: 900; line-height: 1; }
+.gaze--cones .gaze__letter { font-size: min(70vw, 42dvh); }
+.gaze__beat { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #333; transition: background 0.1s; }
+.gaze[data-axis="h"] .gaze__beat--a { left: 4px; top: calc(50% - 11px); }
+.gaze[data-axis="h"] .gaze__beat--b { right: 4px; top: calc(50% - 11px); }
+.gaze[data-axis="v"] .gaze__beat--a { top: 4px; left: calc(50% - 11px); }
+.gaze[data-axis="v"] .gaze__beat--b { bottom: 4px; left: calc(50% - 11px); }
+.gaze[data-beat="0"] .gaze__beat--a, .gaze[data-beat="1"] .gaze__beat--b { background: var(--accent); }
+.gaze__note { color: var(--muted); font-size: 0.95rem; font-weight: 600; }
+.mini__phone--gaze { display: grid; place-items: center; }
+.mini__letter { font-size: 3rem; font-weight: 900; color: #fff; }
+.mini__head {
+  position: absolute; bottom: 8px; left: calc(50% - 30px); width: 60px; height: 4px; border-radius: 2px; background: var(--accent);
+  animation: mini-head 1s ease-in-out infinite alternate;
+}
+@keyframes mini-head { from { transform: translateX(-22px); } to { transform: translateX(22px); } }
+
+/* ---------- Visualization ---------- */
+.viz { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: 0 4px; }
+.viz__theme { color: var(--accent); font-size: 1rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; text-align: center; }
+.viz__line { font-size: clamp(1.8rem, 8.5vw, 2.8rem); font-weight: 800; line-height: 1.2; text-align: center; min-height: 6em; display: grid; place-items: center; }
+.viz--cones .viz__line { font-size: min(9.5vw, 5.4dvh); }
+.viz__dots { display: flex; justify-content: center; gap: 8px; }
+.viz__dots i { width: 10px; height: 10px; border-radius: 50%; background: #333; }
+.viz__dots i.is-on { background: var(--accent); }

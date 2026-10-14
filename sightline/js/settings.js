@@ -1,7 +1,8 @@
 // Start-screen settings: segmented controls, remembered on this device only.
 
 import { CUES } from './lib/colors.js';
-import { totalMinutes } from './routine.js';
+import { totalMinutes } from './plan.js';
+import { cleanCue } from './content/cues.js';
 
 const STORAGE_KEY = 'sightline.settings.v1';
 
@@ -18,13 +19,8 @@ export const FIELDS = [
 
 const DEFAULTS = { mode: 'tap', length: 'standard', difficulty: 'normal', sound: 'on', guide: 'full', cue: 'COMPETE' };
 
-// Cue word: one word the athlete comes back to. Picked on the pre-session
-// check screen; the last choice is remembered as a preference.
-export const CUE_PRESETS = ['ATTACK', 'COMPETE', 'NEXT PLAY', 'TRUST IT', 'BREATHE'];
-export const CUE_MAX = 14;
-export const cleanCue = (s) => String(s ?? '')
-  .replace(/[^\p{L}\p{N} .!'’-]/gu, '')   // letters, numbers and simple punctuation only
-  .replace(/\s+/g, ' ').trim().toUpperCase().slice(0, CUE_MAX);
+// The cue word (picked on the pre-session check screen) is remembered as a
+// preference. Suggestions rotate each session (js/content/cues.js).
 
 let current = null;   // live settings object, shared with updateSetting()
 

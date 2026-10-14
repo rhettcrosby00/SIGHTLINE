@@ -8,6 +8,7 @@
 import { esc } from '../lib/text.js';
 import { LEVELS } from './readiness.js';
 
+const REACTION_DRILLS = new Set(['colorcall', 'gonogo', 'stroop', 'peripheral']);
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
 // Reaction times read as seconds (0.41) — easier to follow than milliseconds.
 const sec = (v) => (v == null ? '—' : (v / 1000).toFixed(2));
@@ -23,7 +24,7 @@ function row(name, detail, sub = '') {
   return `<li><span class="row__name">${name}${sub ? `<small>${sub}</small>` : ''}</span><span class="row__val">${detail}</span></li>`;
 }
 
-export function renderSummary(el, { results, settings, totalMs, readiness = {} }) {
+export function renderSummary(el, { results, settings, totalMs, readiness = {}, seed }) {
   const cone = settings.mode === 'cones';
   const minutes = Math.round(totalMs / 60000 * 2) / 2;
   const meta = `${cone ? 'Cones' : 'Tap'} · ${settings.length[0].toUpperCase()}${settings.length.slice(1)} · ${
@@ -39,7 +40,8 @@ export function renderSummary(el, { results, settings, totalMs, readiness = {} }
       r.cues != null ? `${r.cues} cues` : r.targets != null ? `${r.targets} targets` : '✓')).join('');
   } else {
     const scored = results.filter((r) => r.trials);
-    const reaction = scored.filter((r) => r.blockId === 'reaction' && r.rtCount);
+    // Headline reaction times come from the reaction drills only (brain drills include thinking time).
+    const reaction = scored.filter((r) => REACTION_DRILLS.has(r.id) && r.rtCount);
     const trials = scored.reduce((a, r) => a + r.trials, 0);
     const correct = scored.reduce((a, r) => a + r.correct, 0);
     const rtN = reaction.reduce((a, r) => a + r.rtCount, 0);
@@ -64,7 +66,7 @@ export function renderSummary(el, { results, settings, totalMs, readiness = {} }
   const { before = null, after = null } = readiness;
   const level = (n) => (n == null ? '—' : `${n} <small>${LEVELS[n - 1]}</small>`);
   const head = [
-    settings.cue ? `<div class="head__item"><p class="head__label">Cue word</p><p class="head__value">${esc(settings.cue)}</p></div>` : '',
+    settings.cue ? `<div class="head__item"><img class="head__logo" src="assets/logo/logo-mark.svg" alt="Sightline logo" width="272" height="242"><p class="head__label">Cue word</p><p class="head__value">${esc(settings.cue)}</p></div>` : '',
     before != null || after != null
       ? `<div class="head__item"><p class="head__label">Readiness</p><p class="head__value">${level(before)} → ${level(after)}</p></div>`
       : '',
@@ -80,5 +82,6 @@ export function renderSummary(el, { results, settings, totalMs, readiness = {} }
       ${note ? `<p class="sum__note">${note}</p>` : ''}
       <ul class="sum__rows">${rows}</ul>
       <p class="sum__foot">Results aren’t saved — each session stands alone. Sightline is a warm-up, not a medical or diagnostic tool.</p>
+      ${seed != null ? `<p class="sum__seed">Session code ${seed}</p>` : ''}
     </div>`;
 }

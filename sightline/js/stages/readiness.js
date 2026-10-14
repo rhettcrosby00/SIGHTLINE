@@ -2,7 +2,7 @@
 // (with the cue-word pick) and again after Lock In. Shown on the summary as
 // "2 → 4". Nothing is saved. It's a self-check, not a measurement.
 
-import { CUE_PRESETS, CUE_MAX, cleanCue } from '../settings.js';
+import { CUE_MAX, cleanCue } from '../content/cues.js';
 import { esc } from '../lib/text.js';
 
 export const LEVELS = ['Flat', 'Low', 'Okay', 'Good', 'Locked in'];
@@ -16,9 +16,10 @@ const scale = () => `
   </div>`;
 
 // Before: pick a level (optional) and a cue word, then LET'S GO.
+// `suggestions` rotate every session; the athlete's last word stays first.
 // Resolves { level: 1–5 | null, cue }.
-export function askBefore(el, { cue }) {
-  const custom = cue && !CUE_PRESETS.includes(cue) ? cue : '';
+export function askBefore(el, { cue, suggestions }) {
+  const CUE_PRESETS = cue && !suggestions.includes(cue) ? [cue, ...suggestions] : suggestions;
   el.innerHTML = `
     <div class="check">
       <p class="check__kicker">Before we start</p>
@@ -27,11 +28,11 @@ export function askBefore(el, { cue }) {
       <h3 class="check__sub">Your cue word</h3>
       <p class="check__hint">One word to come back to when it gets loud.</p>
       <div class="chips" role="radiogroup" aria-label="Cue word">
-        ${CUE_PRESETS.map((w) => `<button type="button" class="chip" role="radio" data-cue="${w}">${w}</button>`).join('')}
-        <button type="button" class="chip chip--custom" role="radio" data-cue="">${custom ? esc(custom) : '+ My own'}</button>
+        ${CUE_PRESETS.map((w) => `<button type="button" class="chip" role="radio" data-cue="${esc(w)}">${esc(w)}</button>`).join('')}
+        <button type="button" class="chip chip--custom" role="radio" data-cue="">+ My own</button>
       </div>
       <input class="check__input" type="text" maxlength="${CUE_MAX}" placeholder="Type your word"
-             autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(custom)}" hidden>
+             autocomplete="off" autocapitalize="characters" spellcheck="false" value="" hidden>
       <div class="check__actions">
         <button type="button" class="btn-ghost check__skip">Skip</button>
         <button type="button" class="btn-start check__go">LET’S GO</button>
