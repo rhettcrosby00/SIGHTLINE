@@ -5,6 +5,9 @@
 // separately), and a row per scored drill.
 // Cone mode: drills completed, cues called, and time, plus a row per drill.
 
+import { esc } from '../lib/text.js';
+import { LEVELS } from './readiness.js';
+
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
 // Reaction times read as seconds (0.41) — easier to follow than milliseconds.
 const sec = (v) => (v == null ? '—' : (v / 1000).toFixed(2));
@@ -20,7 +23,7 @@ function row(name, detail, sub = '') {
   return `<li><span class="row__name">${name}${sub ? `<small>${sub}</small>` : ''}</span><span class="row__val">${detail}</span></li>`;
 }
 
-export function renderSummary(el, { results, settings, totalMs }) {
+export function renderSummary(el, { results, settings, totalMs, readiness = {} }) {
   const cone = settings.mode === 'cones';
   const minutes = Math.round(totalMs / 60000 * 2) / 2;
   const meta = `${cone ? 'Cones' : 'Tap'} · ${settings.length[0].toUpperCase()}${settings.length.slice(1)} · ${
@@ -28,7 +31,8 @@ export function renderSummary(el, { results, settings, totalMs }) {
 
   let tiles, rows, note = '';
 
-  if (cone) {
+  // Cone mode (or a Tap session with nothing scored) shows what was done, not accuracy.
+  if (cone || !results.some((r) => r.trials)) {
     const cueCount = results.reduce((a, r) => a + (r.cues ?? r.targets ?? 0), 0);
     tiles = tile(results.length, '', 'drills done') + tile(cueCount, '', 'cues called') + tile(minutes, 'min', 'warm-up');
     rows = results.map((r) => row(r.name,
@@ -56,11 +60,22 @@ export function renderSummary(el, { results, settings, totalMs }) {
     if (quickest) note = `Quickest drill today: <b>${quickest.name}</b> at ${sec(quickest.rtMs)} s. Lower is faster.`;
   }
 
+  // Headspace: cue word and the before → after readiness check.
+  const { before = null, after = null } = readiness;
+  const level = (n) => (n == null ? '—' : `${n} <small>${LEVELS[n - 1]}</small>`);
+  const head = [
+    settings.cue ? `<div class="head__item"><p class="head__label">Cue word</p><p class="head__value">${esc(settings.cue)}</p></div>` : '',
+    before != null || after != null
+      ? `<div class="head__item"><p class="head__label">Readiness</p><p class="head__value">${level(before)} → ${level(after)}</p></div>`
+      : '',
+  ].join('');
+
   el.innerHTML = `
     <div class="sum">
       <p class="sum__kicker">SESSION COMPLETE</p>
       <h2 class="sum__title">GAME READY</h2>
       <p class="sum__meta">${meta}</p>
+      ${head ? `<div class="head">${head}</div>` : ''}
       <div class="tiles">${tiles}</div>
       ${note ? `<p class="sum__note">${note}</p>` : ''}
       <ul class="sum__rows">${rows}</ul>

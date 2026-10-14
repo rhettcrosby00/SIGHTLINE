@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v1.1';
+const CACHE_VERSION = 'v1.2';
 const CACHE = `sightline-${CACHE_VERSION}`;
 
 const ASSETS = [
@@ -26,6 +26,8 @@ const ASSETS = [
   './js/stages/reaction.js',
   './js/stages/brain.js',
   './js/stages/summary.js',
+  './js/stages/readiness.js',
+  './js/lib/text.js',
   './js/data/questions.js',
   './icons/icon.svg',
   './icons/icon-192.png',

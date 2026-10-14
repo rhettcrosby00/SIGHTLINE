@@ -3,6 +3,7 @@
 // the phase word and countdown are sized to read from 10–15 ft in Cone mode.
 
 import { cues } from '../lib/audio.js';
+import { esc } from '../lib/text.js';
 
 const SEC = 1000;
 const SMALL = 0.42;   // circle scale at empty lungs
@@ -11,8 +12,9 @@ const BIG = 1;        // circle scale at full lungs
 const ease = (t) => 0.5 - Math.cos(Math.PI * t) / 2;   // ease-in-out
 
 // ---- Timelines -------------------------------------------------------------
-// Each phase: { word, sub, ms, from, to, cue, count }
+// Each phase: { word, sub, ms, from, to, cue, count, showWord? }
 //   count: 'secs' shows seconds left in the phase; a string shows as-is.
+//   showWord: also show the athlete's cue word (last Settle breath, Lock In end).
 
 function settleTimeline(durationMs) {
   const cycleMs = 16 * SEC;                                   // 4-4-4-4 box
@@ -24,11 +26,12 @@ function settleTimeline(durationMs) {
   }];
   for (let i = 1; i <= cycles; i++) {
     const tag = `Breath ${i} of ${cycles}`;
+    const showWord = i === cycles;
     phases.push(
-      { word: 'BREATHE IN',  sub: tag, ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs' },
-      { word: 'HOLD',        sub: tag, ms: 4 * SEC, from: BIG,   to: BIG,   cue: 'hold',   count: 'secs' },
-      { word: 'BREATHE OUT', sub: tag, ms: 4 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs' },
-      { word: 'HOLD',        sub: tag, ms: 4 * SEC, from: SMALL, to: SMALL, cue: 'hold',   count: 'secs' },
+      { word: 'BREATHE IN',  sub: tag, ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs', showWord },
+      { word: 'HOLD',        sub: tag, ms: 4 * SEC, from: BIG,   to: BIG,   cue: 'hold',   count: 'secs', showWord },
+      { word: 'BREATHE OUT', sub: tag, ms: 4 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs', showWord },
+      { word: 'HOLD',        sub: tag, ms: 4 * SEC, from: SMALL, to: SMALL, cue: 'hold',   count: 'secs', showWord },
     );
   }
   return phases;
@@ -57,14 +60,15 @@ function lockInTimeline(durationMs) {
     { word: 'BREATHE IN',  sub: 'One steady breath', ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs' },
     { word: 'HOLD',        sub: 'One steady breath', ms: 4 * SEC, from: BIG,   to: BIG,   cue: 'hold',   count: 'secs' },
     { word: 'BREATHE OUT', sub: 'One steady breath', ms: 6 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs' },
-    { word: 'LOCKED IN',   sub: 'You’re ready. Go compete.', ms: doneMs, from: BIG, to: BIG, cue: 'done', count: '', final: true },
+    { word: 'LOCKED IN',   sub: 'You’re ready. Go compete.', ms: doneMs, from: BIG, to: BIG, cue: 'done', count: '', final: true, showWord: true },
   );
   return phases;
 }
 
 // ---- Player ----------------------------------------------------------------
 
-async function play({ el, sleep, now, signal }, phases, theme) {
+async function play({ el, sleep, now, settings }, phases, theme) {
+  const cueWord = settings.cue ? esc(settings.cue) : '';
   el.innerHTML = `
     <div class="breathe breathe--${theme}">
       <div class="breathe__ring">
@@ -74,12 +78,14 @@ async function play({ el, sleep, now, signal }, phases, theme) {
       </div>
       <p class="breathe__word" role="status"></p>
       <p class="breathe__sub"></p>
+      <p class="breathe__cueword" hidden>${theme === 'lockin' ? cueWord : `Your word · <b>${cueWord}</b>`}</p>
     </div>`;
   const root = el.firstElementChild;
   const orb = root.querySelector('.breathe__orb');
   const count = root.querySelector('.breathe__count');
   const word = root.querySelector('.breathe__word');
   const sub = root.querySelector('.breathe__sub');
+  const cueEl = root.querySelector('.breathe__cueword');
 
   let phase = phases[0];
   let phaseStart = 0;
@@ -103,6 +109,7 @@ async function play({ el, sleep, now, signal }, phases, theme) {
       if (ph.count !== 'secs') count.textContent = ph.count;
       root.classList.toggle('is-intro', !!ph.intro);
       root.classList.toggle('is-final', !!ph.final);
+      cueEl.hidden = !(ph.showWord && cueWord);
       root.dataset.phase = ph.cue ?? '';
       if (ph.cue) cues[ph.cue]();
       await sleep(ph.ms);

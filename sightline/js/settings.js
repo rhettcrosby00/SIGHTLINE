@@ -16,7 +16,17 @@ export const FIELDS = [
     hint: 'Full shows an example and a short practice before each drill. Brief is for athletes who know the drills.' },
 ];
 
-const DEFAULTS = { mode: 'tap', length: 'standard', difficulty: 'normal', sound: 'on', guide: 'full' };
+const DEFAULTS = { mode: 'tap', length: 'standard', difficulty: 'normal', sound: 'on', guide: 'full', cue: 'COMPETE' };
+
+// Cue word: one word the athlete comes back to. Picked on the pre-session
+// check screen; the last choice is remembered as a preference.
+export const CUE_PRESETS = ['ATTACK', 'COMPETE', 'NEXT PLAY', 'TRUST IT', 'BREATHE'];
+export const CUE_MAX = 14;
+export const cleanCue = (s) => String(s ?? '')
+  .replace(/[^\p{L}\p{N} .!'’-]/gu, '')   // letters, numbers and simple punctuation only
+  .replace(/\s+/g, ' ').trim().toUpperCase().slice(0, CUE_MAX);
+
+let current = null;   // live settings object, shared with updateSetting()
 
 function load() {
   try {
@@ -25,6 +35,7 @@ function load() {
     for (const f of FIELDS) {
       if (f.options.some(([v]) => v === saved[f.key])) out[f.key] = saved[f.key];
     }
+    if (typeof saved.cue === 'string') out.cue = cleanCue(saved.cue);
     return out;
   } catch {
     return { ...DEFAULTS };
@@ -35,8 +46,16 @@ function save(settings) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch { /* private mode etc. */ }
 }
 
+// Change one setting from outside the start screen (e.g. the cue word).
+export function updateSetting(key, value) {
+  if (!current) return;
+  current[key] = value;
+  save(current);
+}
+
 export function initSettings() {
   const settings = load();
+  current = settings;
   const form = document.getElementById('settings');
   const coneSetup = document.getElementById('cone-setup');
   const lengthNote = document.getElementById('length-note');

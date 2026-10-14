@@ -607,3 +607,55 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .guide__modes p { margin-top: 4px; }
 .guide__nav { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
 .guide__nav .btn-big { min-height: 60px; font-size: 1.5rem; }
+
+/* ---------- Readiness check ---------- */
+#screen-check { justify-content: center; }
+.check { display: flex; flex-direction: column; gap: 12px; }
+.check__kicker { color: var(--accent); font-size: 1rem; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; }
+.check__title { font-size: clamp(2.2rem, 11vw, 3.4rem); font-weight: 900; font-style: italic; line-height: 0.95; text-transform: uppercase; }
+.check__sub { margin-top: 10px; font-size: 1.1rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; }
+.check__hint { margin-top: -6px; color: var(--muted); font-size: 1rem; font-weight: 600; }
+.check__word { margin-top: 8px; text-align: center; color: var(--accent); font-size: clamp(2.4rem, 13vw, 4rem); font-weight: 900; font-style: italic; }
+.scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.scale__btn {
+  display: grid; justify-items: center; gap: 4px; padding: 12px 2px;
+  border-radius: 14px; background: var(--panel); border: 2px solid var(--line);
+}
+.scale__btn b { font-size: 2rem; font-weight: 900; line-height: 1; }
+.scale__btn span { color: var(--muted); font-size: 0.8rem; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1.1; text-align: center; }
+.scale__btn[aria-checked="true"] { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.scale__btn[aria-checked="true"] span { color: var(--bg); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-height: 44px; padding: 0 16px; border-radius: 999px;
+  background: var(--panel); border: 2px solid var(--line);
+  font-size: 1.05rem; font-weight: 900; letter-spacing: 0.06em;
+}
+.chip[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip--custom { color: var(--muted); }
+.check__input {
+  min-height: 52px; padding: 0 14px; border-radius: 12px;
+  background: #000; border: 2px solid var(--accent); color: var(--fg);
+  font: inherit; font-size: 1.4rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase;
+  user-select: text; -webkit-user-select: text;
+}
+.check__input[hidden] { display: none; }
+.check__actions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 12px; }
+.check__actions--single { grid-template-columns: 1fr; }
+.check__go { min-height: 68px; font-size: 2rem; }
+
+/* Cue word in breathing screens */
+.breathe__cueword { color: var(--muted); font-size: 1.3rem; font-weight: 800; letter-spacing: 0.08em; }
+.breathe__cueword b { color: var(--accent); font-weight: 900; }
+.breathe__cueword[hidden] { display: none; }
+.breathe.is-final .breathe__cueword {
+  color: var(--accent); font-size: clamp(2.6rem, 14vw, 4.8rem); font-weight: 900; font-style: italic; letter-spacing: 0.02em; line-height: 1;
+}
+.breathe.is-final .breathe__sub { order: 3; }
+
+/* Summary: headspace row */
+.head { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.head__item { padding: 10px 12px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); }
+.head__label { color: var(--muted); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.head__value { margin-top: 4px; font-size: 1.35rem; font-weight: 900; line-height: 1.1; }
+.head__value small { color: var(--muted); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }

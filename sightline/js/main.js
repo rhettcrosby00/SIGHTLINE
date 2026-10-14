@@ -1,14 +1,15 @@
 // Boot and screen switching.
 
-import { initSettings } from './settings.js';
+import { initSettings, updateSetting } from './settings.js';
 import { buildRoutine } from './routine.js';
 import { runSession } from './engine.js';
 import { unlock as unlockAudio } from './lib/audio.js';
 import { renderSummary } from './stages/summary.js';
 import { showGuide, guideSeen } from './guide.js';
+import { askBefore, askAfter } from './stages/readiness.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '1.1';
+export const APP_VERSION = '1.2';
 
 const $ = (id) => document.getElementById(id);
 
@@ -35,14 +36,31 @@ $('btn-start').addEventListener('click', async () => {
   unlockAudio(settings.sound === 'on');   // must happen inside the tap
   const only = params.get('only')?.split(',');
   const steps = buildRoutine(settings).filter((s) => !only || only.includes(s.id));
+
+  // Readiness + cue word before; readiness again after. Not timed, not saved.
+  const readiness = { before: null, after: null };
+  if (!autoReady) {
+    show('check');
+    const pick = await askBefore($('check'), { cue: settings.cue });
+    readiness.before = pick.level;
+    settings.cue = pick.cue;
+    updateSetting('cue', pick.cue);
+  }
+
   show('session');
   inSession = true;
   const { completed, results } = await runSession(steps, settings, { speed, autoReady });
   inSession = false;
   if (!completed) { show('start'); return; }
 
+  if (!autoReady) {
+    show('check');
+    readiness.after = await askAfter($('check'), { cue: settings.cue });
+  }
+  $('check').innerHTML = '';
+
   const totalMs = steps.reduce((a, s) => a + s.durationMs, 0);
-  renderSummary($('summary'), { results, settings, totalMs });
+  renderSummary($('summary'), { results, settings, totalMs, readiness });
   show('done');
 });
 
