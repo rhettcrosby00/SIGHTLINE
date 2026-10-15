@@ -169,7 +169,7 @@ sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 - `newDrills: 'preview'`: 4-7-8 Breathing, Memory Sequence.
 - `leaderboard: true` (approved): name entry, the online board and coach tools.
 - `occlusion: true` (approved with Training Mode): the opt-in Occlusion setting; Training only.
-- `partner: 'preview'`: MOVE Partner mode (a coach's phone sends the cues).
+- `partner: true` (approved): MOVE Partner mode (a coach's phone sends the cues).
 
 ## Saved on the phone
 
@@ -242,7 +242,7 @@ Keep answers short (about 12 characters or fewer) so they fit on a button.
 | `js/lib/adapt.js`, `js/lib/contrast.js` | Adaptive difficulty (and saved levels); Low contrast math |
 | `js/cone/decide.js`, `js/cone/patterns.js`, `js/cone/cues/sport.js` | MOVE Decision Layer, planned patterns, sport calls |
 | `js/lib/check.js`, `js/stages/focuscheck.js`, `js/lib/streak.js` | Focus Check (plan, timing math, screens) and the weekly training streak |
-| `js/cone/partner.js`, `api/partner.js` | Partner mode (preview): the stand phone and the coach's phone, and the room server |
+| `js/cone/partner.js`, `api/partner.js` | Partner mode: the stand phone and the coach's phone, and the room server |
 | `js/routine.js` | Maps each FOCUS drill to the code that runs it |
 | `js/engine.js` | Runs the steps; progress bar, pause/quit, wake lock |
 | `js/stages/*.js` | One file per FOCUS drill group, plus `summary.js` |

@@ -17,7 +17,7 @@ import { initRoutineBuilder } from './myroutine-ui.js';
 import { isOn } from './features.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '2.8';
+export const APP_VERSION = '2.9';
 
 const $ = (id) => document.getElementById(id);
 

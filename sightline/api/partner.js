@@ -1,5 +1,5 @@
-// Partner mode API (a Vercel serverless function at /api/partner; preview,
-// behind the `partner` flag in js/features.js).
+// Partner mode API (a Vercel serverless function at /api/partner; the app
+// shows it behind the `partner` flag in js/features.js).
 //   POST { action: 'open', setup }        → { code }      the stand phone opens a room
 //   GET  ?action=poll&code=1234&after=N   → { seq, cue, setup }
 //   POST { action: 'cue', code, cue }     → { seq }       the coach's phone calls a cue

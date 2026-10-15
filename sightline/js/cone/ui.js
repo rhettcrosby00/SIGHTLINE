@@ -84,7 +84,7 @@ export function initMove({ show, dev = {}, onRun = () => {}, onTrained = () => {
   // The two editable setups; Quick Start is built fresh each time.
   const fromSetup = (variant) => (where, s) => { run = variant; setup = s; nav(where); };
   const custom = initSetup($('cd-setup'), { onNav: fromSetup('custom'), variant: 'custom', sport });
-  // Partner mode (preview): the stand phone uses the Custom setup's cones (reactive).
+  // Partner mode: the stand phone uses the Custom setup's cones (reactive).
   const partner = isOn('partner') ? initPartner($('cd-partner'), {
     getSetup: () => ({ ...custom.get(), mode: 'reactive' }),
     onBack: () => nav('menu'),
@@ -114,7 +114,7 @@ export function initMove({ show, dev = {}, onRun = () => {}, onTrained = () => {
         ${rowFor('custom', describeSetup(custom.get(), 'custom'), 'chevron-right')}
         ${rowFor('signals', `No cones · ${describeSetup(signals.get(), 'signals')}`, 'chevron-right')}
       </div></section>
-      ${partner ? `<section class="group"><h3 class="group__title">With a coach · preview</h3><div class="group__rows">
+      ${partner ? `<section class="group"><h3 class="group__title">With a coach</h3><div class="group__rows">
         <button type="button" class="hub-row" data-nav="partner">
           <span class="hub-row__text"><strong>Partner mode</strong><small>A coach’s phone sends the cues</small></span>${icon('chevron-right')}
         </button></div></section>` : ''}

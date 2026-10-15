@@ -1,4 +1,4 @@
-// Partner mode on the server (preview, behind the `partner` flag): one phone
+// Partner mode on the server (behind the `partner` flag, approved): one phone
 // on a stand shows cues, a coach's phone sends them. A "room" has a 4-digit
 // code, the stand phone's setup (so only its own cones can be called) and the
 // latest cue. Rooms last 2 hours. Nothing about the athlete is stored.
