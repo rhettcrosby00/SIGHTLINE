@@ -96,11 +96,14 @@ test('Saved MOVE setup (last cone setup, distance, timing) carries over unchange
     cueType: 'arrows', cones: 5, coloredCones: true, colors: ['blue', 'red', 'green', 'yellow', 'orange', 'purple', 'white', 'pink'],
     directions: ['F', 'FR', 'R', 'L', 'FL'], style: 'conetocone', pace: 'game', distance: 8, distanceMode: 'each',
     coneYards: { F: 10, L: 5, R: 5 }, manual: false, manualS: 2.5, setMode: 'timed', reps: 12, timedSec: 45,
-    sets: 6, restMode: 'custom', restSec: 90, position: 'peripheral', display: 'flash', flashMs: 450, fakes: 'low', reverse: true,
+    sets: 6, restMode: 'custom', restSec: 90, position: 'peripheral', display: 'flash', flashMs: 450, fakes: 'low',
     sound: 'off', callouts: false,
   };
   const now = normalize(saved);
   for (const [k, v] of Object.entries(saved)) assert(JSON.stringify(now[k]) === JSON.stringify(v), `${k} changed: ${JSON.stringify(now[k])}`);
+  // The Reverse rule (v2.6 and earlier) carries over as the Decision Layer's Opposite cue.
+  const reversed = normalize({ ...saved, reverse: true });
+  assert(reversed.decision && reversed.decisions.join() === 'opposite' && !('reverse' in reversed), 'Reverse rule should become Opposite');
 });
 
 test('Setups saved before distance timing (v2.0) keep their feel', () => {

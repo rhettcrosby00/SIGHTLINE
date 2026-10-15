@@ -7,10 +7,13 @@
 //
 // Out and back runs out and back; Cone to cone runs one way (from the last
 // cone to the next one); First step is a fixed short interval per pace.
+// A decision cue (js/cone/decide.js) adds a moment to think. Planned drills
+// (js/cone/patterns.js) time one run of the pattern plus the walk back.
 // All numbers live in TIMING so they can be tuned in one place.
 
 import { dirById, COUNTDOWN_MS } from './config.js';
 import { CUES } from './cues/index.js';
+import { PATTERNS, patternRunSeconds, patternRecoverySeconds } from './patterns.js';
 
 export const TIMING = {
   // Seconds. Calibrated so Game Speed out and back hits the reference targets
@@ -24,6 +27,8 @@ export const TIMING = {
   farPaceS: 0.15,     // every yard after that: 0.15 s
   paces: { learning: 1.4, training: 1.2, game: 1.0, overdrive: 0.9 },
   firstStepS: { learning: 2.0, training: 1.7, game: 1.4, overdrive: 1.2 },
+  decisionS: 0.3,     // a decision cue: a moment to think before the cut (× pace)
+  decisionShare: 0.4, // about this share of cues need a decision when it's on (js/cone/decide.js)
   jitter: 0.10,       // ±10% so the rhythm can't be predicted
   minS: 1.0,          // hard limits for any cue interval
   maxS: 12,
@@ -65,7 +70,7 @@ export const holdSeconds = (pace) => clampS(TIMING.paces[pace] * (TIMING.reactio
 // arrows, else the cone's position: c1, c2, …).
 export function coneSlots(setup) {
   const targets = CUES[setup.cueType].targets(setup);
-  const arrows = setup.cueType === 'arrows' || setup.cueType === 'mixed';
+  const arrows = setup.cueType === 'arrows' || setup.cueType === 'mixed' || setup.cueType === 'sport';
   const n = targets.length;
   return targets.map((target, i) => {
     const angle = arrows ? dirById[target.dir].angle
@@ -93,32 +98,45 @@ export function repTiming(setup, slot, from = null) {
 
 // The interval actually used: tuned, varied by ±10%, never below the realistic
 // minimum (or the tuned time, if the athlete asked for faster than that), and
-// always within 1–12 s.
-export function finalMs({ baseMs, minMs, jitter = 0 }, tune = 1) {
+// always within 1–12 s per rep (a two-cue decision covers two reps).
+export function finalMs({ baseMs, minMs, jitter = 0, keys }, tune = 1) {
   const tuned = baseMs * tune;
   const floor = Math.min(minMs, tuned);
   // Below the floor? Bounce back up by the same amount, so a rep already at
   // the minimum (Overdrive) still varies, just only upward.
   const varied = tuned * (1 + jitter);
-  return Math.round(clampS((varied < floor ? 2 * floor - varied : varied) / 1000) * 1000);
+  const reps = keys?.length ?? 1;
+  return Math.round(Math.min(TIMING.maxS * reps, Math.max(TIMING.minS, (varied < floor ? 2 * floor - varied : varied) / 1000)) * 1000);
 }
+
+// A planned rep: the run plus the walk back, tuned, never shorter than the run.
+export const plannedMs = ({ runMs, baseMs }, tune = 1) => Math.max(runMs, Math.round(baseMs * tune));
+
+// Planned: one run of the pattern, then the walk back.
+export const plannedRep = (setup) => ({ runS: patternRunSeconds(setup.pattern, setup.pace), recoverS: patternRecoverySeconds(setup.pattern, setup.pace) });
+// Extra seconds for a decision cue at this pace.
+export const decisionSeconds = (pace) => TIMING.paces[pace] * TIMING.decisionS;
 
 // Average seconds per rep, for the setup summary and time estimates.
 export function averageRepSeconds(setup) {
+  if (setup.mode === 'planned') { const p = plannedRep(setup); return p.runS + p.recoverS; }
+  const think = setup.decision ? TIMING.decisionShare * decisionSeconds(setup.pace) : 0;
   const slots = coneSlots(setup);
   if (setup.manual || setup.style !== 'conetocone') {
-    return slots.reduce((a, s) => a + repTiming(setup, s).base, 0) / slots.length;
+    return slots.reduce((a, s) => a + repTiming(setup, s).base, 0) / slots.length + think;
   }
   let sum = 0;
   let n = 0;
   for (const a of slots) for (const b of slots) if (a !== b) { sum += repTiming(setup, b, a).base; n++; }
-  return n ? sum / n : repTiming(setup, slots[0]).base;
+  return (n ? sum / n : repTiming(setup, slots[0]).base) + think;
 }
 
-// Suggested rest between sets from the work in one set.
+// Suggested rest between sets from the work in one set. Planned drills
+// already recover between runs, so their sets need a shorter break.
 export function suggestedRestSec(setup) {
-  const workS = setup.setMode === 'timed' ? setup.timedSec : setup.reps * averageRepSeconds(setup);
   const [lo, hi] = TIMING.restRange;
+  if (setup.mode === 'planned') return Math.min(180, Math.max(30, round(plannedRep(setup).recoverS * 3, 15)));
+  const workS = setup.setMode === 'timed' ? setup.timedSec : setup.reps * averageRepSeconds(setup);
   return Math.min(hi, Math.max(lo, round(workS * TIMING.restRatio[setup.pace], 15)));
 }
 export const restSec = (setup) => (setup.restMode === 'custom' ? setup.restSec : suggestedRestSec(setup));
@@ -147,6 +165,10 @@ export function manualTooFast(setup) {
 // Plain-language summary: "5 yds · Training pace · about 3.3 s per rep · ~18 reps per minute".
 const fmt = (s) => (Math.round(s * 10) / 10).toFixed(1);
 export function timingSummary(setup, tune = 1) {
+  if (setup.mode === 'planned') {
+    const p = plannedRep(setup);
+    return `${PATTERNS[setup.pattern].label} · ${PACE_LABEL[setup.pace]} pace · about ${fmt(p.runS * tune)} s run, ${Math.round(p.recoverS * tune)} s walk back`;
+  }
   const slots = coneSlots(setup);
   const reps = slots.map((s) => repTiming(setup, s).base * tune);
   const avg = averageRepSeconds(setup) * tune;
@@ -175,6 +197,7 @@ export function applyTune(factor, choice) {
 }
 
 export function tuneKey(setup) {
+  if (setup.mode === 'planned') return `planned|${setup.pattern}`;
   if (setup.style === 'firststep') return 'firststep';
   const yards = coneSlots(setup).map((s) => s.yards).join(',');
   return setup.style === 'conetocone' ? `conetocone|${setup.cueType}|${yards}` : `outback|${yards}`;

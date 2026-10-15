@@ -4,6 +4,8 @@
 
 import { totalMinutes } from '../plan.js';
 import { formulaSeconds } from '../cone/timing.js';
+import { decisionsFor } from '../cone/decide.js';
+import { patternYards } from '../cone/patterns.js';
 
 export const SCORING = {
   focus: {
@@ -21,7 +23,7 @@ export const SCORING = {
     perYardOver5: 0.05,    // +5% per yard beyond 5, up to +50%
     yardCap: 0.5,
     perConeOver2: 0.10,    // +10% per cone or direction above 2
-    extras: { flash: 1.2, random: 1.2, peripheral: 1.3, fakes: 1.2, reverse: 1.3 },
+    extras: { flash: 1.2, random: 1.2, peripheral: 1.3, fakes: 1.2, decision: 1.3 },   // decision: the Decision Layer (was the Reverse rule)
   },
   difficulty: { normal: 1, hard: 1.5 },
   completionBonus: { game: 500, part: 100, move: 500 },   // Game Ready, one-part FOCUS session, MOVE drill
@@ -75,6 +77,8 @@ export function focusCap({ sessionId, length, difficulty }) {
 // ---- MOVE: honor system, points per completed rep -----------------------------
 export function moveMultiplier(setup) {
   const M = SCORING.move;
+  // Planned: one run of the pattern per rep, scored by its length and pace.
+  if (setup.mode === 'planned') return (M.pace[setup.pace] ?? 1) * (1 + Math.min(M.yardCap, Math.max(0, patternYards(setup.pattern) - 5) * M.perYardOver5));
   const yards = setup.style === 'firststep' ? 0 : averageYards(setup);
   // An exact (manual) time slower than the chosen pace's formula earns no pace bonus.
   const paceTime = formulaSeconds({ style: setup.style, pace: setup.pace, outYards: yards || setup.distance });
@@ -87,7 +91,7 @@ export function moveMultiplier(setup) {
   if (setup.position === 'random') extras *= M.extras.random;
   if (setup.position === 'peripheral') extras *= M.extras.peripheral;
   if (setup.fakes && setup.fakes !== 'off') extras *= M.extras.fakes;
-  if (setup.reverse && (setup.cueType === 'arrows' || setup.cueType === 'mixed')) extras *= M.extras.reverse;
+  if (decisionsFor(setup).length) extras *= M.extras.decision;
   return pace * (M.style[setup.style] ?? 1) * dist * cones * extras;
 }
 
@@ -104,7 +108,7 @@ export function moveCap(setup, setsDone) {
 }
 
 function targetsOf(s) {
-  return s.cueType === 'arrows' || s.cueType === 'mixed' ? s.directions.length : s.cones;
+  return s.cueType === 'arrows' || s.cueType === 'mixed' || s.cueType === 'sport' ? s.directions.length : s.cones;
 }
 function averageYards(s) {
   if (s.distanceMode !== 'each') return s.distance;

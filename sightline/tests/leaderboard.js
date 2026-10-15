@@ -58,8 +58,8 @@ test('MOVE scoring: 50 per rep × pace × rep style × distance × cones × extr
   assert(near(moveMultiplier({ ...base, distance: 20 }), 1.5), 'distance bonus capped at +50%');
   assert(near(moveMultiplier({ ...base, distance: 3 }), 1), 'no penalty under 5 yds');
   assert(near(moveMultiplier({ ...base, cones: 5 }), 1.3), '+10% per cone above 2');
-  const arrows = normalize({ cueType: 'arrows', directions: ['L', 'R', 'F', 'B'], cones: 4, pace: 'learning', reverse: true });
-  assert(near(moveMultiplier(arrows), 1.2 * 1.3), 'directions count like cones; reverse ×1.3');
+  const arrows = normalize({ cueType: 'arrows', directions: ['L', 'R', 'F', 'B'], cones: 4, pace: 'learning', decision: true });
+  assert(near(moveMultiplier(arrows), 1.2 * 1.3), 'directions count like cones; Decision Layer ×1.3');
   assert(near(moveMultiplier({ ...base, display: 'flash', position: 'random', fakes: 'low' }), 1.2 * 1.2 * 1.2), 'flash, random, fake-outs');
   assert(near(moveMultiplier({ ...base, position: 'peripheral' }), 1.3), 'peripheral ×1.3');
   // An exact time slower than the pace's formula earns no pace bonus.

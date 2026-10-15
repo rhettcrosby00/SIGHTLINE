@@ -1,6 +1,9 @@
 // Cone Drill: palettes, directions, timing options, the default setup, and
 // setup validation. Pure module (no DOM) so the tests can use it.
 
+import { SPORT_PACKS, SPORT_DIRS } from './cues/sport.js';
+import { PATTERN_IDS } from './patterns.js';
+
 // Nine cone colors, each with a shape so color-blind athletes have a backup cue.
 // Red, blue, green and yellow match the rest of Sightline.
 export const CONE_COLORS = [
@@ -38,7 +41,9 @@ export const DIRECTION_PRESETS = {
   8: ['F', 'FR', 'R', 'BR', 'B', 'BL', 'L', 'FL'],
 };
 
-export const CUE_TYPES = ['colors', 'arrows', 'numbers', 'mixed'];
+export const CUE_TYPES = ['colors', 'arrows', 'numbers', 'mixed', 'sport'];
+const MODES = ['reactive', 'planned'];
+export const DECISIONS = ['parity', 'stroop', 'opposite', 'pair', 'nogo'];   // js/cone/decide.js
 export const MIN_CONES = 2;
 export const MAX_CONES = 8;
 
@@ -53,11 +58,13 @@ export const SETS = [1, 10];
 export const REST_SEC = [15, 300];   // custom rest, in 15 s steps
 export const FLASH_MS = [300, 1000];
 export const FAKE_RATES = { off: 0, low: 0.1, medium: 0.2 };
-export const REVERSE_RATE = 0.2;   // share of eligible arrow cues shown as "reverse"
 export const COUNTDOWN_MS = 3000;
 
 const DEFAULT_SETUP = {
+  mode: 'reactive',       // reactive (cues you can't predict) | planned (a known pattern)
+  pattern: 'proagility',  // Planned: proagility | square | tdrill (js/cone/patterns.js)
   cueType: 'colors',
+  sport: 'general',       // Sport cues: the sport picked on this phone (Settings → You)
   cones: 4,
   coloredCones: true,
   colors: ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'white', 'pink'],
@@ -79,7 +86,8 @@ const DEFAULT_SETUP = {
   display: 'hold',        // hold | flash
   flashMs: 500,
   fakes: 'off',           // off | low | medium
-  reverse: false,
+  decision: false,        // Decision Layer (js/cone/decide.js); off for beginners
+  decisions: DECISIONS.slice(),
   sound: 'on',
   callouts: false,
 };
@@ -91,10 +99,13 @@ const DEFAULT_SETUP = {
 //   Signals Only: arrows with no cones. Cut or shuffle the way it points
 //   (First step by default; Out and back to a spot you pick).
 const QUICK_START = {
-  cueType: 'colors', cones: 4, coloredCones: false, style: 'outback', pace: 'training', distance: 5, distanceMode: 'same',
+  mode: 'reactive', cueType: 'colors', cones: 4, coloredCones: false, style: 'outback', pace: 'training', distance: 5, distanceMode: 'same',
   manual: false, setMode: 'reps', reps: 10, sets: 3, restMode: 'auto',
-  position: 'center', display: 'hold', fakes: 'off', reverse: false,
+  position: 'center', display: 'hold', fakes: 'off', decision: false,
 };
+// Game Day: short and sharp on the athlete's own cones. 3 sets of 20 s at
+// Game Speed with full rest (the suggested 1:5 work to rest), reactive.
+export const GAME_DAY = { sets: 3, timedSec: 20, pace: 'game' };
 const SIGNALS_DEFAULT = { cueType: 'arrows', directions: ['L', 'R', 'F', 'B'], style: 'firststep' };
 
 // Setups saved before distance-based timing (v2.0 and earlier) had a fixed
@@ -103,6 +114,9 @@ const SIGNALS_DEFAULT = { cueType: 'arrows', directions: ['L', 'R', 'F', 'B'], s
 // Their rest stays as they set it, unless it was the old default (30 s).
 const OLD_SPEED_TO_PACE = { slow: 'learning', medium: 'training', fast: 'game', game: 'game' };
 function upgrade(raw) {
+  // The Reverse rule (v2.6 and earlier) is now the Decision Layer's Opposite cue.
+  if (raw && raw.reverse === true && raw.decision === undefined) raw = { ...raw, decision: true, decisions: ['opposite'] };
+  if (raw) { raw = { ...raw }; delete raw.reverse; }
   if (!raw || raw.pace || !raw.speed) return raw;
   const out = { ...raw, pace: OLD_SPEED_TO_PACE[raw.speed] ?? 'training' };
   if (raw.speed === 'custom') { out.manual = true; out.manualS = (Number(raw.customMs) || 2000) / 1000; out.pace = 'training'; }
@@ -125,7 +139,10 @@ export function coneColors(s) {
 // Fill in anything missing or out of range from a saved setup.
 export function normalize(raw = {}) {
   const s = { ...DEFAULT_SETUP, ...upgrade(raw) };
+  if (!MODES.includes(s.mode)) s.mode = 'reactive';
+  if (!PATTERN_IDS.includes(s.pattern)) s.pattern = DEFAULT_SETUP.pattern;
   if (!CUE_TYPES.includes(s.cueType)) s.cueType = DEFAULT_SETUP.cueType;
+  if (!(s.sport in SPORT_PACKS)) s.sport = 'general';
   s.cones = clamp(Math.round(Number(s.cones) || 4), [MIN_CONES, MAX_CONES]);
   const valid = new Set(CONE_COLORS.map((c) => c.id));
   s.colors = Array.isArray(s.colors) ? s.colors.filter((c) => valid.has(c)) : DEFAULT_SETUP.colors.slice();
@@ -152,11 +169,17 @@ export function normalize(raw = {}) {
   s.display = s.display === 'flash' ? 'flash' : 'hold';
   s.flashMs = clamp(Number(s.flashMs) || 500, FLASH_MS);
   if (!(s.fakes in FAKE_RATES)) s.fakes = 'off';
-  s.reverse = !!s.reverse;
+  s.decision = s.decision === true;
+  s.decisions = Array.isArray(s.decisions) ? DECISIONS.filter((d) => s.decisions.includes(d)) : DECISIONS.slice();
+  if (!s.decisions.length) s.decisions = DECISIONS.slice();
   s.sound = s.sound === 'off' ? 'off' : 'on';
   s.callouts = !!s.callouts;
   // Cone to cone needs cones on the ground in a layout.
   if (s.style === 'conetocone' && s.cones < 2) s.style = 'outback';
+  // Sport calls sit in the four main directions, one cone each.
+  if (s.cueType === 'sport') { s.directions = SPORT_DIRS.slice(); s.cones = SPORT_DIRS.length; }
+  // Planned: a known pattern, one run per rep; no decisions or fake-outs.
+  if (s.mode === 'planned') { s.setMode = 'reps'; s.style = 'outback'; s.manual = false; }
   return s;
 }
 
@@ -164,10 +187,14 @@ export function quickStart(custom = {}) {
   return normalize({ ...QUICK_START, sound: custom.sound, callouts: custom.callouts });
 }
 
+export function gameDay(custom = {}) {
+  return normalize({ ...custom, mode: 'reactive', setMode: 'timed', timedSec: GAME_DAY.timedSec, sets: GAME_DAY.sets, pace: GAME_DAY.pace, restMode: 'auto', manual: false });
+}
+
 // Signals Only: always arrows, one "cone" per direction (there are no cones),
 // one distance for every direction, and no Cone to cone.
 export function normalizeSignals(raw = {}) {
-  const s = normalize({ ...SIGNALS_DEFAULT, ...raw, cueType: 'arrows', distanceMode: 'same' });
+  const s = normalize({ ...SIGNALS_DEFAULT, ...raw, mode: 'reactive', cueType: 'arrows', distanceMode: 'same' });
   s.cones = s.directions.length;
   if (s.style === 'conetocone') s.style = 'firststep';
   return s;
@@ -177,6 +204,7 @@ export function normalizeSignals(raw = {}) {
 export function validate(s) {
   const errors = [];
   const warnings = [];
+  if (s.mode === 'planned') return { ok: true, errors, warnings };
   const usesColors = s.cueType === 'colors' || s.cueType === 'mixed';
   const usesArrows = s.cueType === 'arrows' || s.cueType === 'mixed';
   if (usesColors) {

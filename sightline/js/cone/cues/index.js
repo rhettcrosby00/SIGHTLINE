@@ -5,5 +5,6 @@ import { colorCue } from './color.js';
 import { arrowCue } from './arrow.js';
 import { numberCue } from './number.js';
 import { mixedCue } from './mixed.js';
+import { sportCue } from './sport.js';
 
-export const CUES = { colors: colorCue, arrows: arrowCue, numbers: numberCue, mixed: mixedCue };
+export const CUES = { colors: colorCue, arrows: arrowCue, numbers: numberCue, mixed: mixedCue, sport: sportCue };

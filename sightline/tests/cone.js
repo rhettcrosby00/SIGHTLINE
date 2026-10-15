@@ -41,7 +41,8 @@ function makeSetup(rng, cueType, cones) {
     position: rng.pick(['center', 'random', 'peripheral']),
     display: rng.pick(['hold', 'flash']),
     fakes: rng.pick(['off', 'low', 'medium']),
-    reverse: rng.chance(0.5),
+    decision: rng.chance(0.5),
+    decisions: rng.chance(0.5) ? undefined : rng.shuffle(['parity', 'stroop', 'opposite', 'pair', 'nogo']).slice(0, rng.int(1, 5)),
   });
 }
 
@@ -58,11 +59,13 @@ for (let i = 0; setCount < 1000; i++) {
   setCount += plan.sets.length;
 }
 
-const goKeys = (set) => set.events.filter((e) => e.type === 'go').map((e) => e.key);
+// Every cone called, in order (a two-cue decision calls two).
+const goKeys = (set) => set.events.filter((e) => e.type === 'go').flatMap((e) => e.keys ?? [e.key]);
 
 test('Every cue type works with every cone count from 2 to 8', () => {
   for (const cueType of CUE_TYPES) {
-    for (let n = MIN_CONES; n <= MAX_CONES; n++) {
+    // Sport calls always use the four main directions.
+    for (let n = cueType === 'sport' ? 4 : MIN_CONES; n <= (cueType === 'sport' ? 4 : MAX_CONES); n++) {
       const found = drills.filter((d) => d.setup.cueType === cueType && CUES[cueType].targets(d.setup).length === n);
       assert(found.length > 0, `no ${cueType} drill with ${n} cones`);
       for (const { setup, plan } of found) {
@@ -117,39 +120,36 @@ test('Fake-outs: never first, never back-to-back, extra to the reps, about the c
   for (const { setup, plan } of drills) {
     for (const set of plan.sets) {
       const ev = set.events;
-      if (setup.fakes === 'off') assert(ev.every((e) => e.type === 'go'), 'fake-out with fake-outs off');
+      const fakes = ev.filter((e) => e.type === 'hold' && !e.decision);   // gray Hold screens (no-go decisions are separate)
+      if (setup.fakes === 'off') assert(!fakes.length, 'fake-out with fake-outs off');
       assert(ev[0].type === 'go', 'fake-out as the first cue');
+      assert(ev.at(-1).type === 'go', 'a hold as the last cue');
       for (let i = 1; i < ev.length; i++) assert(!(ev[i].type === 'hold' && ev[i - 1].type === 'hold'), 'fake-outs back to back');
       const holds = ev.filter((e) => e.type === 'hold').length;
-      const gos = ev.length - holds;
+      const gos = goKeys(set).length;
       assert(holds === set.holds && gos === set.reps, 'counts wrong');
       if (setup.setMode === 'reps') {
         assert(gos === setup.reps, `reps ${gos} ≠ ${setup.reps} (fake-outs must be extra)`);
-        assert(holds === Math.min(gos, Math.round(gos * FAKE_RATES[setup.fakes])), 'fake-out rate wrong');
+        assert(fakes.length === Math.min(gos - 1, Math.round(gos * FAKE_RATES[setup.fakes])), 'fake-out rate wrong');
       }
-      for (const e of ev) if (e.type === 'hold') assert(e.face.kind === 'hold', 'fake-out drawn as a real cue');
+      for (const e of fakes) assert(e.face.kind === 'hold', 'fake-out drawn as a real cue');
     }
   }
 });
 
-test('Reverse cues: arrows only, opposite way, never first, never back-to-back', () => {
+test('Opposite cues (the old Reverse rule): arrows point the other way, at a direction in use', () => {
   let seen = 0;
   for (const { setup, plan } of drills) {
     for (const set of plan.sets) {
-      const ev = set.events;
-      ev.forEach((e, i) => {
-        if (!e.reverse) return;
+      for (const e of set.events) {
+        if (!e.face.opposite || e.face.kind !== 'arrow' || setup.cueType !== 'arrows') continue;
         seen++;
-        assert(setup.reverse, 'reverse cue with the rule off');
-        assert(i > 0, 'reverse cue first in a set');
-        assert(!ev[i - 1].reverse && !ev[i + 1]?.reverse, 'reverse cues back to back');
-        assert(e.face.kind === 'arrow' && e.face.reverse, 'reverse cue not drawn as a bordered arrow');
-        assert(e.face.dir === OPPOSITE[e.key], `reverse arrow ${e.face.dir} should point opposite ${e.key}`);
-        assert(setup.directions.includes(e.face.dir), 'reverse arrow points to a direction not in use');
-      });
+        assert(e.face.dir === OPPOSITE[e.key], `opposite arrow ${e.face.dir} should point opposite ${e.key}`);
+        assert(setup.directions.includes(e.face.dir), 'opposite arrow points to a direction not in use');
+      }
     }
   }
-  assert(seen > 50, `only ${seen} reverse cues generated`);
+  assert(seen > 50, `only ${seen} opposite arrows generated`);
 });
 
 test('Each cue shows its own cone (color, number or arrow matches the target)', () => {
@@ -157,11 +157,11 @@ test('Each cue shows its own cone (color, number or arrow matches the target)', 
     const byKey = Object.fromEntries(plan.targets.map((t) => [t.key, t]));
     for (const set of plan.sets) {
       for (const e of set.events) {
-        if (e.type !== 'go') continue;
+        if (e.type !== 'go' || e.decision) continue;   // decision cues: tests/decisions.js
         const t = byKey[e.key];
         if (e.face.kind === 'color') assert(e.face.color === t.color, 'wrong color');
         if (e.face.kind === 'number') assert(e.face.num === t.num, 'wrong number');
-        if (e.face.kind === 'arrow' && !e.reverse) assert(e.face.dir === t.dir, 'wrong arrow');
+        if (e.face.kind === 'arrow') assert(e.face.dir === t.dir, 'wrong arrow');
       }
     }
   }
@@ -201,10 +201,11 @@ test('Every cue’s time stays within ±10% of its rep time, 1–12 s, never bel
     for (const set of plan.sets) {
       for (const e of set.events) {
         assert(e.interval === finalMs(e, 1), 'planned time doesn’t match the timing rule');
-        assert(e.interval >= 1000 && e.interval <= 12000, `gap ${e.interval} outside 1–12 s`);
+        const reps = e.keys?.length ?? 1;   // two cues: two reps' time
+        assert(e.interval >= 1000 && e.interval <= 12000 * reps, `gap ${e.interval} outside 1–12 s per rep`);
         assert(e.interval >= Math.min(e.minMs, e.baseMs) - 1, `gap ${e.interval} below the minimum ${e.minMs}`);
         const lo = Math.max(1000, Math.min(e.minMs, e.baseMs * (1 - TIMING.jitter)));
-        const hi = Math.min(12000, e.baseMs * (1 + TIMING.jitter));
+        const hi = Math.min(12000 * reps, e.baseMs * (1 + TIMING.jitter));
         assert(e.interval >= lo - 1 && e.interval <= hi + 1, `gap ${e.interval} outside ${e.baseMs} ±10%`);
       }
       if (set.events.length > 5) assert(new Set(set.events.map((e) => e.interval)).size > 2, 'gaps not varied');
