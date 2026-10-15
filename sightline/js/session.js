@@ -2,17 +2,19 @@
 // from a single seeded generator. Pure module (no DOM), used by the app and
 // by the tests.
 //
-//   createSession({ settings, seed?, recent? })
+//   createSession({ sessionId?, settings, seed?, recent?, flags? })
+//     sessionId  'game' (Game Ready, default) or one pillar: see FOCUS_SESSIONS
 //     seed    replay a session exactly (?seed=N); otherwise a fresh one
 //     recent  "recently used" records from createVariety().recent(),
 //             newest first; their content is skipped where possible
+//     flags   which flagged drills are on, e.g. { newDrills: true }
 //
 // session.record() lists what this session actually used, for the variety list.
 
 import { createRng, deck } from './lib/rng.js';
 import { questionStream } from './content/questions.js';
 import { planSteps } from './plan.js';
-import { colorCallStream, goNoGoStream, stroopStream, peripheralStream, gaps } from './content/reaction.js';
+import { colorCallStream, goNoGoStream, stroopStream, peripheralStream, memoryStream, gaps } from './content/reaction.js';
 import { mathStream } from './content/math.js';
 import { pursuitPlan, saccadeStream, gazeStream } from './content/eyes.js';
 import { breathingText } from './content/breathing.js';
@@ -21,12 +23,13 @@ import { CUE_WORDS, CUE_SUGGESTIONS } from './content/cues.js';
 
 const setsOf = (recent, field) => recent.map((r) => new Set(r?.[field] ?? []));
 
-export function createSession({ settings, seed, recent = [] }) {
+export function createSession({ sessionId = 'game', settings, seed, recent = [], flags = {} }) {
   const rng = createRng(seed);
-  const cone = settings.mode === 'cones';
+  const last = recent[0]?.order ?? {};
 
-  const steps = planSteps(settings, rng.fork('order'), {
-    avoid: { activate: recent[0]?.order?.activate, challenge: recent[0]?.order?.challenge },
+  const steps = planSteps(sessionId, settings, rng.fork('order'), {
+    avoid: { regulate: last.regulate, activate: last.activate, challenge: last.challenge },
+    flags,
   });
 
   const questions = questionStream(rng.fork('questions'), { recent: setsOf(recent, 'questions') });
@@ -41,10 +44,11 @@ export function createSession({ settings, seed, recent = [] }) {
   const gapStreams = {};
 
   const content = {
-    colorCall: colorCallStream(rng.fork('colorcall'), { cone }),
+    colorCall: colorCallStream(rng.fork('colorcall')),
     goNoGo: goNoGoStream(rng.fork('gonogo')),
     stroop: stroopStream(rng.fork('stroop')),
     peripheral: peripheralStream(rng.fork('peripheral')),
+    memory: memoryStream(rng.fork('memory')),
     math: (opts) => { const p = math(opts); mathUsed.push(p.text); return p; },
     questions: () => questions.next(),
     pursuit: pursuitPlan(rng.fork('pursuit')),
@@ -61,6 +65,7 @@ export function createSession({ settings, seed, recent = [] }) {
   const orderOf = (pillarId) => steps.filter((s) => s.pillarId === pillarId).map((s) => s.id);
 
   return {
+    id: sessionId,
     seed: rng.seed,
     steps,
     content,
@@ -69,7 +74,7 @@ export function createSession({ settings, seed, recent = [] }) {
       scripts: script ? [script.id] : [],
       math: mathUsed.slice(),
       cues: cueSuggestions.slice(),
-      order: { activate: orderOf('activate'), challenge: orderOf('challenge') },
+      order: { regulate: orderOf('regulate').filter((id) => id !== 'lockin'), activate: orderOf('activate'), challenge: orderOf('challenge') },
     }),
   };
 }

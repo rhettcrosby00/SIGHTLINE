@@ -9,7 +9,7 @@ import { scriptSeconds } from '../content/scripts.js';
 
 export const visualize = {
   async run(ctx) {
-    const { el, settings, session, sleep, remaining } = ctx;
+    const { el, session, sleep, remaining } = ctx;
     const script = session.content.script();
     await howTo(ctx, {
       kicker: 'Rehearse',
@@ -18,7 +18,7 @@ export const visualize = {
     });
 
     el.innerHTML = `
-      <div class="viz viz--${settings.mode}">
+      <div class="viz">
         <p class="viz__theme">${esc(script.theme)} · ${esc(script.title)}</p>
         <p class="viz__line" aria-live="polite"></p>
         <div class="viz__dots" aria-hidden="true">${script.lines.map(() => '<i></i>').join('')}</div>

@@ -1,8 +1,10 @@
-// Game Ready routine: randomization tests (run by tests/run.js).
+// FOCUS sessions: randomization tests (run by tests/run.js).
 
 import { createSession } from '../js/session.js';
 import { createVariety } from '../js/lib/variety.js';
-import { PILLARS } from '../js/plan.js';
+import { PILLARS, FOCUS_SESSIONS, totalMinutes } from '../js/plan.js';
+import { _timelines } from '../js/stages/breathe.js';
+import { MODULES } from '../js/routine.js';
 import { STROOP_PAIRS, STROOP_WORDS, MIN_EDGE_DIST, GAP_MS, HARD_GAP } from '../js/content/reaction.js';
 import { MIN_SACCADE_DIST, GAZE_LETTERS } from '../js/content/eyes.js';
 import { SCRIPTS, scriptSeconds } from '../js/content/scripts.js';
@@ -14,16 +16,14 @@ import { dist } from '../js/lib/rng.js';
 import { test, assert } from './harness.js';
 
 const SESSIONS = 1000;
-const MODES = ['tap', 'cones'];
 const LENGTHS = ['quick', 'standard', 'full'];
 const DIFFS = ['normal', 'hard'];
-const settingsFor = (i) => ({
-  mode: MODES[i % 2], length: LENGTHS[i % 3], difficulty: DIFFS[Math.floor(i / 6) % 2],
-});
+const settingsFor = (i) => ({ length: LENGTHS[i % 3], difficulty: DIFFS[Math.floor(i / 6) % 2] });
+const FLAGS = [{ newDrills: false }, { newDrills: true }];
 
 // Draw every stream as hard as a real session could (plus practice), in a
 // fixed order, and return everything that was shown.
-const DRAWS = { colorCall: 80, goNoGo: 80, peripheral: 80, math: 60, questions: 25, saccades: 120, gaze: 80 };
+const DRAWS = { colorCall: 80, goNoGo: 80, peripheral: 80, math: 60, questions: 25, saccades: 120, gaze: 80, memory: 12 };
 function drawSession(session, settings) {
   const c = session.content;
   const hard = settings.difficulty === 'hard';
@@ -37,6 +37,7 @@ function drawSession(session, settings) {
   out.questions = Array.from({ length: DRAWS.questions }, () => c.questions()).filter(Boolean);
   out.saccades = Array.from({ length: DRAWS.saccades }, () => c.saccades());
   out.gaze = Array.from({ length: DRAWS.gaze }, () => c.gaze());
+  out.memory = Array.from({ length: DRAWS.memory }, (_, i) => c.memory(3 + (i % 7)));
   out.pursuit = c.pursuit(6, hard);
   out.script = c.script();
   out.cues = c.cueSuggestions.slice();
@@ -64,10 +65,12 @@ const maxRun = (arr, value) => {
   return best;
 };
 
-// Pre-build the 1,000 sessions once (no history), shared by several tests.
+// Pre-build the 1,000 Game Ready sessions once (no history), shared by several
+// tests. Half with the new drills on (preview), half off (live).
 const runs = Array.from({ length: SESSIONS }, (_, i) => {
   const settings = settingsFor(i);
-  return { settings, d: drawSession(createSession({ settings, seed: 1000 + i }), settings) };
+  const flags = FLAGS[i % 2];
+  return { settings, flags, d: drawSession(createSession({ settings, seed: 1000 + i, flags }), settings) };
 });
 
 // 1 ---------------------------------------------------------------------------------
@@ -90,7 +93,7 @@ test('No back-to-back colors, sides, numbers or letters; max 2 of the same in an
     spacedOk(d.stroop.map((t) => t.ink), 'Stroop ink');
     spacedOk(d.peripheral.map((t) => t.color), 'Peripheral color');
     spacedOk(d.peripheral.map((t) => t.side), 'Peripheral side');
-    spacedOk(d.goNoGo.map((t) => t.side), 'Go/No-Go arrow side');
+    for (const seq of d.memory) spacedOk(seq, 'Memory sequence color');
     spacedOk(d.questions.map((q) => q.answer), 'Question answer color');
     spacedOk(d.saccades.map((t) => t.num), 'Saccade number');
     spacedOk(d.gaze, 'Gaze letter');
@@ -151,31 +154,85 @@ test('Math answers are correct and odd → BLUE, even → RED', () => {
 });
 
 // 5 ---------------------------------------------------------------------------------
-test('Pillar order is fixed; drill order inside pillars varies', () => {
+test('Game Ready: Regulate → Activate → Challenge → Rehearse; one breathing pattern; ends with Lock In', () => {
   const pillarIds = PILLARS.map((p) => p.id);
   const challengeOrders = new Set();
   const activateOrders = new Set();
-  for (const { d } of runs) {
+  const breaths = new Set();
+  for (const { d, flags } of runs) {
     const seq = d.steps.map((s) => s.pillar).filter((p, i, a) => p !== a[i - 1]);
     assert(seq.join() === pillarIds.join(), `pillar order ${seq.join()}`);
     assert(d.steps.at(-1).id === 'lockin' && d.steps.at(-2).id === 'visualize', 'Rehearse order changed');
-    for (const p of PILLARS) {
-      const ids = d.steps.filter((s) => s.pillar === p.id).map((s) => s.id).sort();
-      assert(ids.join() === p.drills.map((x) => x.id).sort().join(), `${p.id} drills wrong`);
+    const reg = d.steps.filter((s) => s.pillar === 'regulate');
+    assert(reg.length === 1 && reg[0].id !== 'lockin', `Regulate should be one breathing pattern, got ${reg.map((s) => s.id)}`);
+    breaths.add(reg[0].id);
+    for (const p of ['activate', 'challenge']) {
+      const want = PILLARS.find((x) => x.id === p).drills.filter((x) => !x.flag || flags[x.flag]).map((x) => x.id).sort();
+      const ids = d.steps.filter((s) => s.pillar === p).map((s) => s.id).sort();
+      assert(ids.join() === want.join(), `${p} drills wrong: ${ids}`);
     }
+    if (!flags.newDrills) assert(!d.steps.some((s) => ['sigh', 'breath478', 'memory'].includes(s.id)), 'flagged drill shown with the flag off');
     challengeOrders.add(d.steps.filter((s) => s.pillar === 'challenge').map((s) => s.id).join());
     activateOrders.add(d.steps.filter((s) => s.pillar === 'activate').map((s) => s.id).join());
   }
+  assert(breaths.size === 3, `breathing patterns used: ${[...breaths]}`);
   assert(challengeOrders.size > 300, `only ${challengeOrders.size} Challenge orders`);
-  assert(activateOrders.size === 6, `only ${activateOrders.size} Activate orders`);
+  assert(activateOrders.size === 24, `only ${activateOrders.size} Activate orders`);
 });
 
-test('Session length stays about the same (Quick ≈5, Standard ≈8, Full ≈12 min)', () => {
+test('One-part sessions run only their pillar (Breathing, Eyes, Mind, Rehearse)', () => {
+  const want = {
+    regulate: (f) => [...(f.newDrills ? ['settle', 'sigh', 'breath478'] : ['settle']), 'lockin'],
+    activate: () => ['pursuit', 'saccades', 'gaze', 'peripheral'],
+    challenge: (f) => ['colorcall', 'gonogo', 'stroop', 'math', 'questions', ...(f.newDrills ? ['memory'] : [])],
+    rehearse: () => ['visualize', 'lockin'],
+  };
+  for (let i = 0; i < 200; i++) {
+    for (const flags of FLAGS) {
+      for (const [id, ids] of Object.entries(want)) {
+        const s = createSession({ sessionId: id, settings: settingsFor(i), seed: i, flags });
+        const got = s.steps.map((x) => x.id);
+        assert(got.slice().sort().join() === ids(flags).slice().sort().join(), `${id}: ${got}`);
+        if (id === 'regulate' || id === 'rehearse') assert(got.at(-1) === 'lockin', `${id} should finish with Lock In`);
+      }
+    }
+  }
+});
+
+test('Every FOCUS drill has a module to run it', () => {
+  const ids = PILLARS.flatMap((p) => p.drills.map((d) => d.id));
+  for (const id of ids) assert(typeof MODULES[id]?.run === 'function', `no module for ${id}`);
+  assert(Object.keys(MODULES).length === ids.length, 'a module has no drill');
+});
+
+test('Breathing timelines fill their slot exactly', () => {
+  const text = { settleIntro: '', sighIntro: '', fourSevenIntro: '', lockInIntro: '', lockInSteady: '', lockInFinal: '', tip: () => '' };
+  for (const [name, timeline] of Object.entries(_timelines)) {
+    for (const sec of [33, 45, 55, 75, 105, 165, 240]) {
+      const phases = timeline(sec * 1000, text);
+      const ms = phases.reduce((a, p) => a + p.ms, 0);
+      assert(ms === sec * 1000, `${name} at ${sec}s fills ${ms} ms`);
+      assert(phases[0].ms >= 5000, `${name} at ${sec}s: intro only ${phases[0].ms} ms`);
+    }
+  }
+});
+
+test('Game Ready length stays about the same (Quick ≈5, Standard ≈8, Full ≈12 min)', () => {
   const want = { quick: [4.75, 5.75], standard: [7.75, 8.75], full: [11.25, 12.25] };
   for (const { settings, d } of runs.slice(0, 12)) {
     const min = d.steps.reduce((a, s) => a + s.ms, 0) / 60000;
     const [lo, hi] = want[settings.length];
     assert(min >= lo && min <= hi, `${settings.length} is ${min} min`);
+  }
+  // Every session's steps add up to the time the menu shows.
+  for (const { id } of FOCUS_SESSIONS) {
+    for (const length of LENGTHS) {
+      for (const flags of FLAGS) {
+        const s = createSession({ sessionId: id, settings: { length, difficulty: 'normal' }, seed: 7, flags });
+        const ms = s.steps.reduce((a, x) => a + x.durationMs, 0);
+        assert(Math.abs(ms - totalMinutes(id, length) * 60000) < 50, `${id} ${length}: ${ms} ms vs ${totalMinutes(id, length)} min`);
+      }
+    }
   }
 });
 
@@ -186,7 +243,7 @@ function memoryStorage() {
 }
 // A realistic Full session: ~12 questions, ~20 math problems, 1 script, 5 cue words.
 function playSession(variety, i, { questions = 12, math = 20 } = {}) {
-  const settings = { mode: 'tap', length: 'full', difficulty: 'normal' };
+  const settings = { length: 'full', difficulty: 'normal' };
   const s = createSession({ settings, seed: 5000 + i, recent: variety.recent() });
   const shown = {
     questions: Array.from({ length: questions }, () => s.content.questions()).filter(Boolean).map((q) => q.q),
@@ -255,7 +312,7 @@ test('Works with device storage disabled (still random, still no repeats)', () =
 
 // 8 ---------------------------------------------------------------------------------
 test('The same seed replays the same session; different seeds differ', () => {
-  const settings = { mode: 'cones', length: 'standard', difficulty: 'hard' };
+  const settings = { length: 'standard', difficulty: 'hard' };
   const recent = [{ questions: [QUESTIONS[0].q], scripts: ['first-1'], math: ['3 + 4'], cues: ['CALM'] }];
   const a = JSON.stringify(drawSession(createSession({ settings, seed: 424242, recent }), settings));
   const b = JSON.stringify(drawSession(createSession({ settings, seed: 424242, recent }), settings));

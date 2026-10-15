@@ -1,19 +1,25 @@
-// Cone Drill setup screen. Every change is saved on this device (setup only;
-// no history), so the athlete doesn't re-enter it each time.
+// MOVE setup screens: Custom setup (every Cone Drill option) and Signals Only
+// (arrows, no cones). Every change is saved on this device (setup only; no
+// history), so the athlete doesn't re-enter it each time.
 
 import {
-  CONE_COLORS, colorById, DIRECTIONS, DIRECTION_PRESETS, SPEEDS, CUSTOM_MS, REPS, TIMED_SECONDS,
-  SETS, REST_SECONDS, FLASH_MS, MIN_CONES, MAX_CONES, normalize, validate, intervalMs, COUNTDOWN_MS,
+  CONE_COLORS, colorById, DIRECTIONS, DIRECTION_PRESETS, CUSTOM_MS, REPS, TIMED_SECONDS,
+  SETS, REST_SECONDS, FLASH_MS, MIN_CONES, MAX_CONES, normalize, normalizeSignals, validate, intervalMs, drillMs,
 } from './config.js';
 import { icon, DIR_ICON } from '../lib/icons.js';
 
-const KEY = 'sightline.cone.v1';
+// Each variant: where it's saved and how a saved setup is cleaned up.
+const VARIANTS = {
+  custom: { key: 'sightline.cone.v1', normalize },
+  signals: { key: 'sightline.signals.v1', normalize: normalizeSignals },
+};
 
-export function loadSetup() {
-  try { return normalize(JSON.parse(localStorage.getItem(KEY) || '{}')); } catch { return normalize(); }
+function loadSetup(variant = 'custom') {
+  const v = VARIANTS[variant];
+  try { return v.normalize(JSON.parse(localStorage.getItem(v.key) || '{}')); } catch { return v.normalize(); }
 }
-function saveSetup(s) {
-  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* storage blocked: still works this visit */ }
+function saveSetup(variant, s) {
+  try { localStorage.setItem(VARIANTS[variant].key, JSON.stringify(s)); } catch { /* storage blocked: still works this visit */ }
 }
 
 
@@ -60,14 +66,14 @@ const secs = (ms) => `${(ms / 1000).toFixed(1)} s`;
 const restLabel = (t) => (t < 60 ? `${t}s` : t === 60 ? '1 min' : `${t / 60} min`);
 
 function estimate(s) {
-  const per = s.setMode === 'timed' ? s.timedSec * 1000 : s.reps * intervalMs(s);
-  const ms = s.sets * (per + COUNTDOWN_MS) + (s.sets - 1) * s.restSec * 1000;
-  const min = Math.round(ms / 6000) / 10;
+  const min = Math.round(drillMs(s) / 6000) / 10;
   return `${s.sets} set${s.sets > 1 ? 's' : ''} × ${s.setMode === 'timed' ? `${s.timedSec} s` : `${s.reps} reps`} · about ${min} min`;
 }
 
 // ui = { open: Set of expanded section ids, color: index of the cone whose palette is open }
-export function renderSetup(el, s, ui = { open: new Set(), color: -1 }) {
+// variant: 'custom' (cones) or 'signals' (arrows only, no cones, no layout step).
+function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'custom') {
+  const signals = variant === 'signals';
   const usesColors = s.cueType === 'colors' || s.cueType === 'mixed';
   const usesArrows = s.cueType === 'arrows' || s.cueType === 'mixed';
   const colorRows = s.cueType === 'mixed' ? s.directions.length : s.cones;
@@ -112,13 +118,13 @@ export function renderSetup(el, s, ui = { open: new Set(), color: -1 }) {
   el.innerHTML = `
     <div class="cset">
       <header class="nav">
-        <button type="button" class="nav__back" data-nav="menu">${icon('chevron-left', { size: 22 })}Home</button>
-        <h2 class="nav__title">Cone Drill</h2>
-        <p class="cset__sub">Cognitive change of direction</p>
+        <button type="button" class="nav__back" data-nav="menu">${icon('chevron-left', { size: 22 })}Move</button>
+        <h2 class="nav__title">${signals ? 'Signals Only' : 'Custom setup'}</h2>
+        <p class="cset__sub">${signals ? 'No cones. Cut or shuffle the way the arrow points.' : 'Cognitive change of direction'}</p>
       </header>
       <p class="notice">${icon('triangle-alert')}Use a clear, flat area. Warm up before high-speed cuts.</p>
 
-      ${group('Cues', `
+      ${signals ? '' : group('Cues', `
         ${row('Cue type', seg('cueType', s.cueType, [['colors', 'Colors'], ['arrows', 'Arrows'], ['numbers', 'Numbers'], ['mixed', 'Mixed']], true), {
           stack: true,
           hint: { colors: 'Each cone has a color. The screen shows a color.', arrows: 'Cones sit in directions. The screen shows an arrow.',
@@ -129,7 +135,7 @@ export function renderSetup(el, s, ui = { open: new Set(), color: -1 }) {
         ${row('Preset', seg('preset', presetFor(s.directions),
           Object.keys(DIRECTION_PRESETS).map((k) => [k, k]), true), { stack: true, hint: '2 left/right · 3 adds forward · 4 adds back · 5 adds forward diagonals · 8 all' })}
         ${row('Or tap the exact directions', compass, { stack: true })}
-        ${s.cueType === 'arrows' && s.directions.length !== s.cones ? `<div class="setting setting--stack">
+        ${!signals && s.cueType === 'arrows' && s.directions.length !== s.cones ? `<div class="setting setting--stack">
           <p class="notice">${icon('triangle-alert')}${s.directions.length} directions but ${s.cones} cones. Set out one cone per direction.</p>
           <button type="button" class="btn btn--secondary btn--block" data-fixcones="${s.directions.length}">Use ${s.directions.length} cones</button></div>` : ''}`) : ''}
 
@@ -168,22 +174,24 @@ export function renderSetup(el, s, ui = { open: new Set(), color: -1 }) {
     <div class="screen__foot">
       <p class="cset__est">${estimate(s)}</p>
       ${v.errors.map((e) => `<p class="cerr">${e}</p>`).join('')}
-      <button type="button" class="btn btn--primary btn--block" data-nav="layout" ${v.ok ? '' : 'disabled'}>Set up cones</button>
+      ${signals
+        ? `<button type="button" class="btn btn--primary btn--block" data-nav="start" ${v.ok ? '' : 'disabled'}>${icon('play')}Start</button>`
+        : `<button type="button" class="btn btn--primary btn--block" data-nav="layout" ${v.ok ? '' : 'disabled'}>Set up cones</button>`}
     </div>`;
 }
 
-// Wires the setup screen. onNav('menu' | 'layout', setup) is called for navigation.
-export function initSetup(el, { onNav }) {
-  let s = loadSetup();
+// Wires a setup screen. onNav('menu' | 'layout' | 'start', setup) is called for navigation.
+export function initSetup(el, { onNav, variant = 'custom' }) {
+  let s = loadSetup(variant);
   const ui = { open: new Set(), color: -1 };
   const draw = () => {
     const y = window.scrollY;
-    renderSetup(el, s, ui);
+    renderSetup(el, s, ui, variant);
     window.scrollTo(0, y);
   };
   const update = (patch, { rerender = true } = {}) => {
-    s = normalize({ ...s, ...patch });
-    saveSetup(s);
+    s = VARIANTS[variant].normalize({ ...s, ...patch });
+    saveSetup(variant, s);
     if (rerender) draw();
   };
 
@@ -234,6 +242,6 @@ export function initSetup(el, { onNav }) {
     if (est) est.textContent = estimate(s);
   });
 
-  renderSetup(el, s, ui);
-  return { get: () => s, render: () => renderSetup(el, s, ui), set: (patch) => update(patch, { rerender: false }) };
+  renderSetup(el, s, ui, variant);
+  return { get: () => s, render: () => renderSetup(el, s, ui, variant), set: (patch) => update(patch, { rerender: false }) };
 }

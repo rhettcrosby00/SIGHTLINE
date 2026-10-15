@@ -1,15 +1,24 @@
 # Sightline
 
-A pre-game visual reaction and cognitive warm-up for athletes. One preset routine, "Game Ready",
-in four pillars that always run in this order:
+A pre-game visual reaction and cognitive warm-up for athletes, in two sides:
 
-1. **Regulate**: Settle breathing.
-2. **Activate**: Smooth Pursuit, Saccade Jumps, Gaze Stabilization (shuffled each session).
-3. **Challenge**: Color Call, Go/No-Go, Stroop, Peripheral Flash, Quick Math, Quick Questions
-   (shuffled each session).
+**FOCUS: eyes, mind, breath.** The athlete holds the phone; every answer is a tap.
+"Game Ready" runs four pillars in this order:
+
+1. **Regulate**: one breathing pattern (Box Breathing; Physiological Sigh and 4-7-8 behind the
+   `newDrills` flag), rotating each session.
+2. **Activate**: Smooth Pursuit, Saccade Jumps, Gaze Stabilization, Peripheral Flash (shuffled).
+3. **Challenge**: Color Call, Go/No-Go, Stroop, Quick Math, Quick Questions, plus Memory
+   Sequence behind `newDrills` (shuffled).
 4. **Rehearse**: Visualization, then Lock In breathing.
 
-A short summary follows. There are no accounts and no saved results.
+Each pillar can also run on its own (Breathing only, Eyes only, Mind only, Rehearse only).
+
+**MOVE: react, cut, compete.** The phone sits on a stand facing the athlete; no taps during a
+set. Quick Start (4 cones, colors, 5 yd, medium pace, 3 sets), Custom setup (every Cone Drill
+option), and Signals Only (arrows, no cones).
+
+A short summary follows each session. There are no accounts and no saved results.
 
 Sightline is a warm-up tool. It is not a medical, diagnostic, or treatment tool.
 
@@ -48,18 +57,25 @@ Phones download the new version in the background the next time the app is opene
 A "New version ready — tap to update" banner then appears on the start screen (never during
 a session). The version number shows at the bottom of the start screen.
 
-## Cone Drill (feature flag)
+## MOVE (js/cone/)
 
-Cone Drill is a standalone change-of-direction drill. Its code lives in `js/cone/`:
-- `config.js`: options and validation
+- `config.js`: options, validation, the Quick Start and Signals Only presets
 - `cues/`: one file per cue type
 - `plan.js`: balanced, no-repeat cue planning
 - `setup.js`, `layout.js`, `run.js`, `ui.js`: the screens
 
-It's controlled by `js/features.js`:
-- `coneDrill: true` (approved) turns it on everywhere.
-- Setting it back to `'preview'` hides it on sightline-psi.vercel.app but keeps it on preview
-  links and locally; `?coneDrill` on the live address shows it anyway.
+## Feature flags
+
+`js/features.js`. `'preview'` means on for Vercel preview links and locally, off on
+sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
+- `newDrills: 'preview'`: Physiological Sigh, 4-7-8 Breathing, Memory Sequence.
+
+## Saved on the phone
+
+- `sightline.settings.v1`: FOCUS options, theme, cue word
+- `sightline.cone.v1` / `sightline.signals.v1`: MOVE custom setup / Signals Only setup
+- `sightline.last.v2`: "Run last" for each side (upgraded from `last.v1` by `js/migrate.js`)
+- `sightline.variety.v1`, `sightline.guideSeen.v2`
 
 ## Randomness and variety
 
@@ -81,8 +97,10 @@ It's controlled by `js/features.js`:
 node tests/run.js
 ```
 
-The tests simulate 1,000 sessions and check the variety rules. Vercel runs them before every
-deploy (`vercel.json`), so a failing test stops the build and nothing goes live.
+The tests simulate 1,000 sessions and check the variety rules, the MOVE planner, contrast in
+every theme, the FOCUS / MOVE split and saved-data upgrades, and dead code (unused files,
+exports, imports, styles, icons and screens). Vercel runs them before every deploy
+(`vercel.json`), so a failing test stops the build and nothing goes live.
 
 ## Logo files
 
@@ -102,25 +120,31 @@ wrong answers:
 { q: 'Players per side in water polo, goalie included?', a: '7', w: ['5', '6', '8'] },
 ```
 
-Keep answers short (about 12 characters or fewer) so they fit on a button and can be read
-from 10–15 ft.
+Keep answers short (about 12 characters or fewer) so they fit on a button.
 
 ## Where things live
 
 | File | What it does |
 |---|---|
-| `js/routine.js` | Drill order and minutes per block for each length |
+| `js/main.js` | Home, Settings, About, offline support |
+| `js/focus.js` | The FOCUS screen and session flow |
+| `js/plan.js` | FOCUS pillars, sessions, and minutes for each length |
+| `js/routine.js` | Maps each FOCUS drill to the code that runs it |
 | `js/engine.js` | Runs the steps; progress bar, pause/quit, wake lock |
-| `js/stages/*.js` | One file per drill group, plus `summary.js` |
-| `js/lib/colors.js` | The 4 cue colors, their shapes, and cone directions |
+| `js/stages/*.js` | One file per FOCUS drill group, plus `summary.js` |
+| `js/cone/ui.js` | The MOVE screen and drill flow |
+| `js/migrate.js` | Upgrades data saved by older versions |
+| `js/lib/colors.js` | The 4 FOCUS cue colors and their shapes |
 | `js/lib/audio.js` | Tones and vibration (off when Sound is off) |
 
 ## Testing shortcuts (add to the URL)
 
-- `?only=stroop,lockin` runs just those drills. IDs: `settle`, `pursuit`, `saccades`,
-  `colorcall`, `gonogo`, `stroop`, `peripheral`, `math`, `questions`, `lockin`.
+- `?only=stroop,lockin` runs just those drills. IDs: `settle`, `sigh`, `breath478`, `pursuit`,
+  `saccades`, `gaze`, `peripheral`, `colorcall`, `gonogo`, `stroop`, `math`, `questions`,
+  `memory`, `visualize`, `lockin`.
 - `?speed=20` fast-forwards time.
-- `?autostart=1` skips the Start tap.
+- `?autostart=1` starts Game Ready; add `&session=regulate` (or `activate`, `challenge`,
+  `rehearse`) for one part. `?autostart=quick` (or `custom`, `signals`) starts a MOVE drill.
 - `?autoready=1` skips the I'M READY taps on the how-to cards.
 - `?noguide=1` skips the first-run "How it works" guide.
 - `?sw=1` turns on offline caching on localhost. It is off there by default so edits show

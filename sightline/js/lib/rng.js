@@ -3,7 +3,7 @@
 // Pure module: no DOM, safe to import in Node for the tests.
 
 // FNV-1a: turn any string into a 32-bit seed.
-export function hashSeed(str) {
+function hashSeed(str) {
   let h = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
