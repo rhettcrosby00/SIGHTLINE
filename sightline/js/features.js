@@ -2,7 +2,7 @@
 // off on the live site until approved. Set to true to turn on everywhere.
 
 export const FEATURES = {
-  newDrills: 'preview',   // FOCUS: Physiological Sigh, 4-7-8 Breathing, Memory Sequence
+  newDrills: 'preview',   // FOCUS: 4-7-8 Breathing, Memory Sequence (Physiological Sigh is approved and on)
   leaderboard: true,      // approved: name entry, one shared online board, coach tools
 };
 

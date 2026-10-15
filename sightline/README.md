@@ -3,16 +3,20 @@
 A pre-game visual reaction and cognitive warm-up for athletes, in two sides:
 
 **FOCUS: eyes, mind, breath.** The athlete holds the phone; every answer is a tap.
-"Game Ready" runs four pillars in this order:
+"Game Ready" runs four pillars in 5, 8 or 10 minutes (instructions included, never more):
 
-1. **Regulate**: one breathing pattern (Box Breathing; Physiological Sigh and 4-7-8 behind the
-   `newDrills` flag), rotating each session.
-2. **Activate**: Smooth Pursuit, Saccade Jumps, Gaze Stabilization, Peripheral Flash (shuffled).
-3. **Challenge**: Color Call, Go/No-Go, Stroop, Quick Math, Quick Questions, plus Memory
-   Sequence behind `newDrills` (shuffled).
-4. **Rehearse**: Visualization, then Lock In breathing.
+1. **Regulate**: one breathing pattern, rotating (Box Breathing, Physiological Sigh; 4-7-8
+   behind the `newDrills` flag).
+2. **Activate**: Smooth Pursuit, Saccade Jumps (not in Quick), Peripheral Flash.
+3. **Challenge**: Color Call, Go/No-Go.
+4. **Rehearse**: Visualization, then Lock In breathing. It always ends on something that
+   can't be failed, and every scored drill ends on a few easy cues.
 
-Each pillar can also run on its own (Breathing only, Eyes only, Mind only, Rehearse only).
+Each pillar can also run on its own. **Extras** (optional): Gaze Stabilization, Stroop, Quick
+Math, Quick Questions, Memory Sequence. These are lab-style drills with weaker evidence for sport,
+so they're kept out of Game Ready. Instructions are **Auto** by default: the full how-to the
+first 3 times a phone runs a drill, then just the rule. How-to cards start on their own, so a
+session never runs past its minutes.
 
 **MOVE: react, cut, compete.** The phone sits on a stand facing the athlete; no taps during a
 set. Quick Start (4 cones, colors, 5 yd out and back, Training pace, 3 sets), Custom setup
@@ -94,7 +98,7 @@ a session). The version number shows at the bottom of the start screen.
 
 `js/features.js`. `'preview'` means on for Vercel preview links and locally, off on
 sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
-- `newDrills: 'preview'`: Physiological Sigh, 4-7-8 Breathing, Memory Sequence.
+- `newDrills: 'preview'`: 4-7-8 Breathing, Memory Sequence.
 - `leaderboard: true` (approved): name entry, the online board and coach tools.
 
 ## Saved on the phone
@@ -104,7 +108,7 @@ sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 - `sightline.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
 - `sightline.name.v1`, `sightline.lbqueue.v1`: last leaderboard name; scores waiting to post
 - `sightline.last.v2`: "Run last" for each side (upgraded from `last.v1` by `js/migrate.js`)
-- `sightline.variety.v1`, `sightline.guideSeen.v2`
+- `sightline.variety.v1`, `sightline.guideSeen.v2`, `sightline.seen.v1` (drills run, for Auto instructions)
 
 ## Randomness and variety
 
@@ -178,3 +182,26 @@ Keep answers short (about 12 characters or fewer) so they fit on a button.
 - `?noguide=1` skips the first-run "How it works" guide.
 - `?sw=1` turns on offline caching on localhost. It is off there by default so edits show
   up right away.
+
+## Research and sources
+
+Sightline is a focus, reaction and readiness warm-up. It isn't a vision, concussion or medical
+assessment. The design follows these findings: short game-day sessions, sport-like and
+movement-based drills over generic brain games, and the strongest evidence for breathing,
+routines, quiet eye, imagery and self-talk. Real gains take repetition (2–4 sessions a week for
+4+ weeks).
+
+- Integrated sports vision training batteries, meta-analysis (2026): https://link.springer.com/article/10.1007/s44402-026-00147-8
+- Perceptual-cognitive training in team sports, meta-analysis (Zhu et al., 2024): https://www.mdpi.com/2076-328X/14/10/919
+- Stroboscopic visual training, meta-analysis (Wang et al., 2025): https://pmc.ncbi.nlm.nih.gov/articles/PMC12665768
+- Mental fatigue and sport-specific psychomotor performance (Habay et al., 2021): https://researchportal.rma.ac.be/en/publications/mental-fatigue-and-sport-specific-psychomotor-performance-a-syste/
+- Voluntary slow breathing and HRV, meta-analysis (Laborde et al., 2022): https://pure.solent.ac.uk/en/publications/effects-of-voluntary-slow-breathing-on-heart-rate-and-heart-rate-/
+- Cyclic sighing RCT (Balban et al., 2023): https://hubermanlab.stanford.edu/publications/brief-structured-respiration-practices-enhance-mood-and-reduce-physiological-arousal
+- Pre-performance routines, meta-analysis: https://lida.sport-iat.de/ta/Record/4088526?lng=en
+- Quiet eye, meta-analysis (Lebeau et al., 2016): https://lida.sport-iat.de/ta/Record/4045573?lng=en
+- Imagery interventions, meta-analysis (Simonsmeier et al., 2021): https://lida.sport-iat.de/ta/Record/4075347?lng=en
+- Self-talk interventions, updated meta-analysis: https://pure.solent.ac.uk/en/publications/self-talk-interventions-and-sportmotor-performance-an-updated-sys/
+- Music in exercise and sport, meta-analysis (Terry et al., 2020): https://research.usq.edu.au/item/q57x6/effects-of-music-in-exercise-and-sport-a-meta-analytic-review
+- Nike/Senaptec Sensory Station and batting performance (Duke, 2018): https://corporate.dukehealth.org/news/vision-sensory-and-motor-testing-could-predict-best-batters-baseball
+- No transfer of 3D-MOT training to soccer game play: https://pure.etsmtl.ca/en/publications/no-transfer-of-3d-multiple-object-tracking-training-on-game-perfo/
+- Cognitive vs traditional warm-up pilot in basketball (2025): https://pmc.ncbi.nlm.nih.gov/articles/PMC12156952

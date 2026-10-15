@@ -1,5 +1,6 @@
 // FOCUS: eyes, mind and breathing with the phone in hand. Every answer is a
-// tap. Game Ready runs all four pillars; the other sessions run one pillar.
+// tap. Game Ready runs all four pillars (never more than 10 minutes); the
+// other sessions run one pillar, or the optional Extras.
 
 import { buildRoutine } from './routine.js';
 import { runSession } from './engine.js';
@@ -12,6 +13,7 @@ import { createFocusScorer, focusScore } from './score/scoring.js';
 import { unlock as unlockAudio, buzz } from './lib/audio.js';
 import { icon } from './lib/icons.js';
 import { isOn } from './features.js';
+import { createSeen } from './lib/seen.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -21,6 +23,7 @@ const $ = (id) => document.getElementById(id);
 export function initFocus({ show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {}, leaderboard = null }) {
   const hubEl = $('focus-hub');
   const flags = { newDrills: isOn('newDrills') };
+  const seen = createSeen();   // drills this phone has run, for Auto instructions
   let from = 'start';   // where Done (or quitting) goes back to
 
   // Whole minutes, or halves under 2 minutes ("1.5 min").
@@ -30,7 +33,12 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
   };
 
   function renderHub() {
-    const parts = FOCUS_SESSIONS.filter((s) => s.id !== 'game');
+    const parts = FOCUS_SESSIONS.filter((s) => s.id !== 'game' && !s.extra);
+    const row = (s) => `
+          <button type="button" class="hub-row" data-run="${s.id}">
+            <span class="hub-row__text"><strong>${s.title}</strong><small>${s.short}</small></span>
+            <span class="hub-row__meta">${minutes(s.id)} min</span>${icon('play')}
+          </button>`;
     hubEl.innerHTML = `
       <header class="nav">
         <button type="button" class="nav__back" data-nav="home">${icon('chevron-left', { size: 22 })}Home</button>
@@ -39,12 +47,11 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
         <p class="cset__sub">Hold your phone. Every answer is a tap.</p>
       </header>
       <section class="group"><h3 class="group__title">One part</h3><div class="group__rows">
-        ${parts.map((s) => `
-          <button type="button" class="hub-row" data-run="${s.id}">
-            <span class="hub-row__text"><strong>${s.title}</strong><small>${s.short}</small></span>
-            <span class="hub-row__meta">${minutes(s.id)} min</span>${icon('play')}
-          </button>`).join('')}
+        ${parts.map(row).join('')}
       </div></section>
+      <section class="group"><h3 class="group__title">Extras · optional</h3><div class="group__rows">
+        ${FOCUS_SESSIONS.filter((s) => s.extra).map(row).join('')}
+      </div><p class="setting__hint">Lab-style brain games. Fine for fun, but the research behind them is thin, so they’re not part of Game Ready.</p></section>
       <section class="group"><div class="group__rows">
         <button type="button" class="hub-row" data-nav="options">
           <span class="hub-row__text"><strong>Options</strong><small>${describe(getSettings())}</small></span>${icon('chevron-right')}
@@ -73,7 +80,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     onRun(meta.id);
     // Every session is freshly shuffled; content from the last few sessions rests.
     const session = createSession({
-      sessionId: meta.id, settings, seed: dev.seed, recent: dev.seed ? [] : variety.recent(), flags,
+      sessionId: meta.id, settings, seed: dev.seed, recent: dev.seed ? [] : variety.recent(), flags, seen: seen.get(),
     });
     const steps = buildRoutine(session).filter((s) => !dev.only || dev.only.includes(s.id));
     session.scorer = createFocusScorer();   // leaderboard points, cue by cue
@@ -92,6 +99,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     show('session');
     const { completed, results } = await runSession(steps, settings, { session, speed: dev.speed, autoReady: dev.autoReady });
     if (!dev.seed) variety.add(session.record());   // also after a quit: they saw it
+    seen.add(results.map((r) => r.id));             // Auto instructions get shorter as drills get familiar
     if (!completed) { back(); return; }
     buzz([60, 80, 120]);   // session complete
 
@@ -101,7 +109,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     }
     $('check').innerHTML = '';
 
-    const totalMs = steps.reduce((a, s) => a + s.durationMs, 0);
+    const totalMs = steps.reduce((a, s) => a + s.durationMs + (s.introMs ?? 0), 0);   // instructions included
     renderSummary($('summary'), { title: meta.title, results, settings, totalMs, readiness, seed: session.seed });
     if (leaderboard) {
       const score = focusScore({ points: session.scorer.points, sessionId: meta.id, difficulty: settings.difficulty });

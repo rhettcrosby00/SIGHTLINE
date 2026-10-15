@@ -192,7 +192,6 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .list__row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--space-3); min-height: 56px; padding-block: var(--space-3); width: 100%; }
 .list__row + .list__row { border-top: var(--line-w) solid var(--line); }
 .list__label { font-weight: 600; }
-.list__value { color: var(--muted); text-align: right; }
 .list__row--button { grid-template-columns: 1fr auto; text-align: left; }
 .list__row--button .icon { color: var(--muted); }
 
@@ -202,6 +201,14 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .about__text { color: var(--muted); max-width: 60ch; }
 .about__text b { color: var(--text); font-weight: 600; }
 .about__side { display: grid; gap: var(--space-3); padding-left: var(--space-4); border-left: 4px solid var(--side); }
+.about__why { display: grid; gap: var(--space-1); }
+.about__why dt { font-weight: 700; margin-top: var(--space-2); }
+.about__why dd { color: var(--muted); line-height: 1.45; }
+.about__research { display: grid; gap: var(--space-3); }
+.about__points { list-style: none; display: grid; gap: var(--space-3); color: var(--muted); line-height: 1.45; }
+.about__points b { color: var(--text); font-weight: 600; }
+.about__sources { padding-left: var(--space-5); display: grid; color: var(--muted); }
+.about__sources a { display: flex; align-items: center; min-height: var(--tap); color: var(--side-text); text-decoration: underline; text-underline-offset: 3px; line-height: 1.35; }
 :root[data-appearance="outdoor"] .about__side { border-left-color: var(--line); }
 
 /* ---------- Drill screen: cue + thin progress only ---------- */
@@ -313,6 +320,10 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .howto__rule { font-size: 1.1875rem; font-weight: 500; line-height: 1.4; max-width: 28ch; }
 .howto__demo { width: 100%; display: grid; place-items: center; margin-block: var(--space-2); }
 .howto__soon { color: var(--muted); font-weight: 600; }
+.howto__timer { align-self: stretch; height: 3px; border-radius: 2px; background: var(--raised); overflow: hidden; }
+.howto__timer i { display: block; height: 100%; background: var(--side); transform-origin: left; animation: howto-timer linear forwards; }
+@keyframes howto-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .howto__timer i { animation: none; } }
 .howto .btn { margin-top: auto; }
 
 .count { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1); background: var(--bg); }
