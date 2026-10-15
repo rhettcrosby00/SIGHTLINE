@@ -1,4 +1,4 @@
-// Partner mode (preview, behind the `partner` flag): a coach's phone sends
+// Partner mode (behind the `partner` flag, approved): a coach's phone sends
 // the cues, for coach-led reaction games. This phone either shows the cues
 // (on the stand, with the Custom setup's cones) or sends them.
 // The phones meet through /api/partner with a 4-digit code. The stand phone
@@ -61,7 +61,7 @@ export function initPartner(el, { getSetup, onBack }) {
       <header class="nav">
         <button type="button" class="nav__back" data-act="back">${icon('chevron-left', { size: 22 })}Move</button>
         <h2 class="nav__title">Partner mode</h2>
-        <p class="cset__sub">A coach’s phone sends the cues. Preview.</p>
+        <p class="cset__sub">A coach’s phone sends the cues.</p>
       </header>
       <section class="group"><div class="group__rows">
         <button type="button" class="hub-row" data-act="show">

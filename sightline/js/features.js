@@ -5,7 +5,7 @@ export const FEATURES = {
   newDrills: 'preview',   // FOCUS: 4-7-8 Breathing, Memory Sequence (Physiological Sigh is approved and on)
   leaderboard: true,      // approved: name entry, one shared online board, coach tools
   occlusion: true,        // approved with Training Mode: opt-in Occlusion (the target hides and comes back), Training only
-  partner: 'preview',     // MOVE: Partner mode (a coach's phone sends the cues; api/partner.js)
+  partner: true,          // approved: MOVE Partner mode (a coach's phone sends the cues; api/partner.js)
 };
 
 // The live site's address(es). Anything else (preview links, localhost) is a preview.
