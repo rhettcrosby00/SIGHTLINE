@@ -12,7 +12,8 @@ const walk = (dir) => readdirSync(new URL(`${dir}/`, root), { withFileTypes: tru
   .flatMap((d) => (d.isDirectory() ? walk(`${dir}/${d.name}`) : [`${dir}/${d.name}`]));
 const jsFiles = walk('js');
 const testFiles = walk('tests');
-const src = Object.fromEntries([...jsFiles, ...testFiles].map((f) => [f, read(f)]));
+const apiFiles = walk('api');   // the leaderboard server uses the shared scoring and name rules
+const src = Object.fromEntries([...jsFiles, ...testFiles, ...apiFiles].map((f) => [f, read(f)]));
 const html = read('index.html');
 const css = read('css/styles.css');
 const appCode = jsFiles.map((f) => src[f]).join('\n') + html;
@@ -42,7 +43,7 @@ test('Every export is used by another file', () => {
 
 test('Every import is used', () => {
   const unused = [];
-  for (const f of [...jsFiles, ...testFiles]) {
+  for (const f of [...jsFiles, ...testFiles, ...apiFiles]) {
     for (const m of src[f].matchAll(/import\s*\{([^}]*)\}\s*from[^;]*;/g)) {
       const body = src[f].replace(m[0], '');
       for (const raw of m[1].split(',').map((x) => x.trim()).filter(Boolean)) {

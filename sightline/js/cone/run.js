@@ -12,19 +12,20 @@ import { finalMs, TIMING } from './timing.js';
 
 // The steps for one MOVE session: only the drill itself.
 // tuning = { factor, pick(choice), commit() } from js/cone/ui.js; each set's
-// cue times are scaled by tuning.factor when they play.
-export function coneSession(plan, setup, tuning = { factor: 1, pick() {}, commit() {} }) {
-  return { steps: [coneStep(plan, setup, tuning)], session: null, totalMs: plan.totalMs };
+// cue times are scaled by tuning.factor when they play. `stats` fills in as
+// sets finish, so a drill stopped early still knows its completed sets.
+export function coneSession(plan, setup, tuning = { factor: 1, pick() {}, commit() {} }, stats = { reps: 0, holds: 0, sets: 0 }) {
+  return { steps: [coneStep(plan, setup, tuning, stats)], session: null, totalMs: plan.totalMs };
 }
 
-function coneStep(plan, setup, tuning) {
+function coneStep(plan, setup, tuning, stats) {
   return {
     id: 'conedrill',
     title: 'Cone Drill',
     blockId: 'cone',
     blockTitle: 'Cone Drill',
     durationMs: plan.totalMs,
-    module: { run: (ctx) => runDrill(ctx, plan, setup, tuning) },
+    module: { run: (ctx) => runDrill(ctx, plan, setup, tuning, stats) },
   };
 }
 
@@ -33,7 +34,7 @@ const fmt = (ms) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-async function runDrill(ctx, plan, setup, tuning) {
+async function runDrill(ctx, plan, setup, tuning, stats) {
   const { el, sleep, now } = ctx;
   const hud = document.getElementById('hud-block');
   const total = plan.sets.length;
@@ -46,7 +47,6 @@ async function runDrill(ctx, plan, setup, tuning) {
   const stage = el.querySelector('.cd__stage');
   const cueEl = el.querySelector('.cd__cue');
   const blank = () => { cueEl.innerHTML = ''; cueEl.removeAttribute('style'); };
-  const stats = { reps: 0, holds: 0, sets: 0 };
 
   for (let s = 0; s < total; s++) {
     const set = plan.sets[s];

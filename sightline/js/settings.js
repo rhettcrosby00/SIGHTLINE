@@ -4,6 +4,7 @@
 
 import { totalMinutes } from './plan.js';
 import { cleanCue } from './content/cues.js';
+import { isOn } from './features.js';
 
 const STORAGE_KEY = 'sightline.settings.v1';
 const mins = (length) => Math.round(totalMinutes('game', length));
@@ -19,6 +20,10 @@ export const GROUPS = [
       hint: () => 'Full shows an example and a short practice before each drill.' },
     { key: 'sound', label: 'Sound', toggle: true },
   ] },
+  { title: 'Leaderboard', flag: 'leaderboard', fields: [
+    { key: 'nameStyle', label: 'Names', options: [['name', 'Name'], ['initials', 'Initials']],
+      hint: () => 'Up to 12 characters, or classic 3-letter initials.' },
+  ] },
   { title: 'Appearance', fields: [
     { key: 'appearance', label: 'Theme', stack: true, options: [['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark'], ['outdoor', 'Outdoor']],
       hint: () => 'Auto follows your phone. Outdoor is high contrast for bright sun.' },
@@ -26,7 +31,7 @@ export const GROUPS = [
 ];
 const FIELDS = GROUPS.flatMap((g) => g.fields);
 
-export const DEFAULTS = { length: 'standard', difficulty: 'normal', sound: 'on', guide: 'full', appearance: 'auto', cue: 'COMPETE' };
+export const DEFAULTS = { length: 'standard', difficulty: 'normal', sound: 'on', guide: 'full', appearance: 'auto', nameStyle: 'name', cue: 'COMPETE' };
 
 // Saved settings → current settings. Anything unknown or out of range falls
 // back to the default; settings that no longer exist (the old Tap/Cones
@@ -84,7 +89,7 @@ const toggle = (f, s) => `
   <button type="button" class="switch" role="switch" data-toggle="${f.key}" aria-checked="${s[f.key] === 'on'}" aria-label="${f.label}"></button>`;
 
 function render(el, s) {
-  el.innerHTML = GROUPS.map((g) => `
+  el.innerHTML = GROUPS.filter((g) => !g.flag || isOn(g.flag)).map((g) => `
     <section class="group" aria-label="${g.title}">
       <h3 class="group__title">${g.title}</h3>
       <div class="group__rows">
