@@ -70,7 +70,6 @@ export function renderLayout(el, setup) {
       <button type="button" class="btn-link" data-nav="setup">‹ Setup</button>
       <h2 class="cset__title">SET UP YOUR CONES</h2>
       <p class="clay__how">Put ${n} cones around your start spot like this. Stand the phone up in front of you, facing you, where you can see it from every cone.</p>
-      <p class="clay__how clay__how--note">You’ll start with 1 minute of Settle breathing at your start spot, then the drill begins.</p>
       ${layoutSvg(setup)}
       <div class="field"><span class="field__label">Distance from start</span>
         <div class="slider"><input type="range" data-range="distance" min="3" max="10" step="1" value="${setup.distance}">

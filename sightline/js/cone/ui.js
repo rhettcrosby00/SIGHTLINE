@@ -47,7 +47,7 @@ export function initConeDrill({ show, dev = {} }) {
   async function run() {
     unlockAudio(setup.sound === 'on', { voice: setup.callouts });   // inside the tap
     const plan = planDrill(setup, dev.seed);
-    // Settle breathing first, then the drill.
+    // Just the drill — no breathing or other Game Ready drills.
     const { steps, session, totalMs } = coneSession(plan, setup);
     show('session');
     const { completed, results } = await runSession(steps, setup, { session, speed: dev.speed, autoReady: dev.autoReady });

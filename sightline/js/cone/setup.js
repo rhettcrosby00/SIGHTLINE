@@ -43,8 +43,8 @@ const secs = (ms) => `${(ms / 1000).toFixed(1)} s`;
 function estimate(s) {
   const per = s.setMode === 'timed' ? s.timedSec * 1000 : s.reps * intervalMs(s);
   const ms = s.sets * (per + COUNTDOWN_MS) + (s.sets - 1) * s.restSec * 1000;
-  const min = Math.round((ms + 60_000) / 6000) / 10;   // + 1 min Settle breathing first
-  return `Settle breathing + ${s.sets} set${s.sets > 1 ? 's' : ''} × ${s.setMode === 'timed' ? `${s.timedSec} s` : `${s.reps} reps`} · about ${min} min`;
+  const min = Math.round(ms / 6000) / 10;
+  return `${s.sets} set${s.sets > 1 ? 's' : ''} × ${s.setMode === 'timed' ? `${s.timedSec} s` : `${s.reps} reps`} · about ${min} min`;
 }
 
 export function renderSetup(el, s) {
