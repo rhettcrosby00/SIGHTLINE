@@ -129,6 +129,7 @@ export const memory = {
       countEl.textContent = `${len} colors`;
       const r = await round(session.content.memory(len));
       stats.trials++;
+      session.scorer?.trial({ outcome: r.ok ? 'correct' : r.slow ? 'missed' : 'wrong' });
       if (r.ok) {
         stats.correct++;
         stats.longest = Math.max(stats.longest, len);

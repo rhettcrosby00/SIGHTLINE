@@ -189,6 +189,9 @@ async function runTap(ctx, spec) {
       if (!ok) stats.wrong++;
     }
     if (ok) { stats.correct++; if (resp != null) stats.rts.push(rt); }
+    // Leaderboard points: right (speed bonus for taps), wrong or tapped on red, or too slow.
+    session.scorer?.trial(ok ? { outcome: 'correct', rtMs: resp == null ? null : rt }
+      : { outcome: resp == null ? 'missed' : 'wrong' });
     (ok ? cues.correct : cues.wrong)();
 
     if (ok) say('is-ok', resp == null ? '✓ Held' : `✓ ${secs(rt)}`);

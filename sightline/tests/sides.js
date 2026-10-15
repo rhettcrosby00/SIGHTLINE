@@ -17,8 +17,9 @@ const walk = (dir) => readdirSync(new URL(`${dir}/`, root), { withFileTypes: tru
 const jsFiles = walk('js');
 const html = read('index.html');
 
-// FOCUS code: everything outside js/cone/ except the app shell and shared helpers (js/lib/).
-const FOCUS_FILES = jsFiles.filter((f) => !f.startsWith('js/cone/') && !f.startsWith('js/lib/')
+// FOCUS code: everything outside js/cone/ except the app shell, shared helpers (js/lib/)
+// and the leaderboard (js/score/, shared by both sides).
+const FOCUS_FILES = jsFiles.filter((f) => !f.startsWith('js/cone/') && !f.startsWith('js/lib/') && !f.startsWith('js/score/')
   && !['js/main.js', 'js/guide.js', 'js/migrate.js', 'js/features.js'].includes(f));
 // Code without comments: what can actually reach a screen.
 const codeOf = (f) => read(f).replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');

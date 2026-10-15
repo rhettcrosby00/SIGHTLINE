@@ -1,18 +1,24 @@
-// Tiny test harness shared by the test files (no libraries).
-const results = [];
+// Tiny test harness shared by the test files (no libraries). Tests can be
+// async; report() runs them in order and waits for each one.
+const tests = [];
 
 export function test(name, fn) {
-  try { fn(); results.push([true, name]); } catch (e) { results.push([false, name, e.message]); }
+  tests.push({ name, fn });
 }
 
 export function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
-export function report() {
+export async function report() {
   let failed = 0;
-  for (const [ok, name, err] of results) {
-    console.log(`${ok ? '✓' : '✗'} ${name}${ok ? '' : `\n    ${err}`}`);
-    if (!ok) failed++;
+  for (const { name, fn } of tests) {
+    try {
+      await fn();
+      console.log(`✓ ${name}`);
+    } catch (e) {
+      failed++;
+      console.log(`✗ ${name}\n    ${e.message}`);
+    }
   }
-  console.log(`\n${results.length - failed} passed, ${failed} failed`);
+  console.log(`\n${tests.length - failed} passed, ${failed} failed`);
   return failed;
 }

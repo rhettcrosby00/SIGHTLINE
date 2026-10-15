@@ -15,6 +15,7 @@ import { runSession } from '../engine.js';
 import { unlock as unlockAudio, buzz } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
 import { SUM_LOGO } from '../stages/summary.js';
+import { moveScore, moveMultiplier, SCORING } from '../score/scoring.js';
 
 const $ = (id) => document.getElementById(id);
 const mmss = (ms) => {
@@ -46,8 +47,9 @@ function describeSetup(s, run = 'custom') {
 const minutesOf = (s) => Math.max(1, Math.round(drillMs(s) / 60000));
 
 // show(name, {back}) switches screens; dev = { speed, autoReady, seed } from
-// the URL; onRun(run) fires when a drill starts (for "Run last").
-export function initMove({ show, dev = {}, onRun = () => {} }) {
+// the URL; onRun(run) fires when a drill starts (for "Run last"); leaderboard
+// (optional) gets the score once a drill ends with at least one full set.
+export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null }) {
   const hubEl = $('move-hub');
   const layoutEl = $('cd-layout');
   const doneEl = $('cd-done');
@@ -57,6 +59,7 @@ export function initMove({ show, dev = {}, onRun = () => {} }) {
 
   const nav = (where, { back = false } = {}) => {
     if (where === 'home') return show('start', { back: true });
+    if (where === 'board') return leaderboard?.openBoard('cone-done', { side: 'move' });
     if (where === 'menu') { renderHub(); return show('move', { back: true }); }
     if (where === 'custom') return open('custom');
     if (where === 'setup') {
@@ -132,22 +135,23 @@ export function initMove({ show, dev = {}, onRun = () => {} }) {
       },
     };
     const plan = planDrill(setup, dev.seed, { tune: tuning.factor });
-    const { steps, session, totalMs } = coneSession(plan, setup, tuning);
+    const r = { reps: 0, holds: 0, sets: 0 };   // fills in as sets finish
+    const { steps, session, totalMs } = coneSession(plan, setup, tuning, r);
     $('screen-session').dataset.side = 'move';
     show('session');
-    const { completed, results } = await runSession(steps, setup, { session, speed: dev.speed, autoReady: dev.autoReady });
-    if (!completed) return nav(run === 'quick' ? 'menu' : 'setup', { back: true });
-    buzz([60, 80, 120]);   // drill complete
-    const r = results.find((x) => x.id === 'conedrill');
+    const { completed } = await runSession(steps, setup, { session, speed: dev.speed, autoReady: dev.autoReady });
+    // Stopped early: with the leaderboard on, completed sets still count.
+    if (!completed && !(leaderboard && r.sets > 0)) return nav(run === 'quick' ? 'menu' : 'setup', { back: true });
+    if (completed) buzz([60, 80, 120]);   // drill complete
     doneEl.innerHTML = `
       <div class="sum">
-        <div class="sum__top"><p class="sum__kicker">${MOVE_RUNS[run]} complete</p>${SUM_LOGO}</div>
-        <h2 class="sum__title">Nice work</h2>
+        <div class="sum__top"><p class="sum__kicker">${completed ? `${MOVE_RUNS[run]} complete` : `Stopped after ${r.sets} of ${setup.sets} sets`}</p>${SUM_LOGO}</div>
+        <h2 class="sum__title">${completed ? 'Nice work' : 'Good work'}</h2>
         <p class="sum__meta">${describeSetup(setup, run)}</p>
         <div class="tiles">
           <div class="tile"><p class="tile__value">${r.reps}</p><p class="tile__label">reps</p></div>
-          <div class="tile"><p class="tile__value">${r.sets}</p><p class="tile__label">sets</p></div>
-          <div class="tile"><p class="tile__value">${mmss(totalMs)}</p><p class="tile__label">total time</p></div>
+          <div class="tile"><p class="tile__value">${completed ? r.sets : `${r.sets}/${setup.sets}`}</p><p class="tile__label">sets</p></div>
+          ${completed ? `<div class="tile"><p class="tile__value">${mmss(totalMs)}</p><p class="tile__label">total time</p></div>` : ''}
         </div>
         ${r.holds ? `<p class="sum__note">Plus <b>${r.holds}</b> fake-out${r.holds > 1 ? 's' : ''} where you held still.</p>` : ''}
         ${tuneButtons('How was the pace?')}
@@ -160,6 +164,7 @@ export function initMove({ show, dev = {}, onRun = () => {} }) {
           <button type="button" class="btn btn--secondary" data-nav="${run === 'quick' ? 'custom' : 'setup'}">${run === 'quick' ? 'Customize' : 'Change setup'}</button>
           <button type="button" class="btn btn--secondary" data-nav="home">Home</button>
         </div>
+        ${leaderboard ? `<button type="button" class="link-btn lb-link" data-nav="board">${icon('trophy')}Leaderboard</button>` : ''}
       </div>`;
     // The answer here sets the pace for next time (an exact manual time stays as set).
     const before = tuning.factor;
@@ -171,6 +176,15 @@ export function initMove({ show, dev = {}, onRun = () => {} }) {
       same: `Next time: same pace. ${saved}`,
       faster: `Next time: ${pct}% less time per rep. ${saved}`,
     });
+    if (leaderboard) {
+      const per = Math.round(SCORING.move.perRep * moveMultiplier(setup));
+      await leaderboard.afterSession({
+        side: 'move',
+        score: moveScore(setup, { reps: r.reps, setsDone: r.sets }),
+        detail: `${r.reps} reps × ${per} pts${completed ? ' + finish bonus' : ' · completed sets only'} · honor system`,
+        settings: { setup, setsDone: r.sets },
+      });
+    }
     show('cone-done');
   }
 

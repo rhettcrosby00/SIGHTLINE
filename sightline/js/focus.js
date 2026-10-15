@@ -8,6 +8,7 @@ import { FOCUS_SESSIONS, sessionById, totalMinutes } from './plan.js';
 import { renderSummary } from './stages/summary.js';
 import { askBefore, askAfter } from './stages/readiness.js';
 import { describe } from './settings.js';
+import { createFocusScorer, focusScore } from './score/scoring.js';
 import { unlock as unlockAudio, buzz } from './lib/audio.js';
 import { icon } from './lib/icons.js';
 import { isOn } from './features.js';
@@ -15,8 +16,9 @@ import { isOn } from './features.js';
 const $ = (id) => document.getElementById(id);
 
 // show(name, {back}) switches screens; dev = { speed, autoReady, seed, only }
-// from the URL; onRun(sessionId) fires when a session starts (for "Run last").
-export function initFocus({ show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {} }) {
+// from the URL; onRun(sessionId) fires when a session starts (for "Run last");
+// leaderboard (optional) gets the score after each finished session.
+export function initFocus({ show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {}, leaderboard = null }) {
   const hubEl = $('focus-hub');
   const flags = { newDrills: isOn('newDrills') };
   let from = 'start';   // where Done (or quitting) goes back to
@@ -74,6 +76,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
       sessionId: meta.id, settings, seed: dev.seed, recent: dev.seed ? [] : variety.recent(), flags,
     });
     const steps = buildRoutine(session).filter((s) => !dev.only || dev.only.includes(s.id));
+    session.scorer = createFocusScorer();   // leaderboard points, cue by cue
 
     // Readiness + cue word before; readiness again after Game Ready. Not timed, not saved.
     const readiness = { before: null, after: null };
@@ -100,6 +103,16 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
 
     const totalMs = steps.reduce((a, s) => a + s.durationMs, 0);
     renderSummary($('summary'), { title: meta.title, results, settings, totalMs, readiness, seed: session.seed });
+    if (leaderboard) {
+      const score = focusScore({ points: session.scorer.points, sessionId: meta.id, difficulty: settings.difficulty });
+      const streak = session.scorer.bestStreak;
+      await leaderboard.afterSession({
+        side: 'focus', score,
+        detail: [meta.title, settings.difficulty === 'hard' ? 'Hard ×1.5' : '', streak >= 5 ? `best streak ${streak}` : '', 'finish bonus included']
+          .filter(Boolean).join(' · '),
+        settings: { sessionId: meta.id, length: settings.length, difficulty: settings.difficulty },
+      });
+    }
     show('done');
   }
 

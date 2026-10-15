@@ -5,8 +5,9 @@ import { report } from './harness.js';
 import './routine.js';
 import './cone.js';
 import './timing.js';
+import './leaderboard.js';
 import './design.js';
 import './sides.js';
 import './deadcode.js';
 
-process.exit(report() ? 1 : 0);
+process.exit((await report()) ? 1 : 0);

@@ -3,6 +3,7 @@
 
 export const FEATURES = {
   newDrills: 'preview',   // FOCUS: Physiological Sigh, 4-7-8 Breathing, Memory Sequence
+  leaderboard: 'preview', // Phase 3: name entry, one shared online board, coach tools
 };
 
 // The live site's address(es). Anything else (preview links, localhost) is a preview.

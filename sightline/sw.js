@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v2.1';
+const CACHE_VERSION = 'v2.2';
 const CACHE = `sightline-${CACHE_VERSION}`;
 
 // Google Fonts (Archivo + Schibsted Grotesk) live in their own cache that
@@ -51,6 +51,10 @@ const ASSETS = [
   './js/lib/text.js',
   './js/lib/variety.js',
   './js/lib/wakelock.js',
+  './js/score/board.js',
+  './js/score/names.js',
+  './js/score/scoring.js',
+  './js/score/ui.js',
   './js/stages/brain.js',
   './js/stages/breathe.js',
   './js/stages/common.js',
@@ -124,7 +128,8 @@ self.addEventListener('fetch', (e) => {
     }))));
     return;
   }
-  if (url.origin !== self.location.origin) return;
+  // The leaderboard is always live: never cached.
+  if (url.origin !== self.location.origin || url.pathname.includes('/api/')) return;
   e.respondWith(
     caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((res) => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }

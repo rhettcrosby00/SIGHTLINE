@@ -20,13 +20,19 @@ set. Quick Start (4 cones, colors, 5 yd out and back, Training pace, 3 sets), Cu
 from distance, rep style (Out and back, First step, Cone to cone) and pace; between sets the
 athlete answers "Too fast / Just right / Too slow".
 
-A short summary follows each session. There are no accounts and no saved results.
+A short summary follows each session. There are no accounts.
+
+**Leaderboard** (flag `leaderboard`): after a session the athlete enters a name (or 3-letter
+initials) and the score joins one online board for everyone: All-time, Best session and This
+week, for Focus, Move or both combined. It saves only name, score, side, session settings and
+date.
 
 Sightline is a warm-up tool. It is not a medical, diagnostic, or treatment tool.
 
 ## Run it locally
 
-No build step and no dependencies. Serve the folder with any static server:
+No build step. The app is static; only the leaderboard function has a dependency (the Neon
+database driver, installed by Vercel). Serve the folder with any static server:
 
 ```bash
 python3 -m http.server 5173
@@ -70,17 +76,33 @@ a session). The version number shows at the bottom of the start screen.
 - `plan.js`: balanced, no-repeat cue planning
 - `setup.js`, `layout.js`, `run.js`, `ui.js`: the screens
 
+## Leaderboard (js/score/, api/)
+
+- `js/score/scoring.js`: every scoring number (`SCORING`): Focus cue points, speed bonus,
+  streaks and penalties; Move points per rep and multipliers; difficulty and finish bonuses.
+- `js/score/names.js`: name matching (case and spacing), initials, the offensive-name filter.
+- `js/score/board.js`: `submitScore`, `getLeaderboard`, `getPlayerRank`; offline scores wait on
+  the phone and post when the connection returns.
+- `js/score/ui.js`: name entry, the reveal, the board, coach tools.
+- `api/leaderboard.js`: the one Vercel serverless function. It checks every score against the
+  most its session could earn, rate-limits, and guards coach tools with `COACH_PIN`.
+- Setup (Vercel): Storage → Create Database → Neon (free) → connect to Production and Preview;
+  Settings → Environment Variables → `COACH_PIN`. The database address never appears in the app.
+- `/api/leaderboard?action=health` shows `{ db, coach }` (true/false only).
+
 ## Feature flags
 
 `js/features.js`. `'preview'` means on for Vercel preview links and locally, off on
 sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 - `newDrills: 'preview'`: Physiological Sigh, 4-7-8 Breathing, Memory Sequence.
+- `leaderboard: 'preview'`: name entry, the online board and coach tools.
 
 ## Saved on the phone
 
 - `sightline.settings.v1`: FOCUS options, theme, cue word
 - `sightline.cone.v1` / `sightline.signals.v1`: MOVE custom setup / Signals Only setup
 - `sightline.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
+- `sightline.name.v1`, `sightline.lbqueue.v1`: last leaderboard name; scores waiting to post
 - `sightline.last.v2`: "Run last" for each side (upgraded from `last.v1` by `js/migrate.js`)
 - `sightline.variety.v1`, `sightline.guideSeen.v2`
 

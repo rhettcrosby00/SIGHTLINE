@@ -55,6 +55,7 @@
       <img class="home__logo on-dark" src="assets/logo/logo-horizontal.svg" alt="Sightline logo" width="1182" height="242">
       <img class="home__logo on-light" src="assets/logo/logo-horizontal-mono-dark.svg" alt="Sightline logo" width="1182" height="242">
       <div class="home__nav">
+        <button id="btn-board" class="icon-btn" type="button" aria-label="Leaderboard" hidden><i data-icon="trophy" data-size="22"></i></button>
         <button id="btn-settings" class="icon-btn" type="button" aria-label="Settings"><i data-icon="settings-2" data-size="22"></i></button>
         <button id="btn-about" class="icon-btn" type="button" aria-label="About"><i data-icon="info" data-size="22"></i></button>
       </div>
@@ -105,6 +106,11 @@
   <section id="screen-signals" class="screen" data-side="move"><div id="cd-signals"></div></section>
   <section id="screen-cone-layout" class="screen" data-side="move"><div id="cd-layout"></div></section>
   <section id="screen-cone-done" class="screen" data-side="move"><div id="cd-done"></div></section>
+
+  <!-- Leaderboard: name entry + reveal, the board, coach tools (rendered by js/score/ui.js) -->
+  <section id="screen-name" class="screen"><div id="lb-name"></div></section>
+  <section id="screen-board" class="screen"><div id="lb-board"></div></section>
+  <section id="screen-coach" class="screen"><div id="lb-coach"></div></section>
 
   <!-- Settings: FOCUS options + theme -->
   <section id="screen-settings" class="screen" aria-labelledby="settings-title">
@@ -189,6 +195,7 @@
     <div id="summary"></div>
     <div class="screen__foot">
       <button id="btn-done" class="btn btn--primary btn--block" type="button">Done</button>
+      <button id="btn-done-board" class="link-btn lb-link" type="button" hidden><i data-icon="trophy"></i>Leaderboard</button>
     </div>
   </section>
 

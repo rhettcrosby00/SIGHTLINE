@@ -10,9 +10,11 @@ import { createVariety } from './lib/variety.js';
 import { createLastRuns } from './migrate.js';
 import { initFocus } from './focus.js';
 import { initMove, MOVE_RUNS } from './cone/ui.js';
+import { initLeaderboard } from './score/ui.js';
+import { isOn } from './features.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '2.1';
+export const APP_VERSION = '2.2';
 
 const $ = (id) => document.getElementById(id);
 
@@ -66,13 +68,22 @@ $('btn-settings').addEventListener('click', () => openSettings('start'));
 $('btn-settings-back').addEventListener('click', closeSettings);
 $('btn-settings-done').addEventListener('click', closeSettings);
 
+// ---- Leaderboard (behind a flag until approved) ----
+const leaderboard = isOn('leaderboard') ? initLeaderboard({ show, getSettings }) : null;
+if (leaderboard) {
+  $('btn-board').hidden = false;
+  $('btn-board').addEventListener('click', () => leaderboard.openBoard('start'));
+  $('btn-done-board').hidden = false;
+  $('btn-done-board').addEventListener('click', () => leaderboard.openBoard('done', { side: 'focus' }));
+}
+
 // ---- The two sides ----
 focus = initFocus({
-  show, dev, variety, getSettings, updateSetting,
+  show, dev, variety, getSettings, updateSetting, leaderboard,
   onRun: (id) => lastRuns.set('focus', id),
   onOptions: () => openSettings('focus'),
 });
-move = initMove({ show, dev, onRun: (run) => lastRuns.set('move', run) });
+move = initMove({ show, dev, leaderboard, onRun: (run) => lastRuns.set('move', run) });
 
 // ---- Home: two choices, each with its preset, time and "Run last" ----
 function renderHome() {
