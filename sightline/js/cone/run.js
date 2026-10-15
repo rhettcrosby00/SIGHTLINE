@@ -1,7 +1,7 @@
 // Runs a Cone Drill inside the shared session engine (so it gets the pause
 // button, screen wake lock, and pause-when-hidden for free). Just the drill:
 // each cue full-screen, "Set 2 of 4 · Rep 7" in the top bar, and a big rest
-// countdown between sets (tap anywhere to pause). Nothing from Game Ready runs.
+// countdown between sets (tap anywhere to pause). Nothing from FOCUS runs here.
 
 import { countdown } from '../stages/common.js';
 import { tone, say, buzz } from '../lib/audio.js';
@@ -13,7 +13,7 @@ export function coneSession(plan, setup) {
   return { steps: [coneStep(plan, setup)], session: null, totalMs: plan.totalMs };
 }
 
-export function coneStep(plan, setup) {
+function coneStep(plan, setup) {
   return {
     id: 'conedrill',
     title: 'Cone Drill',

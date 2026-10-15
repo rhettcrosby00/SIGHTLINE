@@ -19,10 +19,10 @@ import { intervalMs, JITTER, FAKE_RATES, REVERSE_RATE, COUNTDOWN_MS } from './co
 // Cue spots in -1..1 screen space. RANDOM: a 3×3 grid. PERIPHERAL: the 8
 // spots around the edge (the eyes stay on the center dot).
 export const GRID_SPOTS = [-1, 0, 1].flatMap((y) => [-1, 0, 1].map((x) => ({ id: `${x},${y}`, x, y })));
-export const EDGE_SPOTS = GRID_SPOTS.filter((p) => p.x !== 0 || p.y !== 0);
+const EDGE_SPOTS = GRID_SPOTS.filter((p) => p.x !== 0 || p.y !== 0);
 
 // Does cone `k` fit next, given the cues so far?
-export function fits(out, k, coneCount) {
+function fits(out, k, coneCount) {
   const last = out[out.length - 1];
   if (coneCount === 2) return !(last === k && out[out.length - 2] === k);
   if (last === k) return false;
@@ -30,7 +30,7 @@ export function fits(out, k, coneCount) {
 }
 
 // Balanced, rule-following order of `count` cues over `keys`.
-export function orderTargets(rng, keys, count) {
+function orderTargets(rng, keys, count) {
   const n = keys.length;
   for (let attempt = 0; attempt < 500; attempt++) {
     const base = Math.floor(count / n);

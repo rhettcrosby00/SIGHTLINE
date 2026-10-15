@@ -19,7 +19,7 @@ import { cues } from './lib/audio.js';
 
 const $ = (id) => document.getElementById(id);
 
-export class AbortedError extends Error {}
+class AbortedError extends Error {}
 
 export async function runSession(steps, settings, { session, speed = 1, autoReady = false } = {}) {
   const stageEl = $('stage');

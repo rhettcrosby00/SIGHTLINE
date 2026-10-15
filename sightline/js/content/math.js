@@ -1,11 +1,11 @@
-// Quick Math problems, generated on the fly. Odd → BLUE (left), even → RED
-// (right). Parity is balanced with at most 3 of the same in a row. No problem
+// Quick Math problems, generated on the fly. Odd → BLUE, even → RED
+// buttons. Parity is balanced with at most 3 of the same in a row. No problem
 // repeats within a session, and problems from recent sessions are avoided.
 
 import { binary } from '../lib/rng.js';
 
-export const ODD_CUE = 'blue';
-export const EVEN_CUE = 'red';
+const ODD_CUE = 'blue';
+const EVEN_CUE = 'red';
 
 function make(rng, hard) {
   const kind = rng.int(0, hard ? 3 : 2);

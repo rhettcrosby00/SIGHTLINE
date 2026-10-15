@@ -1,25 +1,24 @@
-// Boot, screen switching, and the home screen.
+// Boot, screen switching, home, Settings and About.
+//
+// Two sides: FOCUS (js/focus.js — eyes, mind, breath; phone in hand, every
+// answer a tap) and MOVE (js/cone/ui.js — phone on a stand, react and cut).
 
-import { initSettings, updateSetting, describe } from './settings.js';
-import { buildRoutine } from './routine.js';
-import { runSession } from './engine.js';
-import { unlock as unlockAudio, buzz } from './lib/audio.js';
-import { hydrateIcons } from './lib/icons.js';
-import { renderSummary } from './stages/summary.js';
+import { initSettings, updateSetting } from './settings.js';
+import { hydrateIcons, icon } from './lib/icons.js';
 import { showGuide, guideSeen } from './guide.js';
-import { askBefore, askAfter } from './stages/readiness.js';
-import { createSession } from './session.js';
 import { createVariety } from './lib/variety.js';
-import { isOn } from './features.js';
-import { initConeDrill } from './cone/ui.js';
+import { createLastRuns } from './migrate.js';
+import { initFocus } from './focus.js';
+import { initMove, MOVE_RUNS } from './cone/ui.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '1.9';
+export const APP_VERSION = '2.0';
 
 const $ = (id) => document.getElementById(id);
 
 // Screens slide forward (from the right) or back (from the left), 200ms.
 // Reduced motion: the tokens set the duration to 0.
+let onHome = () => {};
 function show(name, { back = false } = {}) {
   const next = $(`screen-${name}`);
   document.querySelectorAll('.screen').forEach((s) => {
@@ -31,56 +30,75 @@ function show(name, { back = false } = {}) {
     void next.offsetWidth;   // restart the animation
     next.classList.add(back ? 'enter-back' : 'enter-fwd');
   }
+  if (name === 'start') onHome();
   window.scrollTo(0, 0);
 }
 
 hydrateIcons();
 
-// Dev aids: ?speed=20 fast-forwards a session; ?autostart=1 skips the Start tap;
-// ?only=lockin,stroop runs just those drill ids; ?autoready=1 skips the Ready
-// taps; ?noguide=1 skips the first-run guide; ?seed=N replays session N
-// exactly (ignores and doesn't update the "recently used" list).
+// Dev aids: ?speed=20 fast-forwards; ?autostart=1 starts Game Ready (or
+// ?autostart=1&session=activate a one-part session, ?autostart=quick|custom|signals
+// a MOVE drill); ?only=lockin,stroop runs just those drill ids; ?autoready=1
+// skips the Ready taps; ?noguide=1 skips the first-run guide; ?seed=N replays
+// a session exactly (ignores and doesn't update the "recently used" list).
 const params = new URLSearchParams(location.search);
-const speed = Math.max(1, Number(params.get('speed')) || 1);
-const autoReady = params.has('autoready');
-const replaySeed = params.get('seed');
-const variety = createVariety();
-let inSession = false;
-
-// ---- "Run last setup": remembers which drill ran last (device only) ----
-const LAST_KEY = 'sightline.last.v1';
-const lastRun = {
-  get() { try { return JSON.parse(localStorage.getItem(LAST_KEY) || 'null'); } catch { return null; } },
-  set(v) { try { localStorage.setItem(LAST_KEY, JSON.stringify(v)); } catch { /* ignore */ } },
+const dev = {
+  speed: Math.max(1, Number(params.get('speed')) || 1),
+  autoReady: params.has('autoready'),
+  seed: params.get('seed'),
+  only: params.get('only')?.split(','),
 };
+const variety = createVariety();
+const lastRuns = createLastRuns();
 
-let cone = null;
-let settingsNow = null;   // latest Routine settings, for the home screen
-function renderLast() {
-  const last = lastRun.get();
-  const btn = $('btn-last');
-  if (last?.type === 'cone' && cone) {
-    $('last-desc').textContent = cone.describe();
-    btn.hidden = false;
-  } else if (last?.type === 'game') {
-    $('last-desc').textContent = `Game Ready · ${describe(settingsNow)}`;
-    btn.hidden = false;
-  } else {
-    btn.hidden = true;
-  }
+// ---- Settings (FOCUS options + theme), reachable from home and from FOCUS ----
+let focus = null;
+let move = null;
+let settingsFrom = 'start';
+const getSettings = initSettings({ onChange: () => { renderHome(); focus?.renderHub(); } });
+function openSettings(from) {
+  settingsFrom = from;
+  $('settings-back-label').textContent = from === 'focus' ? 'Focus' : 'Home';
+  show('settings');
 }
+const closeSettings = () => show(settingsFrom, { back: true });
+$('btn-settings').addEventListener('click', () => openSettings('start'));
+$('btn-settings-back').addEventListener('click', closeSettings);
+$('btn-settings-done').addEventListener('click', closeSettings);
 
-const getSettings = initSettings({
-  onChange: (s) => {
-    settingsNow = s;
-    $('home-meta').textContent = `${describe(s)} · Regulate → Activate → Challenge → Rehearse`;
-    renderLast();
-  },
+// ---- The two sides ----
+focus = initFocus({
+  show, dev, variety, getSettings, updateSetting,
+  onRun: (id) => lastRuns.set('focus', id),
+  onOptions: () => openSettings('focus'),
 });
+move = initMove({ show, dev, onRun: (run) => lastRuns.set('move', run) });
+
+// ---- Home: two choices, each with its preset, time and "Run last" ----
+function renderHome() {
+  if (!focus) return;
+  $('btn-game').innerHTML = `${icon('play')}Game Ready · ${focus.minutes('game')} min`;
+  $('btn-quick').innerHTML = `${icon('play')}Quick Start · ${move.minutes('quick')} min`;
+  const last = lastRuns.get();
+  // "Run last" shows when it's something other than the preset button above it.
+  const focusLast = last.focus && last.focus !== 'game' ? last.focus : null;
+  $('btn-focus-last').hidden = !focusLast;
+  if (focusLast) $('focus-last-desc').textContent = `${focus.title(focusLast)} · ${focus.minutes(focusLast)} min`;
+  $('btn-move-last').hidden = !last.move;
+  if (last.move) $('move-last-desc').textContent = `${MOVE_RUNS[last.move]} · ${move.minutes(last.move)} min`;
+}
+onHome = renderHome;
+renderHome();
+
+$('btn-focus').addEventListener('click', () => focus.openHub());
+$('btn-move').addEventListener('click', () => move.openHub());
+$('btn-game').addEventListener('click', () => focus.start('game'));
+$('btn-quick').addEventListener('click', () => move.open('quick'));
+$('btn-focus-last').addEventListener('click', () => focus.start(lastRuns.get().focus));
+$('btn-move-last').addEventListener('click', () => move.runLast(lastRuns.get().move));
 
 $('version').textContent = `· v${APP_VERSION}`;
 $('about-version').textContent = `Version ${APP_VERSION}`;
-$('btn-guide').addEventListener('click', showGuide);
 
 // Splash: show the logo for a beat, then fade (immediately for test runs).
 const splash = $('splash');
@@ -91,30 +109,7 @@ const hideSplash = () => {
 };
 setTimeout(hideSplash, params.has('autostart') ? 0 : Math.max(0, 700 - performance.now()));
 
-// Routine settings
-$('btn-settings').addEventListener('click', () => show('settings'));
-$('btn-settings-back').addEventListener('click', () => show('start', { back: true }));
-$('btn-settings-done').addEventListener('click', () => show('start', { back: true }));
-
-// Cone Drill: its own option on the home screen (behind a feature flag).
-if (isOn('coneDrill')) {
-  cone = initConeDrill({
-    show,
-    dev: { speed, autoReady, seed: replaySeed },
-    onRun: () => { lastRun.set({ type: 'cone' }); renderLast(); },
-  });
-  $('btn-cone').hidden = false;
-  $('btn-cone').addEventListener('click', () => cone.open());
-}
-renderLast();
-
-$('btn-last').addEventListener('click', () => {
-  const last = lastRun.get();
-  if (last?.type === 'cone' && cone) cone.runLast();
-  else $('btn-start').click();
-});
-
-// About screen, with "Reset variety".
+// ---- About, with "How it works" and "Reset variety" ----
 $('btn-about').addEventListener('click', () => { $('variety-status').textContent = ''; show('about'); });
 $('btn-about-back').addEventListener('click', () => show('start', { back: true }));
 $('btn-about-guide').addEventListener('click', showGuide);
@@ -125,63 +120,20 @@ $('btn-reset-variety').addEventListener('click', () => {
     : 'Nothing to reset on this device.';
 });
 
-$('btn-start').addEventListener('click', async () => {
-  const settings = getSettings();
-  unlockAudio(settings.sound === 'on');   // must happen inside the tap
-  lastRun.set({ type: 'game' });
-  // Every session is freshly shuffled; content from the last few sessions rests.
-  const session = createSession({ settings, seed: replaySeed, recent: replaySeed ? [] : variety.recent() });
-  const only = params.get('only')?.split(',');
-  const steps = buildRoutine(session).filter((s) => !only || only.includes(s.id));
-
-  // Readiness + cue word before; readiness again after. Not timed, not saved.
-  const readiness = { before: null, after: null };
-  if (!autoReady) {
-    show('check');
-    const pick = await askBefore($('check'), { cue: settings.cue, suggestions: session.content.cueSuggestions });
-    readiness.before = pick.level;
-    settings.cue = pick.cue;
-    updateSetting('cue', pick.cue);
-  }
-
-  show('session');
-  inSession = true;
-  const { completed, results } = await runSession(steps, settings, { session, speed, autoReady });
-  inSession = false;
-  if (!replaySeed) variety.add(session.record());   // also after a quit: they saw it
-  renderLast();
-  if (!completed) { show('start', { back: true }); return; }
-  buzz([60, 80, 120]);   // session complete
-
-  if (!autoReady) {
-    show('check');
-    readiness.after = await askAfter($('check'), { cue: settings.cue });
-  }
-  $('check').innerHTML = '';
-
-  const totalMs = steps.reduce((a, s) => a + s.durationMs, 0);
-  renderSummary($('summary'), { results, settings, totalMs, readiness, seed: session.seed });
-  show('done');
-});
-
-// Nothing is kept: clear the summary and go back home.
-$('btn-done').addEventListener('click', () => {
-  $('summary').innerHTML = '';
-  show('start', { back: true });
-});
-
 // Offline support. Skipped on localhost so edits show up right away;
 // add ?sw=1 to test it locally.
 const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 if ('serviceWorker' in navigator && (!isLocal || params.has('sw'))) {
-  // A new version downloads in the background; offer it on the home screen
-  // (never mid-session). Tapping swaps it in and reloads.
+  // A new version downloads in the background; it's offered on the home
+  // screen (never mid-session). Tapping swaps it in and reloads.
   let waiting = null;
   let updating = false;
   const offer = (worker) => {
     waiting = worker;
-    if (!inSession) $('update').hidden = false;
+    if ($('screen-start').classList.contains('is-active')) $('update').hidden = false;
   };
+  const prevHome = onHome;
+  onHome = () => { prevHome(); if (waiting) $('update').hidden = false; };
   $('btn-update').addEventListener('click', () => {
     updating = true;
     waiting?.postMessage('SKIP_WAITING');
@@ -198,8 +150,6 @@ if ('serviceWorker' in navigator && (!isLocal || params.has('sw'))) {
       });
     });
   }).catch(() => {});
-  // Show a pending update once a session finishes.
-  $('btn-done').addEventListener('click', () => { if (waiting) $('update').hidden = false; });
 }
 
 // Install: Chrome/Android offers a prompt; iOS Safari gets a one-line tip.
@@ -218,4 +168,6 @@ if (!installed) {
   }
 }
 
-if (params.has('autostart')) $('btn-start').click();
+const auto = params.get('autostart');
+if (auto && auto in MOVE_RUNS) move.runLast(auto);
+else if (auto) focus.start(params.get('session') ?? 'game');

@@ -1,6 +1,6 @@
-// Breathing screens: Settle (box breathing) and Lock In (energizing breaths
-// + one steady finishing breath). A circle grows and shrinks with each phase;
-// the phase word and countdown are sized to read from 10–15 ft in Cone mode.
+// Breathing screens: Box Breathing (settle), Physiological Sigh, 4-7-8, and
+// Lock In (energizing breaths + one steady finishing breath). A circle grows
+// and shrinks with each phase; the phase word and countdown sit inside it.
 
 import { cues } from '../lib/audio.js';
 import { esc } from '../lib/text.js';
@@ -36,6 +36,42 @@ function settleTimeline(durationMs, text) {
     );
   }
   return phases;
+}
+
+// Repeats one breath cycle to fill the slot; the intro absorbs the remainder.
+function cycles(durationMs, cycleMs, intro, cycle) {
+  const n = Math.max(1, Math.floor((durationMs - 6 * SEC) / cycleMs));
+  return [intro(durationMs - n * cycleMs), ...Array.from({ length: n }, (_, i) => cycle(i + 1, n)).flat()];
+}
+
+// Physiological sigh: a full breath in, a short top-up breath, a long exhale.
+const MID = 0.82;
+function sighTimeline(durationMs, text) {
+  return cycles(durationMs, 10 * SEC,
+    (ms) => ({ word: 'SIGH', sub: text.sighIntro, ms, from: SMALL, to: SMALL, count: 'secs', intro: true }),
+    (i, n) => {
+      const sub = `Sigh ${i} of ${n}`;
+      return [
+        { word: 'BREATHE IN', sub, ms: 2 * SEC, from: SMALL, to: MID, cue: 'inhale', count: 'secs' },
+        { word: 'TOP IT UP',  sub, ms: 1 * SEC, from: MID,   to: BIG, cue: 'hold',   count: 'secs' },
+        { word: 'LONG OUT',   sub, ms: 6 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs', showWord: i === n },
+        { word: 'REST',       sub, ms: 1 * SEC, from: SMALL, to: SMALL, count: '' },
+      ];
+    });
+}
+
+// 4-7-8: in for 4, hold for 7, out for 8.
+function fourSevenTimeline(durationMs, text) {
+  return cycles(durationMs, 19 * SEC,
+    (ms) => ({ word: '4-7-8', sub: text.fourSevenIntro, ms, from: SMALL, to: SMALL, count: 'secs', intro: true }),
+    (i, n) => {
+      const sub = `Breath ${i} of ${n}`;
+      return [
+        { word: 'BREATHE IN',  sub, ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs' },
+        { word: 'HOLD',        sub, ms: 7 * SEC, from: BIG,   to: BIG,   cue: 'hold',   count: 'secs' },
+        { word: 'BREATHE OUT', sub, ms: 8 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs', showWord: i === n },
+      ];
+    });
 }
 
 function lockInTimeline(durationMs, text) {
@@ -125,9 +161,17 @@ export const settle = {
   run: (ctx) => play(ctx, settleTimeline(ctx.durationMs, ctx.session.content.breathing), 'settle'),
 };
 
+export const sigh = {
+  run: (ctx) => play(ctx, sighTimeline(ctx.durationMs, ctx.session.content.breathing), 'settle'),
+};
+
+export const breath478 = {
+  run: (ctx) => play(ctx, fourSevenTimeline(ctx.durationMs, ctx.session.content.breathing), 'settle'),
+};
+
 export const lockIn = {
   run: (ctx) => play(ctx, lockInTimeline(ctx.durationMs, ctx.session.content.breathing), 'lockin'),
 };
 
 // Exposed for checking that timelines fill their slot exactly.
-export const _timelines = { settleTimeline, lockInTimeline };
+export const _timelines = { settleTimeline, sighTimeline, fourSevenTimeline, lockInTimeline };

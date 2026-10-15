@@ -1,9 +1,10 @@
-// End-of-session summary. Nothing is saved: it renders once, then resets.
+// End-of-session summary for FOCUS. Nothing is saved: it renders once, then resets.
 //
-// Tap mode: overall accuracy, average and best reaction time (reaction
+// Scored sessions: overall accuracy, average and best reaction time (reaction
 // drills only; brain drills include thinking time, so they're listed
-// separately), and a row per scored drill.
-// Cone mode: drills completed, cues called, and time, plus a row per drill.
+// separately), and a row per drill.
+// Sessions with nothing scored (Breathing only, Rehearse only): drills done
+// and time, plus a row per drill.
 
 import { esc } from '../lib/text.js';
 import { LEVELS } from './readiness.js';
@@ -29,20 +30,20 @@ function row(name, detail, sub = '') {
   return `<li><span class="row__name">${name}${sub ? `<small>${sub}</small>` : ''}</span><span class="row__val">${detail}</span></li>`;
 }
 
-export function renderSummary(el, { results, settings, totalMs, readiness = {}, seed }) {
-  const cone = settings.mode === 'cones';
-  const minutes = Math.round(totalMs / 60000 * 2) / 2;
-  const meta = `${cone ? 'Cones' : 'Tap'} · ${settings.length[0].toUpperCase()}${settings.length.slice(1)} · ${
+export function renderSummary(el, { title, results, settings, totalMs, readiness = {}, seed }) {
+  // Whole minutes, or halves under 2 minutes (matches the menus).
+  const m = totalMs / 60000;
+  const minutes = m < 2 ? Math.round(m * 2) / 2 : Math.round(m);
+  const meta = `${settings.length[0].toUpperCase()}${settings.length.slice(1)} · ${
     settings.difficulty === 'hard' ? 'Hard' : 'Normal'} · ${minutes} min`;
 
   let tiles, rows, note = '';
 
-  // Cone mode (or a Tap session with nothing scored) shows what was done, not accuracy.
-  if (cone || !results.some((r) => r.trials)) {
-    const cueCount = results.reduce((a, r) => a + (r.cues ?? r.targets ?? 0), 0);
-    tiles = tile(results.length, '', 'drills done') + tile(cueCount, '', 'cues called') + tile(minutes, 'min', 'warm-up');
-    rows = results.map((r) => row(r.name,
-      r.cues != null ? `${r.cues} cues` : r.targets != null ? `${r.targets} targets` : DONE)).join('');
+  // Nothing scored (breathing, visualization): show what was done, not accuracy.
+  if (!results.some((r) => r.trials)) {
+    const targets = results.reduce((a, r) => a + (r.targets ?? 0), 0);
+    tiles = tile(results.length, '', 'drills done') + (targets ? tile(targets, '', 'eye targets') : '') + tile(minutes, 'min', 'warm-up');
+    rows = results.map((r) => row(r.name, r.targets != null ? `${r.targets} targets` : DONE)).join('');
   } else {
     const scored = results.filter((r) => r.trials);
     // Headline reaction times come from the reaction drills only (brain drills include thinking time).
@@ -56,7 +57,8 @@ export function renderSummary(el, { results, settings, totalMs, readiness = {}, 
     tiles = tile(pct(correct, trials), '%', 'accuracy') + tile(sec(avgRt), avgRt == null ? '' : 's', 'avg reaction') + tile(sec(best), best == null ? '' : 's', 'best reaction');
 
     rows = results.map((r) => {
-      if (!r.trials) return row(r.name, DONE);
+      if (!r.trials) return row(r.name, r.targets != null ? `${r.targets} targets` : DONE);
+      if (r.longest != null) return row(r.name, `${pct(r.correct, r.trials)}%`, `Longest ${r.longest} · ${r.correct}/${r.trials} sequences`);
       const misses = [r.misses && `${r.misses} slow`, r.wrong && `${r.wrong} wrong`, r.falseAlarms && `${r.falseAlarms} on red`]
         .filter(Boolean).join(' · ');
       return row(r.name, `${pct(r.correct, r.trials)}%${r.rtMs == null ? '' : ` · ${sec(r.rtMs)} s`}`, `${r.correct}/${r.trials}${misses ? ` · ${misses}` : ''}`);
@@ -80,7 +82,7 @@ export function renderSummary(el, { results, settings, totalMs, readiness = {}, 
   el.innerHTML = `
     <div class="sum">
       <div class="sum__top"><p class="sum__kicker">Session complete</p>${SUM_LOGO}</div>
-      <h2 class="sum__title">GAME READY</h2>
+      <h2 class="sum__title">${esc(title)}</h2>
       <p class="sum__meta">${meta}</p>
       ${head ? `<div class="head">${head}</div>` : ''}
       <div class="tiles">${tiles}</div>

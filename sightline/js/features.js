@@ -2,11 +2,11 @@
 // off on the live site until approved. Set to true to turn on everywhere.
 
 export const FEATURES = {
-  coneDrill: true,   // approved: on for everyone
+  newDrills: 'preview',   // FOCUS: Physiological Sigh, 4-7-8 Breathing, Memory Sequence
 };
 
 // The live site's address(es). Anything else (preview links, localhost) is a preview.
-export const LIVE_HOSTS = ['sightline-psi.vercel.app'];
+const LIVE_HOSTS = ['sightline-psi.vercel.app'];
 
 export function isOn(name, { host = globalThis.location?.hostname ?? '', search = globalThis.location?.search ?? '' } = {}) {
   const v = FEATURES[name];

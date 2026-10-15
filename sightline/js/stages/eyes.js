@@ -1,7 +1,7 @@
 // Activate pillar: Smooth Pursuit (follow a moving dot), Saccade Jumps
 // (targets pop up anywhere on screen) and Gaze Stabilization (eyes stay on a
-// letter while the head moves). Eyes only, no scoring. Cone mode just draws
-// everything bigger. All randomness comes from the session (ctx.session).
+// letter while the head moves). Eyes only, no scoring. All randomness comes
+// from the session (ctx.session).
 
 import { howTo, countdown, animate } from './common.js';
 import { tone } from '../lib/audio.js';
@@ -16,9 +16,9 @@ function field(el) {
   return { cx: r.width / 2, cy: r.height / 2, ax: r.width / 2 - dot * 0.75, ay: r.height / 2 - dot * 0.75 };
 }
 
-function board(el, settings, extra = '') {
+function board(el, extra = '') {
   el.innerHTML = `
-    <div class="eyes eyes--${settings.mode}">
+    <div class="eyes">
       <div class="eyes__center" aria-hidden="true"></div>
       ${extra}
     </div>`;
@@ -52,7 +52,7 @@ export const pursuit = {
     });
 
     const hard = settings.difficulty === 'hard';
-    const root = board(el, settings, '<div class="eyes__dot"></div>');
+    const root = board(el, '<div class="eyes__dot"></div>');
     const dot = root.querySelector('.eyes__dot');
     const f0 = field(root);
     dot.style.transform = `translate(${f0.cx}px, ${f0.cy}px) translate(-50%, -50%)`;
@@ -96,7 +96,7 @@ export const saccades = {
     });
 
     const hard = settings.difficulty === 'hard';
-    const root = board(el, settings, '<div class="eyes__target" hidden><span></span></div>');
+    const root = board(el, '<div class="eyes__target" hidden><span></span></div>');
     const target = root.querySelector('.eyes__target');
     const label = target.querySelector('span');
     await hold(() => countdown(ctx, root, 'GET SET'));
@@ -137,7 +137,7 @@ export const gaze = {
     const beatMs = hard ? 650 : 1000;
     const letterMs = hard ? 1800 : 2600;
     el.innerHTML = `
-      <div class="gaze gaze--${settings.mode}" data-axis="h">
+      <div class="gaze" data-axis="h">
         <p class="gaze__dir"></p>
         <div class="gaze__field">
           <i class="gaze__beat gaze__beat--a"></i>

@@ -1,6 +1,7 @@
 // Rotating wording for the breathing screens. The breathing patterns never
-// change (box 4-4-4-4 for Settle; power breaths + one steady breath for Lock
-// In); only the words around them do, so each session reads a little fresh.
+// change (box 4-4-4-4; physiological sigh; 4-7-8; power breaths + one steady
+// breath for Lock In); only the words around them do, so each session reads
+// a little fresh.
 
 import { spaced } from '../lib/rng.js';
 
@@ -18,6 +19,18 @@ const SETTLE_TIPS = {
   out: ['Out through your mouth', 'Let it all go', 'Slow and long', 'Empty out', 'Long exhale'],
   rest: ['Pause', 'Stay loose', 'Still', 'Rest here', 'Wait for it'],
 };
+
+const SIGH_INTRO = [
+  'Two breaths in through the nose,<br>one long breath out.',
+  'Fill up, top it off,<br>then let it all go slowly.',
+  'The fastest way to calm down.<br>In, in again, long out.',
+];
+
+const FOURSEVEN_INTRO = [
+  'In for 4, hold for 7, out for 8.<br>Let the long exhale slow you down.',
+  'Slow it all down.<br>In for 4, hold 7, out for 8.',
+  'Quiet breath in, steady hold,<br>long breath out.',
+];
 
 const LOCKIN_INTRO = [
   'Quick, sharp breaths.<br>In through the nose, out through the mouth.',
@@ -40,6 +53,8 @@ export function breathingText(rng) {
   const tips = Object.fromEntries(Object.entries(SETTLE_TIPS).map(([k, list]) => [k, spaced(rng, list, { max: 1 })]));
   return {
     settleIntro: rng.pick(SETTLE_INTRO),
+    sighIntro: rng.pick(SIGH_INTRO),
+    fourSevenIntro: rng.pick(FOURSEVEN_INTRO),
     lockInIntro: rng.pick(LOCKIN_INTRO),
     lockInSteady: rng.pick(LOCKIN_STEADY),
     lockInFinal: rng.pick(LOCKIN_FINAL),

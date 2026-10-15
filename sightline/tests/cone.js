@@ -1,14 +1,14 @@
-// Cone Drill tests (run by tests/run.js).
+// MOVE tests: the Cone Drill engine, Quick Start and Signals Only (run by tests/run.js).
 
+import { readFileSync } from 'node:fs';
 import { test, assert } from './harness.js';
 import { planDrill, GRID_SPOTS } from '../js/cone/plan.js';
 import {
   normalize, validate, coneColors, intervalMs, CONE_COLORS, DIRECTIONS, DIRECTION_PRESETS, OPPOSITE,
-  SPEEDS, JITTER, FAKE_RATES, CUE_TYPES, MIN_CONES, MAX_CONES,
+  SPEEDS, JITTER, FAKE_RATES, CUE_TYPES, MIN_CONES, MAX_CONES, quickStart, normalizeSignals,
 } from '../js/cone/config.js';
 import { CUES } from '../js/cone/cues/index.js';
 import { coneAngles } from '../js/cone/layout.js';
-import { isOn } from '../js/features.js';
 import { createRng } from '../js/lib/rng.js';
 import { coneSession } from '../js/cone/run.js';
 
@@ -231,11 +231,6 @@ test('Each drill feels different: first sets vary across 200 runs', () => {
   assert(firsts.size > 190, `only ${firsts.size} different first sets`);
 });
 
-test('Feature flag: Cone Drill is on everywhere (approved)', () => {
-  for (const host of ['sightline-psi.vercel.app', 'sightline-git-feature-cone-drill-crosby-aos.vercel.app', 'localhost']) {
-    assert(isOn('coneDrill', { host, search: '' }), `hidden on ${host}`);
-  }
-});
 
 test('Cone layout puts arrow cones in their directions', () => {
   const s = normalize({ cueType: 'arrows', directions: DIRECTION_PRESETS[8], cones: 8 });
@@ -249,4 +244,43 @@ test('A Cone Drill session is only the Cone Drill — no breathing or other dril
     assert(steps.map((st) => st.id).join() === 'conedrill', `steps were ${steps.map((st) => st.id)}`);
     assert(steps[0].durationMs === plan.totalMs && totalMs === plan.totalMs, 'drill time wrong');
   }
+});
+
+// ---- MOVE presets ------------------------------------------------------------
+
+test('MOVE Quick Start: 4 cones, colors, 5 yd, medium pace, 3 sets — and it plans a full drill', () => {
+  const q = quickStart({ sound: 'off', callouts: true });
+  assert(q.cueType === 'colors' && q.cones === 4 && q.distance === 5 && q.speed === 'medium' && q.sets === 3, 'preset changed');
+  assert(q.sound === 'off' && q.callouts === true, 'Quick Start should keep the athlete’s sound choice');
+  assert(validate(q).ok, 'Quick Start must always be valid');
+  const plan = planDrill(q, 1);
+  assert(plan.sets.length === 3 && plan.sets.every((st) => goKeys(st).length === 10), 'Quick Start should be 3 sets of 10');
+});
+
+test('MOVE Signals Only: arrows only, no cones to place, any 2–8 directions', () => {
+  const rng = createRng('signals');
+  for (let i = 0; i < 300; i++) {
+    const dirs = rng.shuffle(DIRECTIONS.map((d) => d.id)).slice(0, rng.int(2, 8));
+    const s = normalizeSignals({ cueType: 'colors', directions: dirs, cones: 7 });
+    assert(s.cueType === 'arrows', 'Signals Only must use arrows');
+    assert(s.cones === s.directions.length, 'one target per direction');
+    assert(validate(s).ok && validate(s).warnings.length === 0, `setup should be clean: ${validate(s).warnings}`);
+    const plan = planDrill(s, i);
+    for (const st of plan.sets) for (const e of st.events) {
+      if (e.face.kind !== 'hold') assert(e.face.kind === 'arrow' && s.directions.includes(e.face.dir), 'non-arrow or unselected cue');
+    }
+  }
+  assert(normalizeSignals().directions.join() === 'F,R,B,L', 'default: 4 directions');
+});
+
+test('No MOVE screen asks for a tap during a set', () => {
+  const src = (f) => readFileSync(new URL(`../js/cone/${f}`, import.meta.url), 'utf8');
+  for (const f of ['run.js', 'render.js', ...['arrow', 'color', 'mixed', 'number', 'index'].map((c) => `cues/${c}.js`)]) {
+    const code = src(f);
+    assert(!/<button|ready\(|pointerdown/.test(code), `${f} asks for input during the drill`);
+  }
+  // The only listener during a drill: tapping the rest screen pauses (allowed).
+  const listeners = [...src('run.js').matchAll(/addEventListener\('(\w+)', (\w+)/g)].map((m) => `${m[1]}:${m[2]}`);
+  assert(listeners.join() === 'click:onTap' && /onTap = \(\) => document\.getElementById\('btn-pause'\)\?\.click\(\)/.test(src('run.js')),
+    `unexpected drill listeners: ${listeners}`);
 });

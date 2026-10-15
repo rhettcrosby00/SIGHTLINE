@@ -62,6 +62,9 @@
   --accent-ink: #10120D;      /* text on accent */
   --accent-text: #3F5C00;     /* accent used as text (lime itself fails contrast on light) */
   --accent-border: transparent;
+  --move: #22D3EE;            /* MOVE side tone (FOCUS uses the brand lime) */
+  --move-ink: #10120D;
+  --move-text: #0B5F6E;
   --good: #0B7A4B;            /* correct / success text */
   --bad: #B8321C;             /* wrong / error text */
   --warn-bg: #FFF4C2;
@@ -76,7 +79,7 @@
   --cue-muted: #8E9384;
   --cue-accent: #B7FF00;
 
-  /* ---- Cone colors: pure and true, shared by Game Ready and Cone Drill ---- */
+  /* ---- Cone colors: pure and true, shared by FOCUS cues and MOVE cones ---- */
   --cone-red: #ff4d2e;
   --cone-blue: #2f7bff;
   --cone-green: #12c48b;
@@ -88,6 +91,7 @@
   :root:not([data-appearance="light"]):not([data-appearance="outdoor"]) {
     --bg: #0A0B08; --surface: #121410; --raised: #191C15; --line: #272B21; --line-strong: #F2F4EC;
     --text: #F2F4EC; --muted: #A2A895; --accent: #B7FF00; --accent-ink: #0A0B08; --accent-text: #B7FF00;
+    --move: #22D3EE; --move-ink: #0A0B08; --move-text: #22D3EE;
     --good: #3DDC97; --bad: #FF6B52; --warn-bg: #2A2410; --warn-text: #FFD60A;
     --overlay: rgba(10, 11, 8, 0.96); --scrim: rgba(0, 0, 0, 0.6);
     color-scheme: dark;
@@ -96,6 +100,7 @@
 :root[data-appearance="dark"] {
   --bg: #0A0B08; --surface: #121410; --raised: #191C15; --line: #272B21; --line-strong: #F2F4EC;
   --text: #F2F4EC; --muted: #A2A895; --accent: #B7FF00; --accent-ink: #0A0B08; --accent-text: #B7FF00;
+  --move: #22D3EE; --move-ink: #0A0B08; --move-text: #22D3EE;
   --good: #3DDC97; --bad: #FF6B52; --warn-bg: #2A2410; --warn-text: #FFD60A;
   --overlay: rgba(10, 11, 8, 0.96); --scrim: rgba(0, 0, 0, 0.6);
   color-scheme: dark;
@@ -104,10 +109,15 @@
 :root[data-appearance="outdoor"] {
   --bg: #FFFFFF; --surface: #FFFFFF; --raised: #F0F0F0; --line: #000000; --line-strong: #000000; --line-w: 2px;
   --text: #000000; --muted: #262626; --accent: #B7FF00; --accent-ink: #000000; --accent-text: #000000;
-  --accent-border: #000000; --good: #00592F; --bad: #A3200B; --warn-bg: #FFE14D; --warn-text: #000000;
+  --accent-border: #000000; --move: #22D3EE; --move-ink: #000000; --move-text: #000000; --good: #00592F; --bad: #A3200B; --warn-bg: #FFE14D; --warn-text: #000000;
   --overlay: rgba(255, 255, 255, 0.98); --scrim: rgba(0, 0, 0, 0.5);
   color-scheme: light;
 }
+
+/* Side identity: FOCUS wears the brand lime, MOVE a cool cyan. Same system,
+   only the accent tone changes, so athletes always know which side they're on. */
+:root, [data-side="focus"] { --side: var(--accent); --side-ink: var(--accent-ink); --side-text: var(--accent-text); }
+[data-side="move"] { --side: var(--move); --side-ink: var(--move-ink); --side-text: var(--move-text); }
 
 @media (prefers-reduced-motion: reduce) {
   :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; --slide: 0px; }

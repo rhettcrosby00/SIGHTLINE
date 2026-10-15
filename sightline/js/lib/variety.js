@@ -5,7 +5,7 @@
 // random within themselves.
 
 const KEY = 'sightline.variety.v1';
-export const KEEP_SESSIONS = 4;
+const KEEP_SESSIONS = 4;
 
 function defaultStorage() {
   try {

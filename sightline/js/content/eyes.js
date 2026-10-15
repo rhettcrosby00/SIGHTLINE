@@ -2,7 +2,7 @@
 
 import { spaced, dist } from '../lib/rng.js';
 
-export const PATH_IDS = ['horizontal', 'vertical', 'diag-down', 'diag-up', 'circle', 'figure-8'];
+const PATH_IDS = ['horizontal', 'vertical', 'diag-down', 'diag-up', 'circle', 'figure-8'];
 
 // Smooth Pursuit: a fresh mix of paths, speeds and directions each session.
 export function pursuitPlan(rng) {

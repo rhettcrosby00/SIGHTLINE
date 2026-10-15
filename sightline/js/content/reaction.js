@@ -5,7 +5,7 @@
 import { CUES } from '../lib/colors.js';
 import { spaced, binary, dist } from '../lib/rng.js';
 
-export const SIDES = ['front', 'right', 'back', 'left'];
+const SIDES = ['front', 'right', 'back', 'left'];
 
 // Gap between cues: 0.8–1.6 s, shorter on Hard, so the rhythm can't be guessed.
 export const GAP_MS = [800, 1600];
@@ -14,27 +14,35 @@ export function gaps(rng) {
   return (hard) => rng.range(GAP_MS[0], GAP_MS[1]) * (hard ? HARD_GAP : 1);
 }
 
-// Color Call: a color (spaced rule); in Cone mode about half are arrows.
-export function colorCallStream(rng, { cone }) {
+// Color Call: a color (spaced rule).
+export function colorCallStream(rng) {
   const color = spaced(rng, CUES, { key: (c) => c.id });
-  return () => ({ color: color().id, form: cone && rng.chance(0.5) ? 'arrow' : 'fill' });
+  return () => ({ color: color().id });
 }
 
 // Go / No-Go: about 65% go, at most 3 go or 2 no-go in a row.
-// Cone mode adds an arrow whose side follows the spaced rule.
 export function goNoGoStream(rng) {
   const go = binary(rng, { p: 0.65, maxTrue: 3, maxFalse: 2 });
-  const side = spaced(rng, SIDES);
-  return () => ({ go: go(), side: side() });
+  return () => ({ go: go() });
+}
+
+// Memory Sequence: each round is a fresh sequence of colors. Inside a
+// sequence the same color never shows twice in a row (spaced rule), so
+// every flash is a clear new step.
+export function memoryStream(rng) {
+  return (length) => {
+    const color = spaced(rng, CUES, { key: (c) => c.id });
+    return Array.from({ length }, () => color().id);
+  };
 }
 
 // Stroop: a color word in a different ink. The word is never the ink color.
-// Besides the other cone colors, words include non-cone colors, which gives
+// Besides the other cue colors, words include colors that are never cues, which gives
 // 4 inks × 13 words = 52 pairs. No pair repeats within a session. Inks come
 // in shuffled blocks of all four (a block never starts with the ink that
 // ended the last one), so the same ink is never back-to-back and never more
 // than 2 in any 5 — all the way to the 52nd. Returns null after that.
-export const STROOP_EXTRA_WORDS = ['PURPLE', 'ORANGE', 'PINK', 'BROWN', 'WHITE', 'GRAY', 'GOLD', 'BLACK', 'TEAL', 'NAVY'];
+const STROOP_EXTRA_WORDS = ['PURPLE', 'ORANGE', 'PINK', 'BROWN', 'WHITE', 'GRAY', 'GOLD', 'BLACK', 'TEAL', 'NAVY'];
 export const STROOP_WORDS = [...CUES.map((c) => c.label), ...STROOP_EXTRA_WORDS];
 export const STROOP_PAIRS = CUES.flatMap((ink) =>
   STROOP_WORDS.filter((w) => w !== ink.label).map((word) => ({ ink: ink.id, word })));

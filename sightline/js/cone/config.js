@@ -56,7 +56,7 @@ export const REVERSE_RATE = 0.2;   // share of eligible arrow cues shown as "rev
 export const COUNTDOWN_MS = 3000;
 export const DISTANCE_YD = [3, 10];
 
-export const DEFAULT_SETUP = {
+const DEFAULT_SETUP = {
   cueType: 'colors',
   cones: 4,
   coloredCones: true,
@@ -78,6 +78,16 @@ export const DEFAULT_SETUP = {
   callouts: false,
   distance: 5,
 };
+
+// MOVE presets.
+//   Quick Start: 4 cones, colors, 5 yd, medium pace, 3 sets of 10. Fixed, so
+//   it's always one tap away; sound follows the athlete's custom setup.
+//   Signals Only: arrows with no cones. Cut or shuffle the way it points.
+const QUICK_START = {
+  cueType: 'colors', cones: 4, coloredCones: false, speed: 'medium', setMode: 'reps', reps: 10, sets: 3,
+  restSec: 30, position: 'center', display: 'hold', fakes: 'off', reverse: false, distance: 5,
+};
+const SIGNALS_DEFAULT = { cueType: 'arrows', directions: ['L', 'R', 'F', 'B'] };
 
 const clamp = (v, [lo, hi]) => Math.min(hi, Math.max(lo, v));
 
@@ -118,6 +128,23 @@ export function normalize(raw = {}) {
   s.sound = s.sound === 'off' ? 'off' : 'on';
   s.callouts = !!s.callouts;
   s.distance = clamp(Math.round(Number(s.distance) || 5), DISTANCE_YD);
+  return s;
+}
+
+// Full drill time: sets of cues (or timed sets) plus countdowns and rests.
+export function drillMs(s) {
+  const per = s.setMode === 'timed' ? s.timedSec * 1000 : s.reps * intervalMs(s);
+  return s.sets * (per + COUNTDOWN_MS) + (s.sets - 1) * s.restSec * 1000;
+}
+
+export function quickStart(custom = {}) {
+  return normalize({ ...QUICK_START, sound: custom.sound, callouts: custom.callouts });
+}
+
+// Signals Only: always arrows, one "cone" per direction (there are no cones).
+export function normalizeSignals(raw = {}) {
+  const s = normalize({ ...SIGNALS_DEFAULT, ...raw, cueType: 'arrows' });
+  s.cones = s.directions.length;
   return s;
 }
 

@@ -21,7 +21,7 @@ export function coneAngles(setup) {
   return targets.map((t, i) => ({ target: t, angle: angles[i] }));
 }
 
-export function layoutSvg(setup) {
+function layoutSvg(setup) {
   const W = 320;
   const H = 360;
   const cx = W / 2;
@@ -70,23 +70,25 @@ export function layoutSvg(setup) {
     </svg>`;
 }
 
-export function renderLayout(el, setup) {
+// Quick Start uses a fixed distance and goes back to the MOVE screen;
+// Custom setup can adjust the distance and goes back to its setup.
+export function renderLayout(el, setup, { preset = false } = {}) {
   const n = CUES[setup.cueType].targets(setup).length;
   el.innerHTML = `
     <div class="clay">
       <header class="nav">
-        <button type="button" class="nav__back" data-nav="setup">${icon('chevron-left', { size: 22 })}Setup</button>
+        <button type="button" class="nav__back" data-nav="${preset ? 'menu' : 'setup'}">${icon('chevron-left', { size: 22 })}${preset ? 'Move' : 'Setup'}</button>
         <h2 class="nav__title">Set out ${n} cones</h2>
       </header>
       <p class="clay__how">Place them around your start spot like this. Stand the phone up facing you, where you can see it from every cone.</p>
       ${layoutSvg(setup)}
-      <section class="group"><div class="group__rows">
+      ${preset ? `<p class="clay__how">Each cone ${setup.distance} yards from your start spot.</p>` : `<section class="group"><div class="group__rows">
         <div class="setting setting--stack">
           <span class="setting__label">Distance from start</span>
           <div class="slider"><input type="range" data-range="distance" min="${DISTANCE_YD[0]}" max="${DISTANCE_YD[1]}" step="1" value="${setup.distance}" aria-label="Distance from start">
           <output data-out="distance">${setup.distance} yd</output></div>
         </div>
-      </div></section>
+      </div></section>`}
     </div>
     <div class="screen__foot">
       <button type="button" class="btn btn--primary btn--block" data-nav="start">Cones set</button>

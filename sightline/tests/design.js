@@ -48,6 +48,7 @@ const PAIRS = [
   ['muted', 'bg', 4.5], ['muted', 'surface', 4.5], ['muted', 'raised', 4.5],
   ['accent-ink', 'accent', 4.5],
   ['accent-text', 'bg', 4.5], ['accent-text', 'surface', 4.5],
+  ['move-ink', 'move', 4.5], ['move-text', 'bg', 4.5], ['move-text', 'surface', 4.5],
   ['good', 'bg', 4.5], ['good', 'surface', 4.5],
   ['bad', 'bg', 4.5], ['bad', 'surface', 4.5],
   ['warn-text', 'warn-bg', 4.5],
