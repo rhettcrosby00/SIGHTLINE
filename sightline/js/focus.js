@@ -14,26 +14,29 @@ import { unlock as unlockAudio, buzz } from './lib/audio.js';
 import { icon } from './lib/icons.js';
 import { isOn } from './features.js';
 import { createSeen } from './lib/seen.js';
+import { createRoutineStore, routineSeconds } from './myroutine.js';
 
 const $ = (id) => document.getElementById(id);
 
 // show(name, {back}) switches screens; dev = { speed, autoReady, seed, only }
 // from the URL; onRun(sessionId) fires when a session starts (for "Run last");
 // leaderboard (optional) gets the score after each finished session.
-export function initFocus({ show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {}, leaderboard = null }) {
+export function initFocus({ show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {}, onRoutine = () => {}, leaderboard = null }) {
   const hubEl = $('focus-hub');
   const flags = { newDrills: isOn('newDrills') };
   const seen = createSeen();   // drills this phone has run, for Auto instructions
+  const routines = createRoutineStore();   // My Routine, saved on this phone
   let from = 'start';   // where Done (or quitting) goes back to
 
-  // Whole minutes, or halves under 2 minutes ("1.5 min").
+  // Whole minutes, or halves under 2 minutes ("1.5 min"). My Routine shows seconds.
   const minutes = (id) => {
-    const m = totalMinutes(id, getSettings().length);
+    const m = totalMinutes(id, getSettings().length, routineSeconds(routines.get()));
     return m < 2 ? Math.round(m * 2) / 2 : Math.round(m);
   };
+  const routineLabel = () => `${Math.round(routineSeconds(routines.get()))} s`;
 
   function renderHub() {
-    const parts = FOCUS_SESSIONS.filter((s) => s.id !== 'game' && !s.extra);
+    const parts = FOCUS_SESSIONS.filter((s) => s.id !== 'game' && !s.extra && !s.timedByRoutine);
     const row = (s) => `
           <button type="button" class="hub-row" data-run="${s.id}">
             <span class="hub-row__text"><strong>${s.title}</strong><small>${s.short}</small></span>
@@ -46,6 +49,15 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
         <h2 class="nav__title">Eyes · Mind · Breath</h2>
         <p class="cset__sub">Hold your phone. Every answer is a tap.</p>
       </header>
+      <section class="group"><h3 class="group__title">My Routine</h3><div class="group__rows">
+        <button type="button" class="hub-row" data-run="myroutine">
+          <span class="hub-row__text"><strong>Run My Routine</strong><small>Breath, cue word, quiet eye, go. Before you compete.</small></span>
+          <span class="hub-row__meta">${routineLabel()}</span>${icon('play')}
+        </button>
+        <button type="button" class="hub-row" data-nav="routine">
+          <span class="hub-row__text"><strong>Build My Routine</strong><small>Pick your breath, imagery line and quiet-eye hold</small></span>${icon('chevron-right')}
+        </button>
+      </div></section>
       <section class="group"><h3 class="group__title">One part</h3><div class="group__rows">
         ${parts.map(row).join('')}
       </div></section>
@@ -69,6 +81,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     if (b.dataset.run) start(b.dataset.run, { from: 'focus' });
     else if (b.dataset.nav === 'home') show('start', { back: true });
     else if (b.dataset.nav === 'options') onOptions();
+    else if (b.dataset.nav === 'routine') onRoutine();
   });
 
   // Runs one FOCUS session. Call from a tap (sound unlock).
@@ -79,21 +92,37 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     unlockAudio(settings.sound === 'on');   // must happen inside the tap
     onRun(meta.id);
     // Every session is freshly shuffled; content from the last few sessions rests.
-    const session = createSession({
-      sessionId: meta.id, settings, seed: dev.seed, recent: dev.seed ? [] : variety.recent(), flags, seen: seen.get(),
+    const build = (state, seed) => createSession({
+      sessionId: meta.id, settings, seed, recent: dev.seed ? [] : variety.recent(), flags, seen: seen.get(),
+      state, routine: routines.get(),
     });
-    const steps = buildRoutine(session).filter((s) => !dev.only || dev.only.includes(s.id));
-    session.scorer = createFocusScorer();   // leaderboard points, cue by cue
+    let session = build('ready', dev.seed);
 
-    // Readiness + cue word before; readiness again after Game Ready. Not timed, not saved.
+    // Check-in before (how you feel + cue word): it shapes the session, so the
+    // session is rebuilt from the same seed with that state. Asked again after
+    // Game Ready. Shown on the summary only; not saved.
     const readiness = { before: null, after: null };
     if (meta.check && !dev.autoReady) {
       show('check');
-      const pick = await askBefore($('check'), { cue: settings.cue, suggestions: session.content.cueSuggestions });
-      readiness.before = pick.level;
+      const pick = await askBefore($('check'), {
+        cue: settings.cue, skill: session.content.cueSkill, energy: session.content.cueSuggestions,
+        askSport: !settings.sportAsked, sport: settings.sport, position: settings.position,
+      });
+      readiness.before = pick.skipped ? null : pick.state;
       settings.cue = pick.cue;
       updateSetting('cue', pick.cue);
+      if (!settings.sportAsked) {
+        Object.assign(settings, { sport: pick.sport, position: pick.position, sportAsked: true });
+        updateSetting('sport', pick.sport);
+        updateSetting('position', pick.position);
+        updateSetting('sportAsked', true);
+      }
+      session = build(pick.state, session.seed);
+    } else if (dev.state) {
+      session = build(dev.state, session.seed);
     }
+    const steps = buildRoutine(session).filter((s) => !dev.only || dev.only.includes(s.id));
+    session.scorer = createFocusScorer();   // leaderboard points, cue by cue
 
     $('screen-session').dataset.side = 'focus';
     show('session');
@@ -102,6 +131,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     seen.add(results.map((r) => r.id));             // Auto instructions get shorter as drills get familiar
     if (!completed) { back(); return; }
     buzz([60, 80, 120]);   // session complete
+    if (meta.timedByRoutine) { back(); return; }   // My Routine on its own: straight back, nothing to sum up
 
     if (meta.check === 'both' && !dev.autoReady) {
       show('check');
@@ -111,7 +141,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
 
     const totalMs = steps.reduce((a, s) => a + s.durationMs + (s.introMs ?? 0), 0);   // instructions included
     renderSummary($('summary'), { title: meta.title, results, settings, totalMs, readiness, seed: session.seed });
-    if (leaderboard) {
+    if (leaderboard && !meta.unscored) {
       const score = focusScore({ points: session.scorer.points, sessionId: meta.id, difficulty: settings.difficulty });
       const streak = session.scorer.bestStreak;
       await leaderboard.afterSession({
@@ -136,6 +166,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     openHub: () => { renderHub(); show('focus'); },
     renderHub,
     start,
+    routineLabel,
     minutes,
     title: (id) => sessionById[id]?.title ?? '',
   };

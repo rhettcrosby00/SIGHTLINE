@@ -1,6 +1,8 @@
-// Breathing screens: Box Breathing (settle), Physiological Sigh, 4-7-8, and
-// Lock In (energizing breaths + one steady finishing breath). A circle grows
-// and shrinks with each phase; the phase word and countdown sit inside it.
+// Breathing pacer: Box Breathing (settle), Cyclic Sigh, Resonance (6 a
+// minute), 4-7-8, Energize, and Lock In (energizing breaths + one steady
+// finishing breath). A circle grows and shrinks with each phase; each switch
+// also vibrates (in: one long pulse, out: two), so eyes can stay closed.
+// Phases are timed against the session clock, so a long pacer never drifts.
 
 import { cues } from '../lib/audio.js';
 import { esc } from '../lib/text.js';
@@ -60,6 +62,19 @@ function sighTimeline(durationMs, text) {
     });
 }
 
+// Resonance: about 6 breaths a minute, in for 4, out for 6.
+function resonanceTimeline(durationMs, text) {
+  return cycles(durationMs, 10 * SEC,
+    (ms) => ({ word: 'RESONANCE', sub: text.resonanceIntro, ms, from: SMALL, to: SMALL, count: 'secs', intro: true }),
+    (i, n) => {
+      const sub = `Breath ${i} of ${n} · in 4, out 6`;
+      return [
+        { word: 'BREATHE IN',  sub, ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs' },
+        { word: 'BREATHE OUT', sub, ms: 6 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs', showWord: i === n },
+      ];
+    });
+}
+
 // 4-7-8: in for 4, hold for 7, out for 8.
 function fourSevenTimeline(durationMs, text) {
   return cycles(durationMs, 19 * SEC,
@@ -74,7 +89,9 @@ function fourSevenTimeline(durationMs, text) {
     });
 }
 
-function lockInTimeline(durationMs, text) {
+// Energize and Lock In: quick power breaths, one steady breath, then done.
+// Energize (Flat days) ends READY; Lock In ends LOCKED IN with the cue word.
+function lockInTimeline(durationMs, text, { title = 'LOCK IN', intro = text.lockInIntro, done = 'LOCKED IN', final = text.lockInFinal } = {}) {
   const inMs = 1.5 * SEC;
   const outMs = 1 * SEC;
   const finalMs = (4 + 4 + 6) * SEC;
@@ -84,7 +101,7 @@ function lockInTimeline(durationMs, text) {
   const introMs = durationMs - finalMs - doneMs - breaths * (inMs + outMs);
 
   const phases = [{
-    word: 'LOCK IN', sub: text.lockInIntro,
+    word: title, sub: intro,
     ms: introMs, from: SMALL, to: SMALL, count: 'secs', intro: true,
   }];
   for (let i = 1; i <= breaths; i++) {
@@ -97,14 +114,47 @@ function lockInTimeline(durationMs, text) {
     { word: 'BREATHE IN',  sub: text.lockInSteady, ms: 4 * SEC, from: SMALL, to: BIG,   cue: 'inhale', count: 'secs' },
     { word: 'HOLD',        sub: text.lockInSteady, ms: 4 * SEC, from: BIG,   to: BIG,   cue: 'hold',   count: 'secs' },
     { word: 'BREATHE OUT', sub: text.lockInSteady, ms: 6 * SEC, from: BIG,   to: SMALL, cue: 'exhale', count: 'secs' },
-    { word: 'LOCKED IN',   sub: text.lockInFinal, ms: doneMs, from: BIG, to: BIG, cue: 'done', count: '', final: true, showWord: true },
+    { word: done,          sub: final, ms: doneMs, from: BIG, to: BIG, cue: 'done', count: '', final: true, showWord: true },
   );
   return phases;
 }
 
+const energizeTimeline = (durationMs, text) => lockInTimeline(durationMs, text, {
+  title: 'ENERGIZE', intro: `${text.energizeIntro}<br><small>Stop if you feel lightheaded.</small>`, done: 'READY', final: text.lockInFinal,
+});
+
+// One breath of each pattern, for My Routine (no intro).
+export function oneBreath(kind) {
+  const text = { tip: () => '', settleIntro: '', sighIntro: '', resonanceIntro: '', lockInSteady: 'One steady breath', lockInFinal: '', lockInIntro: '', energizeIntro: '' };
+  if (kind === 'box') return settleTimeline(16 * SEC + 6 * SEC, text).slice(1);
+  if (kind === 'resonance') return resonanceTimeline(10 * SEC + 6 * SEC, text).slice(1);
+  if (kind === 'energize') {
+    const sub = 'Power breaths';
+    return [1, 2, 3].flatMap((i) => [
+      { word: 'IN', sub, ms: 1.5 * SEC, from: SMALL, to: BIG, cue: 'power', count: String(i) },
+      { word: 'OUT', sub, ms: 1 * SEC, from: BIG, to: SMALL, count: String(i) },
+    ]);
+  }
+  return sighTimeline(10 * SEC + 6 * SEC, text).slice(1);   // one cyclic sigh
+}
+export const breathMs = (kind) => oneBreath(kind).reduce((a, p) => a + p.ms, 0);
+
 // ---- Player ----------------------------------------------------------------
 
-async function play({ el, sleep, now, settings }, phases, theme) {
+// Runs phases back to back against absolute times on the clock (start + the
+// phases so far), so small timer delays never add up: drift-free over minutes.
+export async function runPhases(phases, { now, sleep, onPhase = () => {} }) {
+  let end = now();
+  for (const ph of phases) {
+    const start = end;
+    end += ph.ms;
+    onPhase(ph, start);
+    await sleep(Math.max(0, end - now()));
+  }
+  return end;
+}
+
+export async function play({ el, sleep, now, settings }, phases, theme) {
   const cueWord = settings.cue ? esc(settings.cue) : '';
   el.innerHTML = `
     <div class="breathe breathe--${theme}">
@@ -138,19 +188,21 @@ async function play({ el, sleep, now, settings }, phases, theme) {
 
   try {
     raf = requestAnimationFrame(draw);
-    for (const ph of phases) {
-      phase = ph;
-      phaseStart = now();
-      word.textContent = ph.word;
-      sub.innerHTML = ph.sub;
-      if (ph.count !== 'secs') count.textContent = ph.count;
-      root.classList.toggle('is-intro', !!ph.intro);
-      root.classList.toggle('is-final', !!ph.final);
-      cueEl.hidden = !(ph.showWord && cueWord);
-      root.dataset.phase = ph.cue ?? '';
-      if (ph.cue) cues[ph.cue]();
-      await sleep(ph.ms);
-    }
+    await runPhases(phases, {
+      now, sleep,
+      onPhase(ph, start) {
+        phase = ph;
+        phaseStart = start;   // the planned start, so the circle stays on time too
+        word.textContent = ph.word;
+        sub.innerHTML = ph.sub;
+        if (ph.count !== 'secs') count.textContent = ph.count;
+        root.classList.toggle('is-intro', !!ph.intro);
+        root.classList.toggle('is-final', !!ph.final);
+        cueEl.hidden = !(ph.showWord && cueWord);
+        root.dataset.phase = ph.cue ?? '';
+        if (ph.cue) cues[ph.cue]();
+      },
+    });
   } finally {
     cancelAnimationFrame(raf);
   }
@@ -165,6 +217,14 @@ export const sigh = {
   run: (ctx) => play(ctx, sighTimeline(ctx.durationMs, ctx.session.content.breathing), 'settle'),
 };
 
+export const resonance = {
+  run: (ctx) => play(ctx, resonanceTimeline(ctx.durationMs, ctx.session.content.breathing), 'settle'),
+};
+
+export const energize = {
+  run: (ctx) => play(ctx, energizeTimeline(ctx.durationMs, ctx.session.content.breathing), 'lockin'),
+};
+
 export const breath478 = {
   run: (ctx) => play(ctx, fourSevenTimeline(ctx.durationMs, ctx.session.content.breathing), 'settle'),
 };
@@ -174,4 +234,4 @@ export const lockIn = {
 };
 
 // Exposed for checking that timelines fill their slot exactly.
-export const _timelines = { settleTimeline, sighTimeline, fourSevenTimeline, lockInTimeline };
+export const _timelines = { settleTimeline, sighTimeline, resonanceTimeline, fourSevenTimeline, energizeTimeline, lockInTimeline };

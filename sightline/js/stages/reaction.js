@@ -171,11 +171,12 @@ async function runTap(ctx, spec) {
   while (true) {
     const left = remaining();
     const prog = 1 - left / durationMs;
-    const base = spec.tapWindow * (hard ? 0.75 : 1) * ramp(prog);
+    // Pacing from the check-in: calmer when wired, snappier when flat.
+    const base = spec.tapWindow * (hard ? 0.75 : 1) * ramp(prog) * (session.pacing?.window ?? 1);
     const easy = finishing(left, base, hard);
     const gentle = easy ? FINISH_FACTOR : stats.trials < GENTLE_CUES ? GENTLE_FACTOR : 1;
     const windowMs = base * gentle;
-    const gap = gapMs(hard);
+    const gap = gapMs(hard) * (session.pacing?.gap ?? 1);
     if (left < gap + windowMs + 400) break;
 
     blank();

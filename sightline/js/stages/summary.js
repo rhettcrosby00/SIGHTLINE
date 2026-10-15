@@ -7,7 +7,7 @@
 // and time, plus a row per drill.
 
 import { esc } from '../lib/text.js';
-import { LEVELS } from './readiness.js';
+import { STATE_LABELS } from './readiness.js';
 
 // Small logo mark for result screens (white+lime on dark, black on light/outdoor).
 export const SUM_LOGO = `<img class="sum__logo on-dark" src="assets/logo/logo-mark.svg" alt="Sightline logo" width="272" height="242">
@@ -69,13 +69,13 @@ export function renderSummary(el, { title, results, settings, totalMs, readiness
     if (quickest) note = `Quickest drill today: <b>${quickest.name}</b> at ${sec(quickest.rtMs)} s. Lower is faster.`;
   }
 
-  // Headspace: cue word and the before → after readiness check.
+  // Headspace: cue word and the before → after check-in (Flat · Ready · Wired).
   const { before = null, after = null } = readiness;
-  const level = (n) => (n == null ? '—' : `${n} <small>${LEVELS[n - 1]}</small>`);
+  const level = (st) => (st == null ? '—' : STATE_LABELS[st]?.name ?? '—');
   const head = [
     settings.cue ? `<div class="head__item"><p class="head__label">Cue word</p><p class="head__value">${esc(settings.cue)}</p></div>` : '',
     before != null || after != null
-      ? `<div class="head__item"><p class="head__label">Readiness</p><p class="head__value">${level(before)} → ${level(after)}</p></div>`
+      ? `<div class="head__item"><p class="head__label">How you felt</p><p class="head__value">${level(before)} → ${level(after)}</p></div>`
       : '',
   ].join('');
 

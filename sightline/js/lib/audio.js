@@ -1,14 +1,24 @@
-// Gentle sound + vibration cues. Everything is a no-op when Sound is off or
-// the browser lacks support. Call unlock() from a tap (iOS needs a gesture).
+// Gentle sound + vibration cues. Call unlock() from a tap (iOS needs a gesture).
+//   Sound off: no tones or voice; vibration still works.
+//   Music mode ("Keep my music playing"): the app never starts audio at all, so
+//   the athlete's own music keeps playing; cues come as vibration and visuals.
+// Vibration needs a phone that supports it (Android). iPhone doesn't let web
+// apps vibrate, so there the screen carries every cue.
 
 let ctx = null;
 let enabled = false;
 let voiceOn = false;
+let musicMode = false;
+
+export function setMusicMode(on) { musicMode = !!on; }
+export const isMusicMode = () => musicMode;
+export const soundEnabled = () => enabled;   // tones and voice will play (Sound on, not music mode)
+const canVibrate = () => typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 
 // `voice`: also allow spoken callouts (speech synthesis), primed inside the tap.
 export function unlock(soundOn, { voice = false } = {}) {
-  enabled = soundOn;
-  voiceOn = soundOn && voice && 'speechSynthesis' in globalThis;
+  enabled = soundOn && !musicMode;
+  voiceOn = enabled && voice && 'speechSynthesis' in globalThis;
   if (voiceOn) {
     try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(' ')); } catch { voiceOn = false; }
   }
@@ -53,8 +63,8 @@ export function say(text) {
 
 export function buzz(pattern = 30) {
   // Browsers block vibration until the page has had a real tap.
-  if (!enabled || navigator.userActivation?.hasBeenActive === false) return;
-  try { navigator.vibrate?.(pattern); } catch { /* ignore */ }
+  if (!canVibrate() || navigator.userActivation?.hasBeenActive === false) return;
+  try { navigator.vibrate(pattern); } catch { /* ignore */ }
 }
 
 // Named cues used across the app.
@@ -65,10 +75,11 @@ export const cues = {
   correct: () => tone(988, { dur: 0.07, gain: 0.07 }),
   wrong:   () => { tone(196, { dur: 0.16, gain: 0.12 }); buzz(60); },
   block:   () => { tone(440, { dur: 0.12, gain: 0.1 }); setTimeout(() => tone(660, { dur: 0.18, gain: 0.1 }), 110); },
-  // Breathing
-  inhale: () => { tone(330, { toFreq: 494, dur: 0.6 }); buzz(40); },
-  exhale: () => { tone(494, { toFreq: 294, dur: 0.6 }); buzz([20, 60, 20]); },
+  // Breathing: each switch has its own vibration, so eyes can stay closed.
+  //   in = one long pulse · hold = one tap · out = two pulses
+  inhale: () => { tone(330, { toFreq: 494, dur: 0.6 }); buzz(70); },
+  exhale: () => { tone(494, { toFreq: 294, dur: 0.6 }); buzz([35, 90, 35]); },
   hold:   () => { tone(392, { dur: 0.25, gain: 0.1 }); buzz(15); },
-  power:  () => { tone(523, { toFreq: 659, dur: 0.18, gain: 0.14 }); },
+  power:  () => { tone(523, { toFreq: 659, dur: 0.18, gain: 0.14 }); buzz(25); },
   done:   () => { tone(523, { dur: 0.2 }); setTimeout(() => tone(784, { dur: 0.4 }), 180); buzz([40, 80, 80]); },
 };

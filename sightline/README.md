@@ -5,14 +5,29 @@ A pre-game visual reaction and cognitive warm-up for athletes, in two sides:
 **FOCUS: eyes, mind, breath.** The athlete holds the phone; every answer is a tap.
 "Game Ready" runs four pillars in 5, 8 or 10 minutes (instructions included, never more):
 
-1. **Regulate**: one breathing pattern, rotating (Box Breathing, Physiological Sigh; 4-7-8
-   behind the `newDrills` flag).
+1. **Regulate**: breathing, matched to the check-in (below). Ready: one rotating pattern (Box
+   Breathing, Cyclic Sigh, Resonance; 4-7-8 behind the `newDrills` flag). Wired: 2–3 cyclic
+   sighs, then 60–90 s of resonance breathing (in 4, out 6). Flat: a short sigh, then
+   energizing breaths.
 2. **Activate**: Smooth Pursuit, Saccade Jumps (not in Quick), Peripheral Flash.
-3. **Challenge**: Color Call, Go/No-Go.
-4. **Rehearse**: Visualization, then Lock In breathing. It always ends on something that
-   can't be failed, and every scored drill ends on a few easy cues.
+3. **Challenge**: Color Call, Go/No-Go. Cue timing is a little slower when Wired and quicker
+   when Flat.
+4. **Rehearse**: Visualization (scripts for the athlete's sport and position), then
+   **My Routine**. It always ends on something that can't be failed, and every scored drill
+   ends on a few easy cues.
 
-Each pillar can also run on its own. **Extras** (optional): Gaze Stabilization, Stroop, Quick
+**Check-in.** Before Game Ready: "How do you feel right now?" Flat · Ready · Wired, one tap,
+plus the cue word (skill words for their sport, energy words, or their own). The first time it
+also asks their sport and position. It asks again at the end; the before → after shows on the
+summary only and is never saved.
+
+**My Routine.** The athlete's own 20–40 s pre-performance routine: stand still, one breath,
+an optional imagery line, their cue word, quiet eye (eyes still on one dot for 2–3 s), then
+GO. Built on the FOCUS screen, saved on the phone only, and run as the last step of Game
+Ready or on its own with one tap from home.
+
+Each pillar can also run on its own (Breathing only, Eyes only with a standalone **Quiet Eye**
+drill, Reaction only, Rehearse only). **Extras** (optional): Gaze Stabilization, Stroop, Quick
 Math, Quick Questions, Memory Sequence. These are lab-style drills with weaker evidence for sport,
 so they're kept out of Game Ready. Instructions are **Auto** by default: the full how-to the
 first 3 times a phone runs a drill, then just the rule. How-to cards start on their own, so a
@@ -25,6 +40,10 @@ from distance, rep style (Out and back, First step, Cone to cone) and pace; betw
 athlete answers "Too fast / Just right / Too slow".
 
 A short summary follows each session. There are no accounts.
+
+**Keep my music playing** (Settings → Sound): the app plays no sound at all, so the athlete's
+own music never pauses. Cues come as vibration where the phone allows it, and on screen.
+iPhone doesn't let web apps vibrate.
 
 **Leaderboard**: after a session the athlete enters a name (or 3-letter
 initials) and the score joins one online board for everyone: All-time, Best session and This
@@ -103,7 +122,8 @@ sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 
 ## Saved on the phone
 
-- `sightline.settings.v1`: FOCUS options, theme, cue word
+- `sightline.settings.v1`: FOCUS options, theme, cue word, sport and position, music mode
+- `sightline.routine.v1`: My Routine (breath, imagery line, quiet-eye seconds)
 - `sightline.cone.v1` / `sightline.signals.v1`: MOVE custom setup / Signals Only setup
 - `sightline.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
 - `sightline.name.v1`, `sightline.lbqueue.v1`: last leaderboard name; scores waiting to post
@@ -161,23 +181,27 @@ Keep answers short (about 12 characters or fewer) so they fit on a button.
 |---|---|
 | `js/main.js` | Home, Settings, About, offline support |
 | `js/focus.js` | The FOCUS screen and session flow |
-| `js/plan.js` | FOCUS pillars, sessions, and minutes for each length |
+| `js/plan.js` | FOCUS pillars, sessions, minutes for each length, and the check-in's changes |
+| `js/myroutine.js`, `js/myroutine-ui.js` | My Routine: its parts and timing, the saved copy, the builder screen |
+| `js/content/sports.js`, `js/content/scripts.js` | Sports, positions, skill cue words, visualization scripts |
 | `js/routine.js` | Maps each FOCUS drill to the code that runs it |
 | `js/engine.js` | Runs the steps; progress bar, pause/quit, wake lock |
 | `js/stages/*.js` | One file per FOCUS drill group, plus `summary.js` |
 | `js/cone/ui.js` | The MOVE screen and drill flow |
 | `js/migrate.js` | Upgrades data saved by older versions |
 | `js/lib/colors.js` | The 4 FOCUS cue colors and their shapes |
-| `js/lib/audio.js` | Tones and vibration (off when Sound is off) |
+| `js/lib/audio.js` | Tones and vibration (tones off when Sound is off or music mode is on) |
 
 ## Testing shortcuts (add to the URL)
 
-- `?only=stroop,lockin` runs just those drills. IDs: `settle`, `sigh`, `breath478`, `pursuit`,
-  `saccades`, `gaze`, `peripheral`, `colorcall`, `gonogo`, `stroop`, `math`, `questions`,
-  `memory`, `visualize`, `lockin`.
+- `?only=stroop,lockin` runs just those drills. IDs: `settle`, `sigh`, `resonance`, `breath478`,
+  `energize`, `pursuit`, `saccades`, `gaze`, `peripheral`, `quieteye`, `colorcall`, `gonogo`,
+  `stroop`, `math`, `questions`, `memory`, `visualize`, `lockin`, `myroutine`.
+- `?state=wired` (or `flat`, `ready`) builds the session as if that check-in was picked; use it
+  with `?autoready=1`, which skips the check-in.
 - `?speed=20` fast-forwards time.
 - `?autostart=1` starts Game Ready; add `&session=regulate` (or `activate`, `challenge`,
-  `rehearse`) for one part. `?autostart=quick` (or `custom`, `signals`) starts a MOVE drill.
+  `rehearse`, `extras`, `myroutine`) for one part. `?autostart=quick` (or `custom`, `signals`) starts a MOVE drill.
 - `?autoready=1` skips the I'M READY taps on the how-to cards.
 - `?noguide=1` skips the first-run "How it works" guide.
 - `?sw=1` turns on offline caching on localhost. It is off there by default so edits show
