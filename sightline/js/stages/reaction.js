@@ -15,6 +15,8 @@
 import { howTo, countdown, mini } from './common.js';
 import { cueById } from '../lib/colors.js';
 import { tone, cues } from '../lib/audio.js';
+import { icon } from '../lib/icons.js';
+import { esc } from '../lib/text.js';
 
 const ROT = { front: 0, right: 90, back: 180, left: 270 };
 const GRID = ['green', 'red', 'blue', 'yellow'];   // 2×2 answer grid, reading order
@@ -120,7 +122,12 @@ async function runTap(ctx, spec) {
     }
   };
 
-  const say = (cls, text) => { fb.className = `rx__fb ${cls}`; fb.textContent = text; };
+  // Feedback line: a leading ✓ / ✗ becomes a check / x icon.
+  const say = (cls, text) => {
+    fb.className = `rx__fb ${cls}`;
+    const m = /^([✓✗]) (.*)$/.exec(text);
+    fb.innerHTML = m ? `${icon(m[1] === '✓' ? 'check' : 'x')}<span>${esc(m[2])}</span>` : esc(text);
+  };
   const clearFb = () => { fb.className = 'rx__fb'; fb.textContent = ''; };
   const blank = () => { cueBox.innerHTML = '<div class="rx__fix" aria-hidden="true"></div>'; };
 
@@ -145,10 +152,10 @@ async function runTap(ctx, spec) {
         answered = true;
         pad?.querySelectorAll('.is-hint').forEach((n) => n.classList.remove('is-hint'));
         if (trial.answer == null) {
-          if (resp == null) { say('is-ok', '✓ Nice — you held'); cues.correct(); }
+          if (resp == null) { say('is-ok', '✓ Held'); cues.correct(); }
           else { say('is-bad', 'Red means don’t touch'); cues.wrong(); }
         } else if (resp === trial.answer) {
-          say('is-ok', '✓ Nice'); cues.correct();
+          say('is-ok', '✓ Correct'); cues.correct();
         } else {
           say('is-bad', resp == null ? `It was ${trial.answerLabel}` : `That was ${trial.answerLabel}`); cues.wrong();
         }

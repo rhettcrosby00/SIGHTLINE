@@ -56,8 +56,8 @@ export function showGuide() {
         <h2 class="guide__title">${p.title}</h2>
         <div class="guide__body">${p.body}</div>
         <div class="guide__nav">
-          <button type="button" class="btn-ghost guide__skip">${last ? 'Back' : 'Skip'}</button>
-          <button type="button" class="btn-big guide__next">${last ? 'LET’S GO' : 'NEXT'}</button>
+          <button type="button" class="btn btn--secondary guide__skip">${last ? 'Back' : 'Skip'}</button>
+          <button type="button" class="btn btn--primary guide__next">${last ? 'Got it' : 'Next'}</button>
         </div>
       </div>`;
     overlay.querySelector('.guide__next').onclick = () => (last ? close() : (i++, render()));

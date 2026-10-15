@@ -3,6 +3,7 @@
 // their spot. Reverse cues get a thick flashing border.
 
 import { colorById, dirById } from './config.js';
+import { icon } from '../lib/icons.js';
 
 // Thick, high-contrast arrow pointing up; rotated per direction.
 const ARROW_PATH = 'M50 3 L97 50 H68 V97 H32 V50 H3 Z';
@@ -22,7 +23,7 @@ export function faceHtml(face) {
     case 'number':
       return `<div class="cdf cdf--number"><span>${face.num}</span></div>`;
     case 'hold':
-      return '<div class="cdf cdf--hold"><span class="cdf__hand" aria-hidden="true">✋</span><span>HOLD</span></div>';
+      return `<div class="cdf cdf--hold">${icon('hand', { size: 96 })}<span>Hold</span></div>`;
     default:
       return '';
   }
