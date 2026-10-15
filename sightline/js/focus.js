@@ -1,6 +1,8 @@
 // FOCUS: eyes, mind and breathing with the phone in hand. Every answer is a
-// tap. Game Ready runs all four pillars (never more than 10 minutes); the
-// other sessions run one pillar, or the optional Extras.
+// tap. Game Ready runs all four pillars (never more than 10 minutes);
+// Training (non-game days) runs every pillar plus the visual skills, harder;
+// the other sessions run one pillar, or the optional Extras. The optional
+// Focus Check (about 30 s) can bookend Game Ready and Training, or run alone.
 
 import { buildRoutine } from './routine.js';
 import { runSession } from './engine.js';
@@ -16,18 +18,23 @@ import { isOn } from './features.js';
 import { createSeen } from './lib/seen.js';
 import { createLevelStore } from './lib/adapt.js';
 import { createRoutineStore, routineSeconds } from './myroutine.js';
+import { createRng } from './lib/rng.js';
+import { checkPlan, createCheckLog } from './lib/check.js';
+import { runFocusCheck, showCheckResult } from './stages/focuscheck.js';
 
 const $ = (id) => document.getElementById(id);
 
 // show(name, {back}) switches screens; dev = { speed, autoReady, seed, only }
 // from the URL; onRun(sessionId) fires when a session starts (for "Run last");
 // leaderboard (optional) gets the score after each finished session.
-export function initFocus({ show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {}, onRoutine = () => {}, leaderboard = null }) {
+// onTrained() fires when a Training session finishes (the weekly streak).
+export function initFocus({ show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {}, onRoutine = () => {}, onTrained = () => {}, leaderboard = null }) {
   const hubEl = $('focus-hub');
   const flags = { newDrills: isOn('newDrills'), occlusion: isOn('occlusion') };
   const seen = createSeen();   // drills this phone has run, for Auto instructions
   const levels = createLevelStore();   // adaptive difficulty: each drill's level, on this phone
   const routines = createRoutineStore();   // My Routine, saved on this phone
+  const checks = createCheckLog();   // the last 10 Focus Checks, on this phone
   let from = 'start';   // where Done (or quitting) goes back to
 
   // Whole minutes, or halves under 2 minutes ("1.5 min"). My Routine shows seconds.
@@ -37,8 +44,12 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
   };
   const routineLabel = () => `${Math.round(routineSeconds(routines.get()))} s`;
 
+  // The main session follows the home screen's mode: Game Ready or Training.
+  const mainId = () => (getSettings().day === 'training' ? 'training' : 'game');
+
   function renderHub() {
-    const parts = FOCUS_SESSIONS.filter((s) => s.id !== 'game' && !s.extra && !s.timedByRoutine);
+    const main = sessionById[mainId()];
+    const parts = FOCUS_SESSIONS.filter((s) => s.id !== 'game' && s.id !== 'training' && !s.extra && !s.timedByRoutine);
     const row = (s) => `
           <button type="button" class="hub-row" data-run="${s.id}">
             <span class="hub-row__text"><strong>${s.title}</strong><small>${s.short}</small></span>
@@ -60,7 +71,13 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
           <span class="hub-row__text"><strong>Build My Routine</strong><small>Pick your breath, imagery line and quiet-eye hold</small></span>${icon('chevron-right')}
         </button>
       </div></section>
-      <section class="group"><h3 class="group__title">One part</h3><div class="group__rows">
+      <section class="group"><h3 class="group__title">Focus Check</h3><div class="group__rows">
+        <button type="button" class="hub-row" data-nav="check">
+          <span class="hub-row__text"><strong>Focus Check</strong><small>About 30 s of taps: today against your usual on this phone</small></span>
+          <span class="hub-row__meta">30 s</span>${icon('play')}
+        </button>
+      </div></section>
+      <section class="group"><h3 class="group__title">One part${getSettings().day === 'training' ? ' · Training mode' : ''}</h3><div class="group__rows">
         ${parts.map(row).join('')}
       </div></section>
       <section class="group"><h3 class="group__title">Extras · optional</h3><div class="group__rows">
@@ -72,8 +89,8 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
         </button>
       </div></section>
       <div class="screen__foot">
-        <p class="cset__est">${sessionById.game.short} · ${minutes('game')} min</p>
-        <button type="button" class="btn btn--primary btn--block" data-run="game">${icon('play')}Game Ready</button>
+        <p class="cset__est">${main.short} · ${minutes(main.id)} min</p>
+        <button type="button" class="btn btn--primary btn--block" data-run="${main.id}">${icon('play')}${main.title}</button>
       </div>`;
   }
 
@@ -84,7 +101,28 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     else if (b.dataset.nav === 'home') show('start', { back: true });
     else if (b.dataset.nav === 'options') onOptions();
     else if (b.dataset.nav === 'routine') onRoutine();
+    else if (b.dataset.nav === 'check') checkOnly();
   });
+
+  // One Focus Check: intro, taps, then the result against this phone's usual.
+  // Resolves { result, choice } (result null if skipped).
+  async function focusCheck({ phase, before = null, lighter = false }) {
+    show('check');
+    const result = await runFocusCheck($('check'), { plan: checkPlan(createRng(dev.seed).fork(`check:${phase}`)), phase });
+    if (!result) return { result: null, choice: 'go' };
+    const history = checks.get();
+    if (result.rtMs != null) checks.add(result);
+    const choice = await showCheckResult($('check'), { result, history, before, lighter });
+    return { result, choice };
+  }
+  // From the FOCUS screen: a check on its own.
+  async function checkOnly() {
+    unlockAudio(getSettings().sound === 'on');   // inside the tap
+    await focusCheck({ phase: 'check' });
+    $('check').innerHTML = '';
+    renderHub();
+    show('focus', { back: true });
+  }
 
   // Runs one FOCUS session. Call from a tap (sound unlock).
   async function start(sessionId, opts = {}) {
@@ -93,6 +131,14 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     const settings = getSettings();
     unlockAudio(settings.sound === 'on');   // must happen inside the tap
     onRun(meta.id);
+    // Focus Check at the start (if on): noticeably slower than usual offers the lighter (Quick) version.
+    const bookend = meta.check === 'both' && settings.focusCheck === 'on' && !dev.autoReady;
+    const checked = { before: null, after: null };
+    if (bookend) {
+      const r = await focusCheck({ phase: 'start', lighter: settings.length !== 'quick' });
+      checked.before = r.result;
+      if (r.choice === 'lighter') settings.length = 'quick';   // this session only
+    }
     // Every session is freshly shuffled; content from the last few sessions rests.
     const build = (state, seed) => createSession({
       sessionId: meta.id, settings, seed, recent: dev.seed ? [] : variety.recent(), flags, seen: seen.get(),
@@ -136,6 +182,8 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     buzz([60, 80, 120]);   // session complete
     if (meta.timedByRoutine) { back(); return; }   // My Routine on its own: straight back, nothing to sum up
 
+    if (meta.training) onTrained();   // a training day, for the weekly streak
+    if (bookend) checked.after = (await focusCheck({ phase: 'end', before: checked.before })).result;
     if (meta.check === 'both' && !dev.autoReady) {
       show('check');
       readiness.after = await askAfter($('check'), { cue: settings.cue });
@@ -143,7 +191,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     $('check').innerHTML = '';
 
     const totalMs = steps.reduce((a, s) => a + s.durationMs + (s.introMs ?? 0), 0);   // instructions included
-    renderSummary($('summary'), { title: meta.title, results, settings, totalMs, readiness, seed: session.seed });
+    renderSummary($('summary'), { title: meta.title, results, settings, totalMs, readiness, checked, seed: session.seed });
     if (leaderboard && !meta.unscored) {
       const score = focusScore({ points: session.scorer.points, sessionId: meta.id, difficulty: settings.difficulty });
       const streak = session.scorer.bestStreak;

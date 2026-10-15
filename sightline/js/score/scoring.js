@@ -61,7 +61,7 @@ export function createFocusScorer() {
 // bonus. Never below zero; always a whole number.
 export function focusScore({ points, sessionId, difficulty, completed = true }) {
   const mult = SCORING.difficulty[difficulty] ?? 1;
-  const bonus = completed ? SCORING.completionBonus[sessionId === 'game' ? 'game' : 'part'] : 0;
+  const bonus = completed ? SCORING.completionBonus[sessionId === 'game' || sessionId === 'training' ? 'game' : 'part'] : 0;
   return Math.max(0, Math.round(points * mult + bonus));
 }
 

@@ -24,9 +24,9 @@ const PANELS = [
         <li><b>Regulate</b><span>Breathe with the circle to calm down and focus.</span></li>
         <li><b>Activate</b><span>Follow, jump and hold with your eyes.</span></li>
         <li><b>Challenge</b><span>React to colors. Go, or hold still.</span></li>
-        <li><b>Rehearse</b><span>Your cue word, your best play, then lock in.</span></li>
+        <li><b>Rehearse</b><span>Your cue word, your best play, then your routine.</span></li>
       </ol>
-      <p class="guide__muted">5, 8 or 10 minutes. Short on time? Run one part on its own.</p>`,
+      <p class="guide__muted">Game Day: 5, 8 or 10 minutes. On other days, Training (10–20 minutes) adds the visual skills. Short on time? Run one part on its own.</p>`,
   },
   {
     title: 'Every drill teaches you first',

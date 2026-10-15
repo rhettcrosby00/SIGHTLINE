@@ -106,6 +106,9 @@ const QUICK_START = {
 // Game Day: short and sharp on the athlete's own cones. 3 sets of 20 s at
 // Game Speed with full rest (the suggested 1:5 work to rest), reactive.
 export const GAME_DAY = { sets: 3, timedSec: 20, pace: 'game' };
+// Training (non-game days): more decision work. The athlete's cones with the
+// Decision Layer on, 5 sets of 30 s at Training pace, suggested rest.
+export const TRAINING = { sets: 5, timedSec: 30, pace: 'training' };
 const SIGNALS_DEFAULT = { cueType: 'arrows', directions: ['L', 'R', 'F', 'B'], style: 'firststep' };
 
 // Setups saved before distance-based timing (v2.0 and earlier) had a fixed
@@ -189,6 +192,10 @@ export function quickStart(custom = {}) {
 
 export function gameDay(custom = {}) {
   return normalize({ ...custom, mode: 'reactive', setMode: 'timed', timedSec: GAME_DAY.timedSec, sets: GAME_DAY.sets, pace: GAME_DAY.pace, restMode: 'auto', manual: false });
+}
+
+export function training(custom = {}) {
+  return normalize({ ...custom, mode: 'reactive', decision: true, setMode: 'timed', timedSec: TRAINING.timedSec, sets: TRAINING.sets, pace: TRAINING.pace, restMode: 'auto', manual: false });
 }
 
 // Signals Only: always arrows, one "cone" per direction (there are no cones),

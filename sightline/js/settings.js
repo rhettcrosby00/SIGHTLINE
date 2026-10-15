@@ -15,14 +15,16 @@ export const GROUPS = [
   { title: 'Focus', fields: [
     { key: 'length', label: 'Length', stack: true,
       options: ['quick', 'standard', 'full'].map((v) => [v, `${v[0].toUpperCase()}${v.slice(1)} · ${mins(v)}`]),
-      hint: () => 'Minutes for Game Ready, instructions included. It never runs past 10.' },
+      hint: () => 'Minutes for Game Ready (it never runs past 10) and Training (10 / 15 / 20), instructions included.' },
     { key: 'difficulty', label: 'Difficulty', options: [['normal', 'Normal'], ['hard', 'Hard']] },
     { key: 'guide', label: 'Instructions', stack: true, options: [['auto', 'Auto'], ['full', 'Full'], ['brief', 'Brief']],
       hint: () => 'Auto shows an example and a short practice the first 3 times you run a drill, then just the rule.' },
     { key: 'contrast', label: 'Contrast', options: [['full', 'Full'], ['low', 'Low']],
       hint: () => 'Low fades the cues toward the background, like poor light, shadow or glare: Color Call, Saccade Jumps, Peripheral Flash and Target Capture. Turn your brightness up outdoors.' },
     { key: 'occlusion', label: 'Occlusion (training)', toggle: true, flag: 'occlusion',
-      hint: () => 'Never in Game Ready. In Smooth Pursuit, Saccade Jumps and Object Tracking the moving target disappears and comes back, so you predict where it went. Only the target, never the screen. Leave it off if flashing light bothers you.' },
+      hint: () => 'Training mode only, never in Game Ready. In Smooth Pursuit, Saccade Jumps and Object Tracking the moving target disappears and comes back, so you predict where it went. Only the target, never the screen. Leave it off if flashing light bothers you.' },
+    { key: 'focusCheck', label: 'Focus Check', toggle: true,
+      hint: () => 'About 30 seconds of taps at the start and end of Game Ready and Training. Shows today against your usual on this phone. A readiness check, not a medical test.' },
   ] },
   { title: 'You', fields: [
     { key: 'sport', label: 'Sport', select: () => SPORTS.map((x) => [x.id, x.label]),
@@ -48,7 +50,8 @@ const FIELDS = GROUPS.flatMap((g) => g.fields);
 export const DEFAULTS = {
   length: 'standard', difficulty: 'normal', sound: 'on', music: 'off', guide: 'auto', appearance: 'auto', nameStyle: 'name',
   sport: 'general', position: '', sportAsked: false, cue: 'COMPETE', guideV: 2,
-  contrast: 'full', occlusion: 'off', occlusionOk: false,
+  contrast: 'full', occlusion: 'off', occlusionOk: false, focusCheck: 'off',
+  day: 'game',   // home: Game Day or Training
 };
 
 // Shown once, the first time Occlusion is turned on.
@@ -67,6 +70,7 @@ export function parseSettings(saved = {}) {
   Object.assign(out, cleanSport(saved?.sport, saved?.position));
   out.sportAsked = saved?.sportAsked === true;
   out.occlusionOk = saved?.occlusionOk === true;
+  out.day = saved?.day === 'training' ? 'training' : 'game';
   if (typeof saved?.cue === 'string') out.cue = cleanCue(saved.cue);
   // Before v2.4, Full was the default (there was no Auto): move those phones to Auto once.
   if (saved?.guide === 'full' && saved?.guideV !== 2) out.guide = 'auto';

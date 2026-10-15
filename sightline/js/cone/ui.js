@@ -1,6 +1,7 @@
 // MOVE: cognitive change of direction with the phone on a stand. Four ways in:
 //   Quick Start   fixed preset → cone layout → drill
 //   Game Day      your custom cones, 3 short sets at Game Speed, full rest → layout → drill
+//   Training      your custom cones with decisions, 5 × 30 s (non-game days) → layout → drill
 //   Custom setup  every Cone Drill option → cone layout → drill
 //   Signals Only  arrows, no cones → drill
 // The drill runs in the shared session engine (pause, wake lock). No taps
@@ -10,7 +11,7 @@ import { initSetup } from './setup.js';
 import { renderLayout } from './layout.js';
 import { planDrill } from './plan.js';
 import { coneSession, tuneButtons, wireTune } from './run.js';
-import { validate, quickStart, gameDay, GAME_DAY } from './config.js';
+import { validate, quickStart, gameDay, training, GAME_DAY, TRAINING } from './config.js';
 import { PATTERNS } from './patterns.js';
 import { PACE_LABEL, STYLE_LABEL, TIMING, coneSlots, drillMs, applyTune, createTuneStore } from './timing.js';
 import { runSession } from '../engine.js';
@@ -28,7 +29,8 @@ const mmss = (ms) => {
 };
 const CUE_NAME = { colors: 'Colors', arrows: 'Arrows', numbers: 'Numbers', mixed: 'Mixed', sport: 'Sport calls' };
 
-export const MOVE_RUNS = { quick: 'Quick Start', gameday: 'Game Day', custom: 'Custom setup', signals: 'Signals Only' };
+export const MOVE_RUNS = { quick: 'Quick Start', gameday: 'Game Day', training: 'Training', custom: 'Custom setup', signals: 'Signals Only' };
+const PRESETS = new Set(['quick', 'gameday', 'training']);   // fixed recipes: straight to the cone layout
 
 // "5 yd", or "3–10 yd" when each cone has its own distance.
 function yardsText(s) {
@@ -54,8 +56,9 @@ const minutesOf = (s) => Math.max(1, Math.round(drillMs(s) / 60000));
 // show(name, {back}) switches screens; dev = { speed, autoReady, seed } from
 // the URL; onRun(run) fires when a drill starts (for "Run last"); leaderboard
 // (optional) gets the score once a drill ends with at least one full set;
-// sport = { get, set }: the sport picked on this phone (shared with Focus).
-export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null, sport }) {
+// sport = { get, set }: the sport picked on this phone (shared with Focus);
+// onTrained() fires when a Training drill finishes (the weekly streak).
+export function initMove({ show, dev = {}, onRun = () => {}, onTrained = () => {}, leaderboard = null, sport }) {
   const hubEl = $('move-hub');
   const layoutEl = $('cd-layout');
   const doneEl = $('cd-done');
@@ -74,7 +77,7 @@ export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null,
       ctl.render();
       return show(run === 'signals' ? 'signals' : 'cone-setup', { back });
     }
-    if (where === 'layout') { renderLayout(layoutEl, setup, { preset: run === 'quick' || run === 'gameday', tune: tunes.get(setup) }); return show('cone-layout'); }
+    if (where === 'layout') { renderLayout(layoutEl, setup, { preset: PRESETS.has(run), tune: tunes.get(setup) }); return show('cone-layout'); }
     if (where === 'start') return go();
   };
 
@@ -88,7 +91,7 @@ export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null,
   }) : null;
   const signals = initSetup($('cd-signals'), { onNav: fromSetup('signals'), variant: 'signals', sport });
   const setupFor = (r) => (r === 'quick' ? quickStart(custom.get()) : r === 'gameday' ? gameDay(custom.get())
-    : r === 'signals' ? signals.get() : custom.get());
+    : r === 'training' ? training(custom.get()) : r === 'signals' ? signals.get() : custom.get());
 
   function renderHub() {
     const rowFor = (r, sub, trail) => `
@@ -103,9 +106,10 @@ export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null,
         <h2 class="nav__title">React · Cut · Compete</h2>
         <p class="cset__sub">Set your phone down facing you. No taps during a set.</p>
       </header>
-      <section class="group"><h3 class="group__title">Game day</h3><div class="group__rows">
+      <section class="group"><h3 class="group__title">Game day or training</h3><div class="group__rows">
         ${rowFor('gameday', `${GAME_DAY.sets} × ${GAME_DAY.timedSec} s at Game Speed, full rest · ${describeSetup(setupFor('gameday'), 'gameday').split(' · ').slice(0, 2).join(' · ')}`, 'play')}
-      </div><p class="setting__hint">Short and sharp before you compete, on your custom cones.</p></section>
+        ${rowFor('training', `${TRAINING.sets} × ${TRAINING.timedSec} s with decisions, on days without a game`, 'play')}
+      </div><p class="setting__hint">Both use your custom cones.</p></section>
       <section class="group"><h3 class="group__title">Your setups</h3><div class="group__rows">
         ${rowFor('custom', describeSetup(custom.get(), 'custom'), 'chevron-right')}
         ${rowFor('signals', `No cones · ${describeSetup(signals.get(), 'signals')}`, 'chevron-right')}
@@ -124,8 +128,8 @@ export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null,
   function open(r) {
     run = r;
     setup = setupFor(r);
-    if (r === 'gameday' && !validate(setup).ok) { run = 'custom'; return nav('setup'); }
-    nav(r === 'quick' || r === 'gameday' ? 'layout' : 'setup');
+    if (PRESETS.has(r) && r !== 'quick' && !validate(setup).ok) { run = 'custom'; return nav('setup'); }
+    nav(PRESETS.has(r) ? 'layout' : 'setup');
   }
 
   hubEl.addEventListener('click', (e) => {
@@ -164,6 +168,7 @@ export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null,
     // Stopped early: with the leaderboard on, completed sets still count.
     if (!completed && !(leaderboard && r.sets > 0)) return nav(run === 'quick' ? 'menu' : 'setup', { back: true });
     if (completed) buzz([60, 80, 120]);   // drill complete
+    if (completed && run === 'training') onTrained();   // a training day, for the weekly streak
     doneEl.innerHTML = `
       <div class="sum">
         <div class="sum__top"><p class="sum__kicker">${completed ? `${MOVE_RUNS[run]} complete` : `Stopped after ${r.sets} of ${setup.sets} sets`}</p>${SUM_LOGO}</div>
