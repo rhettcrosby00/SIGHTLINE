@@ -231,11 +231,10 @@ test('Each drill feels different: first sets vary across 200 runs', () => {
   assert(firsts.size > 190, `only ${firsts.size} different first sets`);
 });
 
-test('Feature flag: Cone Drill hidden on the live site, shown on previews', () => {
-  assert(!isOn('coneDrill', { host: 'sightline-psi.vercel.app', search: '' }), 'visible on the live site');
-  assert(isOn('coneDrill', { host: 'sightline-git-feature-cone-drill-crosby-aos.vercel.app', search: '' }), 'hidden on the preview');
-  assert(isOn('coneDrill', { host: 'localhost', search: '' }), 'hidden locally');
-  assert(isOn('coneDrill', { host: 'sightline-psi.vercel.app', search: '?coneDrill' }), 'URL override not working');
+test('Feature flag: Cone Drill is on everywhere (approved)', () => {
+  for (const host of ['sightline-psi.vercel.app', 'sightline-git-feature-cone-drill-crosby-aos.vercel.app', 'localhost']) {
+    assert(isOn('coneDrill', { host, search: '' }), `hidden on ${host}`);
+  }
 });
 
 test('Cone layout puts arrow cones in their directions', () => {

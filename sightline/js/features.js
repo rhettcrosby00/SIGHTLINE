@@ -2,7 +2,7 @@
 // off on the live site until approved. Set to true to turn on everywhere.
 
 export const FEATURES = {
-  coneDrill: 'preview',
+  coneDrill: true,   // approved: on for everyone
 };
 
 // The live site's address(es). Anything else (preview links, localhost) is a preview.

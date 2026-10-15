@@ -57,9 +57,9 @@ Cone Drill is a standalone change-of-direction drill. Its code lives in `js/cone
 - `setup.js`, `layout.js`, `run.js`, `ui.js`: the screens
 
 It's controlled by `js/features.js`:
-- `coneDrill: 'preview'` shows it on preview links and locally, and hides it on
-  sightline-psi.vercel.app. Add `?coneDrill` to the live address to see it there.
-- Change it to `true` to turn it on everywhere once approved.
+- `coneDrill: true` (approved) turns it on everywhere.
+- Setting it back to `'preview'` hides it on sightline-psi.vercel.app but keeps it on preview
+  links and locally; `?coneDrill` on the live address shows it anyway.
 
 ## Randomness and variety
 

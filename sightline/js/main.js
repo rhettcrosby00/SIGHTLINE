@@ -13,7 +13,7 @@ import { isOn } from './features.js';
 import { initConeDrill } from './cone/ui.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '1.5';
+export const APP_VERSION = '1.6';
 
 const $ = (id) => document.getElementById(id);
 
