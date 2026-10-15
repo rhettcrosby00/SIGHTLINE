@@ -14,7 +14,7 @@ import { initLeaderboard } from './score/ui.js';
 import { isOn } from './features.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '2.2';
+export const APP_VERSION = '2.3';
 
 const $ = (id) => document.getElementById(id);
 

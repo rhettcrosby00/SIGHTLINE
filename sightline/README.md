@@ -22,7 +22,7 @@ athlete answers "Too fast / Just right / Too slow".
 
 A short summary follows each session. There are no accounts.
 
-**Leaderboard** (flag `leaderboard`): after a session the athlete enters a name (or 3-letter
+**Leaderboard**: after a session the athlete enters a name (or 3-letter
 initials) and the score joins one online board for everyone: All-time, Best session and This
 week, for Focus, Move or both combined. It saves only name, score, side, session settings and
 date.
@@ -95,7 +95,7 @@ a session). The version number shows at the bottom of the start screen.
 `js/features.js`. `'preview'` means on for Vercel preview links and locally, off on
 sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 - `newDrills: 'preview'`: Physiological Sigh, 4-7-8 Breathing, Memory Sequence.
-- `leaderboard: 'preview'`: name entry, the online board and coach tools.
+- `leaderboard: true` (approved): name entry, the online board and coach tools.
 
 ## Saved on the phone
 
