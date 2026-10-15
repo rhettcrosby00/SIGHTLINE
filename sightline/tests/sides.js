@@ -93,12 +93,28 @@ test('Saved FOCUS settings survive the update (the old mode is dropped, nothing 
 test('Saved MOVE setup (last cone setup, distance, timing) carries over unchanged', () => {
   const saved = {
     cueType: 'arrows', cones: 5, coloredCones: true, colors: ['blue', 'red', 'green', 'yellow', 'orange', 'purple', 'white', 'pink'],
-    directions: ['F', 'FR', 'R', 'L', 'FL'], speed: 'custom', customMs: 1700, setMode: 'timed', reps: 12, timedSec: 45,
-    sets: 6, restSec: 90, position: 'peripheral', display: 'flash', flashMs: 450, fakes: 'low', reverse: true,
-    sound: 'off', callouts: false, distance: 8,
+    directions: ['F', 'FR', 'R', 'L', 'FL'], style: 'conetocone', pace: 'game', distance: 8, distanceMode: 'each',
+    coneYards: { F: 10, L: 5, R: 5 }, manual: false, manualS: 2.5, setMode: 'timed', reps: 12, timedSec: 45,
+    sets: 6, restMode: 'custom', restSec: 90, position: 'peripheral', display: 'flash', flashMs: 450, fakes: 'low', reverse: true,
+    sound: 'off', callouts: false,
   };
   const now = normalize(saved);
   for (const [k, v] of Object.entries(saved)) assert(JSON.stringify(now[k]) === JSON.stringify(v), `${k} changed: ${JSON.stringify(now[k])}`);
+});
+
+test('Setups saved before distance timing (v2.0) keep their feel', () => {
+  const old = (x) => normalize({ cueType: 'colors', cones: 4, distance: 7, reps: 12, sets: 4, ...x });
+  const want = { slow: 'learning', medium: 'training', fast: 'game', game: 'game' };
+  for (const [speed, pace] of Object.entries(want)) {
+    const s = old({ speed, restSec: 30 });
+    assert(s.pace === pace && !s.manual && s.style === 'outback', `${speed} → ${s.pace}`);
+    assert(s.restMode === 'auto', 'the old default rest (30 s) becomes the suggested rest');
+    assert(s.distance === 7 && s.reps === 12 && s.sets === 4, 'distance, reps or sets lost');
+    assert(!('speed' in s) && !('customMs' in s), 'old fields left behind');
+  }
+  const custom = old({ speed: 'custom', customMs: 1700, restSec: 90 });
+  assert(custom.manual && custom.manualS === 1.7, 'a custom time becomes the exact time');
+  assert(custom.restMode === 'custom' && custom.restSec === 90, 'a chosen rest stays');
 });
 
 test('"Run last" moves to the right side; old saves upgrade once and nothing is lost', () => {

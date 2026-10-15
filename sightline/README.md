@@ -15,8 +15,10 @@ A pre-game visual reaction and cognitive warm-up for athletes, in two sides:
 Each pillar can also run on its own (Breathing only, Eyes only, Mind only, Rehearse only).
 
 **MOVE: react, cut, compete.** The phone sits on a stand facing the athlete; no taps during a
-set. Quick Start (4 cones, colors, 5 yd, medium pace, 3 sets), Custom setup (every Cone Drill
-option), and Signals Only (arrows, no cones).
+set. Quick Start (4 cones, colors, 5 yd out and back, Training pace, 3 sets), Custom setup
+(every Cone Drill option), and Signals Only (arrows, no cones). The time between cues comes
+from distance, rep style (Out and back, First step, Cone to cone) and pace; between sets the
+athlete answers "Too fast / Just right / Too slow".
 
 A short summary follows each session. There are no accounts and no saved results.
 
@@ -59,6 +61,10 @@ a session). The version number shows at the bottom of the start screen.
 
 ## MOVE (js/cone/)
 
+- `timing.js`: distance-based cue timing. Every number is in `TIMING` at the top:
+  `pace × (reaction + yards out × pace per yard + turn + yards back × pace per yard + reset)`,
+  First step times, ±10% variation, the 1–12 s limits, the 10% "Too fast / Too slow" step,
+  and the suggested work-to-rest ratios.
 - `config.js`: options, validation, the Quick Start and Signals Only presets
 - `cues/`: one file per cue type
 - `plan.js`: balanced, no-repeat cue planning
@@ -74,6 +80,7 @@ sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 
 - `sightline.settings.v1`: FOCUS options, theme, cue word
 - `sightline.cone.v1` / `sightline.signals.v1`: MOVE custom setup / Signals Only setup
+- `sightline.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
 - `sightline.last.v2`: "Run last" for each side (upgraded from `last.v1` by `js/migrate.js`)
 - `sightline.variety.v1`, `sightline.guideSeen.v2`
 

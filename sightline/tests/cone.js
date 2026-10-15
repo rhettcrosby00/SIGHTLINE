@@ -4,11 +4,11 @@ import { readFileSync } from 'node:fs';
 import { test, assert } from './harness.js';
 import { planDrill, GRID_SPOTS } from '../js/cone/plan.js';
 import {
-  normalize, validate, coneColors, intervalMs, CONE_COLORS, DIRECTIONS, DIRECTION_PRESETS, OPPOSITE,
-  SPEEDS, JITTER, FAKE_RATES, CUE_TYPES, MIN_CONES, MAX_CONES, quickStart, normalizeSignals,
+  normalize, validate, coneColors, CONE_COLORS, DIRECTIONS, DIRECTION_PRESETS, OPPOSITE,
+  FAKE_RATES, CUE_TYPES, MIN_CONES, MAX_CONES, PACES, STYLES, quickStart, normalizeSignals,
 } from '../js/cone/config.js';
 import { CUES } from '../js/cone/cues/index.js';
-import { coneAngles } from '../js/cone/layout.js';
+import { coneSlots, finalMs, TIMING } from '../js/cone/timing.js';
 import { createRng } from '../js/lib/rng.js';
 import { coneSession } from '../js/cone/run.js';
 
@@ -26,8 +26,13 @@ function makeSetup(rng, cueType, cones) {
     directions: dirs,
     coloredCones: rng.chance(0.7),
     colors: rng.shuffle(ALL_COLORS).slice(0, 8),
-    speed: rng.pick(['slow', 'medium', 'fast', 'game', 'custom']),
-    customMs: rng.int(800, 5000),
+    style: rng.pick(STYLES),
+    pace: rng.pick(PACES),
+    distance: rng.int(2, 20),
+    distanceMode: rng.chance(0.4) ? 'each' : 'same',
+    coneYards: Object.fromEntries([...ALL_DIRS, 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'].map((k) => [k, rng.int(2, 20)])),
+    manual: rng.chance(0.15),
+    manualS: rng.range(1, 12),
     setMode: rng.chance(0.7) ? 'reps' : 'timed',
     reps: rng.int(5, 30),
     timedSec: rng.pick([15, 20, 30, 45]),
@@ -65,7 +70,7 @@ test('Every cue type works with every cone count from 2 to 8', () => {
         assert(plan.targets.length === n, `${cueType}/${n}: ${plan.targets.length} targets`);
         assert(new Set(plan.targets.map((t) => t.key)).size === n, `${cueType}/${n}: duplicate targets`);
         assert(plan.sets.every((s) => s.events.length > 0), `${cueType}/${n}: empty set`);
-        assert(coneAngles(setup).length === n, `${cueType}/${n}: layout shows wrong cone count`);
+        assert(coneSlots(setup).length === n, `${cueType}/${n}: layout shows wrong cone count`);
       }
     }
   }
@@ -191,13 +196,16 @@ test('The arrow picker only uses the selected directions', () => {
   assert(!validate(normalize({ cueType: 'mixed', directions: ['L', 'R', 'F'], cones: 4 })).ok, 'mixed mismatch not blocked');
 });
 
-test('Timing stays within the chosen speed (±15%)', () => {
-  for (const { setup, plan } of drills) {
-    const base = intervalMs(setup);
-    if (setup.speed !== 'custom') assert(base === SPEEDS[setup.speed], 'wrong base speed');
+test('Every cue’s time stays within ±10% of its rep time, 1–12 s, never below the minimum', () => {
+  for (const { plan } of drills) {
     for (const set of plan.sets) {
       for (const e of set.events) {
-        assert(e.interval >= Math.floor(base * (1 - JITTER)) && e.interval <= Math.ceil(base * (1 + JITTER)), `gap ${e.interval} outside ${base}±15%`);
+        assert(e.interval === finalMs(e, 1), 'planned time doesn’t match the timing rule');
+        assert(e.interval >= 1000 && e.interval <= 12000, `gap ${e.interval} outside 1–12 s`);
+        assert(e.interval >= Math.min(e.minMs, e.baseMs) - 1, `gap ${e.interval} below the minimum ${e.minMs}`);
+        const lo = Math.max(1000, Math.min(e.minMs, e.baseMs * (1 - TIMING.jitter)));
+        const hi = Math.min(12000, e.baseMs * (1 + TIMING.jitter));
+        assert(e.interval >= lo - 1 && e.interval <= hi + 1, `gap ${e.interval} outside ${e.baseMs} ±10%`);
       }
       if (set.events.length > 5) assert(new Set(set.events.map((e) => e.interval)).size > 2, 'gaps not varied');
     }
@@ -234,8 +242,7 @@ test('Each drill feels different: first sets vary across 200 runs', () => {
 
 test('Cone layout puts arrow cones in their directions', () => {
   const s = normalize({ cueType: 'arrows', directions: DIRECTION_PRESETS[8], cones: 8 });
-  const angles = coneAngles(s);
-  for (const { target, angle } of angles) assert(DIRECTIONS.find((d) => d.id === target.dir).angle === angle, 'wrong angle');
+  for (const { target, angle } of coneSlots(s)) assert(DIRECTIONS.find((d) => d.id === target.dir).angle === angle, 'wrong angle');
 });
 
 test('A Cone Drill session is only the Cone Drill — no breathing or other drills', () => {
@@ -248,9 +255,10 @@ test('A Cone Drill session is only the Cone Drill — no breathing or other dril
 
 // ---- MOVE presets ------------------------------------------------------------
 
-test('MOVE Quick Start: 4 cones, colors, 5 yd, medium pace, 3 sets — and it plans a full drill', () => {
+test('MOVE Quick Start: 4 cones, colors, 5 yd out and back, Training pace, 3 sets — and it plans a full drill', () => {
   const q = quickStart({ sound: 'off', callouts: true });
-  assert(q.cueType === 'colors' && q.cones === 4 && q.distance === 5 && q.speed === 'medium' && q.sets === 3, 'preset changed');
+  assert(q.cueType === 'colors' && q.cones === 4 && q.distance === 5 && q.distanceMode === 'same' && q.style === 'outback'
+    && q.pace === 'training' && !q.manual && q.sets === 3 && q.restMode === 'auto', 'preset changed');
   assert(q.sound === 'off' && q.callouts === true, 'Quick Start should keep the athlete’s sound choice');
   assert(validate(q).ok, 'Quick Start must always be valid');
   const plan = planDrill(q, 1);
@@ -276,11 +284,15 @@ test('MOVE Signals Only: arrows only, no cones to place, any 2–8 directions', 
 test('No MOVE screen asks for a tap during a set', () => {
   const src = (f) => readFileSync(new URL(`../js/cone/${f}`, import.meta.url), 'utf8');
   for (const f of ['run.js', 'render.js', ...['arrow', 'color', 'mixed', 'number', 'index'].map((c) => `cues/${c}.js`)]) {
-    const code = src(f);
+    // The rest screen's pace buttons are the only buttons allowed (between sets).
+    const code = src(f).replace(/export const tuneButtons[\s\S]*?<\/div>`;/, '');
     assert(!/<button|ready\(|pointerdown/.test(code), `${f} asks for input during the drill`);
   }
-  // The only listener during a drill: tapping the rest screen pauses (allowed).
-  const listeners = [...src('run.js').matchAll(/addEventListener\('(\w+)', (\w+)/g)].map((m) => `${m[1]}:${m[2]}`);
-  assert(listeners.join() === 'click:onTap' && /onTap = \(\) => document\.getElementById\('btn-pause'\)\?\.click\(\)/.test(src('run.js')),
-    `unexpected drill listeners: ${listeners}`);
+  // The only buttons during a drill are on the rest screen between sets
+  // ("Too fast / Just right / Too slow"); pause stays in the top bar.
+  const code = src('run.js');
+  const listeners = [...code.matchAll(/addEventListener\('(\w+)'/g)].map((m) => m[1]);
+  assert(listeners.join() === 'click' && /root\.querySelector\('\.tune'\)\.addEventListener/.test(code), `unexpected drill listeners: ${listeners}`);
+  const loop = code.slice(code.indexOf('for (const e of set.events)'), code.indexOf('// set complete'));
+  assert(!/tuneButtons|wireTune|addEventListener/.test(loop), 'something asks for input while cues are showing');
 });

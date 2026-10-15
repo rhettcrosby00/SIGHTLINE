@@ -4,6 +4,7 @@
 import { report } from './harness.js';
 import './routine.js';
 import './cone.js';
+import './timing.js';
 import './design.js';
 import './sides.js';
 import './deadcode.js';
