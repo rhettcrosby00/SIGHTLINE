@@ -1,11 +1,11 @@
 /* ---------- Tokens ---------- */
 :root {
-  --bg: #000;
+  --bg: #050505;                /* Matte Black (logo) */
   --fg: #fff;
   --muted: #9a9a9a;
-  --line: #2a2a2a;
-  --panel: #111;
-  --accent: #c6ff00;            /* volt — brand / primary action */
+  --line: #2c2c2c;
+  --panel: #181818;             /* Charcoal (logo) */
+  --accent: #B7FF00;            /* Volt Lime (logo) — brand / primary action */
   --accent-ink: #000;
 
   /* Cue colors — shades tuned to separate under common color-vision deficiencies.
@@ -753,8 +753,8 @@ button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .lay { width: 100%; max-width: 420px; align-self: center; background: #0d0d0d; border: 1px solid var(--line); border-radius: var(--radius); }
 .lay__small { fill: #ddd; font: 800 11px var(--font); letter-spacing: 0.04em; }
 .lay__tiny { fill: #888; font: 700 9px var(--font); }
-.lay__dist { fill: #c6ff00; font: 900 14px var(--font); }
-.lay__you { fill: #c6ff00; font: 900 10px var(--font); letter-spacing: 0.06em; }
+.lay__dist { fill: var(--accent); font: 900 14px var(--font); }
+.lay__you { fill: var(--accent); font: 900 10px var(--font); letter-spacing: 0.06em; }
 
 /* ---------- Cone Drill: running ---------- */
 .cd { position: relative; flex: 1; display: flex; margin: 0 calc(-1 * var(--gutter)); }

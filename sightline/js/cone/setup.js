@@ -78,7 +78,7 @@ export function renderSetup(el, s) {
       <header class="cset__head">
         <button type="button" class="btn-link" data-nav="menu">‹ Menu</button>
         <h2 class="cset__title">CONE DRILL</h2>
-        <p class="cset__sub">Change of direction + eye engagement</p>
+        <p class="cset__sub">Cognitive change of direction</p>
       </header>
       <p class="cset__safety">Use a clear, flat area. Warm up before high-speed cuts.</p>
 

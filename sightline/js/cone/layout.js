@@ -57,7 +57,7 @@ export function layoutSvg(setup) {
       <text x="${cx}" y="46" text-anchor="middle" class="lay__tiny">facing you</text>
       <line x1="${cx}" y1="${cy}" x2="${ref.x}" y2="${ref.y}" stroke="#777" stroke-dasharray="5 5" stroke-width="2"/>
       <text x="${(cx + ref.x) / 2 + 8}" y="${(cy + ref.y) / 2 - 6}" class="lay__dist">${setup.distance} yd</text>
-      <circle cx="${cx}" cy="${cy}" r="24" fill="none" stroke="#c6ff00" stroke-width="3" stroke-dasharray="6 4"/>
+      <circle cx="${cx}" cy="${cy}" r="24" fill="none" stroke="#B7FF00" stroke-width="3" stroke-dasharray="6 4"/>
       <text x="${cx}" y="${cy + 5}" text-anchor="middle" class="lay__you">START</text>
       ${cones.map((c) => c.body).join('')}
     </svg>`;

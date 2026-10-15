@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v1.7';
+const CACHE_VERSION = 'v1.8';
 const CACHE = `sightline-${CACHE_VERSION}`;
 
 const ASSETS = [
