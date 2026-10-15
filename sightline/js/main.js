@@ -15,9 +15,10 @@ import { createTrainingLog, WEEK_GOAL } from './lib/streak.js';
 import { initLeaderboard } from './score/ui.js';
 import { initRoutineBuilder } from './myroutine-ui.js';
 import { isOn } from './features.js';
+import { initPreGame, preGameMinutes } from './pregame.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '2.9';
+export const APP_VERSION = '3.0';
 
 const $ = (id) => document.getElementById(id);
 
@@ -134,6 +135,16 @@ function renderHome() {
 onHome = renderHome;
 renderHome();
 
+// ---- Full Pre-Game (behind a flag): Focus (Quick), then Move's Game Day, Game Day only ----
+const pregame = isOn('pregame') ? initPreGame({ focus, move }) : null;
+function renderPreGame() {
+  $('btn-pregame').hidden = !pregame || getSettings().day === 'training';
+  $('pregame-desc').textContent = `Focus, then set your phone down for Move · about ${Math.round(preGameMinutes(move.minutes('gameday')))} min`;
+}
+onHome = () => { renderHome(); renderPreGame(); };
+renderPreGame();
+$('btn-pregame').addEventListener('click', () => pregame?.start());
+
 $('btn-focus').addEventListener('click', () => focus.openHub());
 $('btn-move').addEventListener('click', () => move.openHub());
 $('btn-game').addEventListener('click', () => focus.start(mains().focus));
@@ -144,6 +155,7 @@ document.querySelector('.home__day').addEventListener('click', (e) => {
   if (!day) return;
   updateSetting('day', day);
   renderHome();
+  renderPreGame();
   focus.renderHub();
 });
 $('btn-focus-last').addEventListener('click', () => focus.start(lastRuns.get().focus));
