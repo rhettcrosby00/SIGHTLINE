@@ -8,12 +8,13 @@
 //     recent  "recently used" records from createVariety().recent(),
 //             newest first; their content is skipped where possible
 //     flags   which flagged drills are on, e.g. { newDrills: true }
+//     seen    drill id → times this phone has run it (Auto instructions)
 //
 // session.record() lists what this session actually used, for the variety list.
 
 import { createRng, deck } from './lib/rng.js';
 import { questionStream } from './content/questions.js';
-import { planSteps } from './plan.js';
+import { planSteps, guideChooser } from './plan.js';
 import { colorCallStream, goNoGoStream, stroopStream, peripheralStream, memoryStream, gaps } from './content/reaction.js';
 import { mathStream } from './content/math.js';
 import { pursuitPlan, saccadeStream, gazeStream } from './content/eyes.js';
@@ -23,13 +24,14 @@ import { CUE_WORDS, CUE_SUGGESTIONS } from './content/cues.js';
 
 const setsOf = (recent, field) => recent.map((r) => new Set(r?.[field] ?? []));
 
-export function createSession({ sessionId = 'game', settings, seed, recent = [], flags = {} }) {
+export function createSession({ sessionId = 'game', settings, seed, recent = [], flags = {}, seen = {} }) {
   const rng = createRng(seed);
   const last = recent[0]?.order ?? {};
 
   const steps = planSteps(sessionId, settings, rng.fork('order'), {
-    avoid: { regulate: last.regulate, activate: last.activate, challenge: last.challenge },
+    avoid: { regulate: last.regulate, activate: last.activate, challenge: last.challenge, extras: last.extras },
     flags,
+    guideFor: guideChooser(settings.guide, seen),
   });
 
   const questions = questionStream(rng.fork('questions'), { recent: setsOf(recent, 'questions') });
@@ -74,7 +76,10 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
       scripts: script ? [script.id] : [],
       math: mathUsed.slice(),
       cues: cueSuggestions.slice(),
-      order: { regulate: orderOf('regulate').filter((id) => id !== 'lockin'), activate: orderOf('activate'), challenge: orderOf('challenge') },
+      order: {
+        regulate: orderOf('regulate').filter((id) => id !== 'lockin'),
+        activate: orderOf('activate'), challenge: orderOf('challenge'), extras: orderOf('extras'),
+      },
     }),
   };
 }

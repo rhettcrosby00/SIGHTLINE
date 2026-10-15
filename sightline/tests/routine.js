@@ -2,7 +2,7 @@
 
 import { createSession } from '../js/session.js';
 import { createVariety } from '../js/lib/variety.js';
-import { PILLARS, FOCUS_SESSIONS, totalMinutes } from '../js/plan.js';
+import { PILLARS, FOCUS_SESSIONS, totalMinutes, GAME_DAY_MAX_MIN } from '../js/plan.js';
 import { _timelines } from '../js/stages/breathe.js';
 import { MODULES } from '../js/routine.js';
 import { STROOP_PAIRS, STROOP_WORDS, MIN_EDGE_DIST, GAP_MS, HARD_GAP } from '../js/content/reaction.js';
@@ -155,37 +155,36 @@ test('Math answers are correct and odd → BLUE, even → RED', () => {
 
 // 5 ---------------------------------------------------------------------------------
 test('Game Ready: Regulate → Activate → Challenge → Rehearse; one breathing pattern; ends with Lock In', () => {
-  const pillarIds = PILLARS.map((p) => p.id);
+  const pillarIds = ['regulate', 'activate', 'challenge', 'rehearse'];
   const challengeOrders = new Set();
   const activateOrders = new Set();
   const breaths = new Set();
-  for (const { d, flags } of runs) {
+  for (const { d, flags, settings } of runs) {
     const seq = d.steps.map((s) => s.pillar).filter((p, i, a) => p !== a[i - 1]);
     assert(seq.join() === pillarIds.join(), `pillar order ${seq.join()}`);
     assert(d.steps.at(-1).id === 'lockin' && d.steps.at(-2).id === 'visualize', 'Rehearse order changed');
     const reg = d.steps.filter((s) => s.pillar === 'regulate');
     assert(reg.length === 1 && reg[0].id !== 'lockin', `Regulate should be one breathing pattern, got ${reg.map((s) => s.id)}`);
     breaths.add(reg[0].id);
-    for (const p of ['activate', 'challenge']) {
-      const want = PILLARS.find((x) => x.id === p).drills.filter((x) => !x.flag || flags[x.flag]).map((x) => x.id).sort();
-      const ids = d.steps.filter((s) => s.pillar === p).map((s) => s.id).sort();
-      assert(ids.join() === want.join(), `${p} drills wrong: ${ids}`);
-    }
-    if (!flags.newDrills) assert(!d.steps.some((s) => ['sigh', 'breath478', 'memory'].includes(s.id)), 'flagged drill shown with the flag off');
+    const eyes = settings.length === 'quick' ? ['peripheral', 'saccades'] : ['peripheral', 'pursuit', 'saccades'];
+    assert(d.steps.filter((s) => s.pillar === 'activate').map((s) => s.id).sort().join() === eyes.join(), 'Activate drills wrong');
+    assert(d.steps.filter((s) => s.pillar === 'challenge').map((s) => s.id).sort().join() === 'colorcall,gonogo', 'Challenge drills wrong');
+    if (!flags.newDrills) assert(!d.steps.some((s) => ['breath478', 'memory'].includes(s.id)), 'flagged drill shown with the flag off');
     challengeOrders.add(d.steps.filter((s) => s.pillar === 'challenge').map((s) => s.id).join());
     activateOrders.add(d.steps.filter((s) => s.pillar === 'activate').map((s) => s.id).join());
   }
   assert(breaths.size === 3, `breathing patterns used: ${[...breaths]}`);
-  assert(challengeOrders.size > 300, `only ${challengeOrders.size} Challenge orders`);
-  assert(activateOrders.size === 24, `only ${activateOrders.size} Activate orders`);
+  assert(challengeOrders.size === 2, `Challenge orders: ${challengeOrders.size}`);
+  assert(activateOrders.size === 8, `Activate orders: ${activateOrders.size}`);
 });
 
-test('One-part sessions run only their pillar (Breathing, Eyes, Mind, Rehearse)', () => {
+test('One-part sessions run only their part (Breathing, Eyes, Reaction, Rehearse, Extras)', () => {
   const want = {
-    regulate: (f) => [...(f.newDrills ? ['settle', 'sigh', 'breath478'] : ['settle']), 'lockin'],
-    activate: () => ['pursuit', 'saccades', 'gaze', 'peripheral'],
-    challenge: (f) => ['colorcall', 'gonogo', 'stroop', 'math', 'questions', ...(f.newDrills ? ['memory'] : [])],
+    regulate: (f) => ['settle', 'sigh', ...(f.newDrills ? ['breath478'] : []), 'lockin'],
+    activate: () => ['pursuit', 'saccades', 'peripheral'],
+    challenge: () => ['colorcall', 'gonogo'],
     rehearse: () => ['visualize', 'lockin'],
+    extras: (f) => ['gaze', 'stroop', 'math', 'questions', ...(f.newDrills ? ['memory'] : [])],
   };
   for (let i = 0; i < 200; i++) {
     for (const flags of FLAGS) {
@@ -217,20 +216,23 @@ test('Breathing timelines fill their slot exactly', () => {
   }
 });
 
-test('Game Ready length stays about the same (Quick ≈5, Standard ≈8, Full ≈12 min)', () => {
-  const want = { quick: [4.75, 5.75], standard: [7.75, 8.75], full: [11.25, 12.25] };
-  for (const { settings, d } of runs.slice(0, 12)) {
-    const min = d.steps.reduce((a, s) => a + s.ms, 0) / 60000;
-    const [lo, hi] = want[settings.length];
-    assert(min >= lo && min <= hi, `${settings.length} is ${min} min`);
-  }
-  // Every session's steps add up to the time the menu shows.
+test('Game Ready is 5, 8 or 10 minutes, instructions included, and never more than 10', () => {
+  assert(['quick', 'standard', 'full'].map((l) => totalMinutes('game', l)).join() === '5,8,10', 'Game Ready lengths');
+  // Every session's drills plus instructions add up to exactly what the menu shows,
+  // for every length, flag and instructions setting (Full, Brief, Auto at any stage).
+  const guides = [{ guide: 'full' }, { guide: 'brief' }, { guide: 'auto' }, { guide: 'auto', seen: { colorcall: 5, gonogo: 1, peripheral: 3 } }];
   for (const { id } of FOCUS_SESSIONS) {
     for (const length of LENGTHS) {
       for (const flags of FLAGS) {
-        const s = createSession({ sessionId: id, settings: { length, difficulty: 'normal' }, seed: 7, flags });
-        const ms = s.steps.reduce((a, x) => a + x.durationMs, 0);
-        assert(Math.abs(ms - totalMinutes(id, length) * 60000) < 50, `${id} ${length}: ${ms} ms vs ${totalMinutes(id, length)} min`);
+        for (const { guide, seen } of guides) {
+          for (const seed of [7, 8, 9]) {
+            const s = createSession({ sessionId: id, settings: { length, difficulty: 'normal', guide }, seed, flags, seen });
+            const ms = s.steps.reduce((a, x) => a + x.durationMs + x.introMs, 0);
+            assert(ms === totalMinutes(id, length) * 60000, `${id} ${length} ${guide}: ${ms} ms vs ${totalMinutes(id, length)} min`);
+            assert(s.steps.every((x) => x.durationMs >= 10000), `${id} ${length}: a drill under 10 s`);
+            if (id === 'game') assert(ms <= GAME_DAY_MAX_MIN * 60000, `Game Ready over ${GAME_DAY_MAX_MIN} min`);
+          }
+        }
       }
     }
   }

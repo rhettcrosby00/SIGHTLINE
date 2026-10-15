@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v2.3';
+const CACHE_VERSION = 'v2.4';
 const CACHE = `sightline-${CACHE_VERSION}`;
 
 // Google Fonts (Archivo + Schibsted Grotesk) live in their own cache that
@@ -48,6 +48,7 @@ const ASSETS = [
   './js/lib/colors.js',
   './js/lib/icons.js',
   './js/lib/rng.js',
+  './js/lib/seen.js',
   './js/lib/text.js',
   './js/lib/variety.js',
   './js/lib/wakelock.js',

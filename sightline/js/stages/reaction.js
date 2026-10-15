@@ -10,7 +10,7 @@
 // Steps 1–2 and the countdown run inside hold(), so they never use drill time.
 // Big answer buttons; we score correct / wrong / too slow and time.
 
-import { howTo, countdown, mini } from './common.js';
+import { howTo, countdown, mini, practiceLeft } from './common.js';
 import { cueById } from '../lib/colors.js';
 import { cues } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
@@ -33,13 +33,22 @@ const at = (p) => `left:calc(50% + ${p.x.toFixed(3)} * (50% - var(--size) / 2 - 
 const ramp = (prog) => 1 - 0.25 * Math.min(1, Math.max(0, prog));
 const GENTLE_CUES = 3;      // first scored cues get extra time…
 const GENTLE_FACTOR = 1.5;  // …this much
+const FINISH_CUES = 3;      // the last cues are easy (simple cue, extra time)…
+const FINISH_FACTOR = 1.6;  // …so every drill ends on a success
+const AVG_GAP_MS = 1200;    // middle of the 0.8–1.6 s gap between cues
+
+// Close enough to the end that only the last few (easy) cues fit?
+export function finishing(leftMs, windowMs, hard) {
+  const perCue = AVG_GAP_MS * (hard ? 0.75 : 1) + windowMs * FINISH_FACTOR + 450;
+  return leftMs < FINISH_CUES * perCue;
+}
 
 // ---- Shared runner -------------------------------------------------------------
 // Also used by the brain drills. Spec fields:
 //   kicker?, title, rule, strip, demo, practice (count)
 //   pad: 'colors' | 'oddeven' | 'list' | 'anywhere'
 //   tapWindow (ms), fbMs?
-//   next({ hard, prog, practice }) -> trial
+//   next({ hard, prog, practice, easy }) -> trial   (easy: the simplest cue, for the finish)
 // Trial fields:
 //   html, answer (cue id, 'go', or null = hold), answerLabel (for "It was …"),
 //   kind?, flashMs?, buttons? [{ id, label }] for 'list' pads
@@ -68,7 +77,7 @@ async function runTap(ctx, spec) {
   const hard = settings.difficulty === 'hard';
   const anywhere = spec.pad === 'anywhere';
   const gapMs = session.content.gaps(step.id);
-  const practiceN = settings.guide === 'brief' ? 0 : (spec.practice ?? 3);
+  const practiceN = (step.guide ?? settings.guide) === 'brief' ? 0 : (spec.practice ?? 3);
 
   el.innerHTML = `
     <div class="rx rx--tap ${anywhere ? 'rx--anywhere' : ''}">
@@ -122,6 +131,7 @@ async function runTap(ctx, spec) {
   if (practiceN) {
     await hold(async () => {
       for (let i = 1; i <= practiceN; i++) {
+        if (practiceLeft(ctx) < 3500) break;   // out of instruction time: on to the real thing
         ruleEl.textContent = `PRACTICE ${i} of ${practiceN} · ${spec.strip}`;
         blank();
         await sleep(700);
@@ -135,7 +145,7 @@ async function runTap(ctx, spec) {
           else if (anywhere) say('is-hint', 'Tap anywhere!');
           else pad.querySelector(`[data-id="${trial.answer}"]`)?.classList.add('is-hint');
         }, () => {});
-        const resp = await waitTap(trial.answer == null ? 2200 : 8000);
+        const resp = await waitTap(trial.answer == null ? 2200 : Math.max(2500, Math.min(8000, practiceLeft(ctx) - 1100)));
         answered = true;
         pad?.querySelectorAll('.is-hint').forEach((n) => n.classList.remove('is-hint'));
         if (trial.answer == null) {
@@ -161,15 +171,17 @@ async function runTap(ctx, spec) {
   while (true) {
     const left = remaining();
     const prog = 1 - left / durationMs;
-    const gentle = stats.trials < GENTLE_CUES ? GENTLE_FACTOR : 1;
-    const windowMs = spec.tapWindow * (hard ? 0.75 : 1) * ramp(prog) * gentle;
+    const base = spec.tapWindow * (hard ? 0.75 : 1) * ramp(prog);
+    const easy = finishing(left, base, hard);
+    const gentle = easy ? FINISH_FACTOR : stats.trials < GENTLE_CUES ? GENTLE_FACTOR : 1;
+    const windowMs = base * gentle;
     const gap = gapMs(hard);
     if (left < gap + windowMs + 400) break;
 
     blank();
     await sleep(gap);
 
-    const trial = spec.next({ hard, prog, practice: false });
+    const trial = spec.next({ hard: hard && !easy, prog, practice: false, easy });
     if (!trial) break;
     countEl.textContent = `#${stats.trials + 1}`;
     showTrial(trial);
@@ -258,9 +270,9 @@ export const goNoGo = {
           { cue: mini.fill('red'), answer: null, caption: 'RED → don’t touch' },
         ],
       },
-      next() {
-        // About 65% go; never more than 3 go or 2 hold in a row.
-        const isGo = ctx.session.content.goNoGo().go;
+      next({ easy }) {
+        // About 65% go; never more than 3 go or 2 hold in a row. The finish is all GO.
+        const isGo = easy || ctx.session.content.goNoGo().go;
         const c = isGo ? go : stop;
         return {
           answer: isGo ? 'go' : null, answerLabel: 'GREEN', kind: isGo ? 'go' : 'nogo',
@@ -320,13 +332,13 @@ export const peripheral = {
           { cue: mini.periph('yellow', 'top'), answer: 'yellow', caption: 'YELLOW flashed → tap YELLOW' },
         ],
       },
-      next({ hard, practice }) {
+      next({ hard, practice, easy }) {
         // Anywhere along an edge, never the same side twice in a row and well
         // away from the last spot. Hard adds a white number as a distractor.
-        const t = ctx.session.content.peripheral({ lure: hard && !practice });
+        const t = ctx.session.content.peripheral({ lure: hard && !practice && !easy });
         const c = cueById[t.color];
         const lure = t.lure ? `<div class="flash flash--lure" style="${at(t.lure)}">${t.lure.digit}</div>` : '';
-        const flashMs = practice ? 900 : hard ? 200 : 350;
+        const flashMs = practice || easy ? 900 : hard ? 200 : 350;
         return {
           answer: c.id,
           answerLabel: c.label,

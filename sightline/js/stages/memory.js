@@ -3,7 +3,7 @@
 // next sequence is one longer; miss it and the length stays the same.
 // Sequences come from the session (js/content/reaction.js), so a seed replays.
 
-import { howTo, countdown, mini } from './common.js';
+import { howTo, countdown, mini, practiceLeft } from './common.js';
 import { cueById } from '../lib/colors.js';
 import { cues, tone } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
@@ -17,7 +17,7 @@ const TAP_MS = 2500;         // …and between taps
 
 export const memory = {
   async run(ctx) {
-    const { el, settings, session, sleep, remaining, hold } = ctx;
+    const { el, settings, session, step, sleep, remaining, hold } = ctx;
     const hard = settings.difficulty === 'hard';
     const onMs = hard ? 450 : 600;
     const offMs = hard ? 200 : 300;
@@ -106,8 +106,8 @@ export const memory = {
     };
     const roundMs = (len) => 700 + len * (onMs + offMs) + FIRST_TAP_MS + (len - 1) * TAP_MS / 2 + 1200;
 
-    // ---- Practice: one short sequence, unscored ----
-    if (settings.guide !== 'brief') {
+    // ---- Practice: one short sequence, unscored (if the instruction time allows) ----
+    if ((step.guide ?? settings.guide) !== 'brief' && practiceLeft(ctx) >= roundMs(2)) {
       await hold(async () => {
         ruleEl.textContent = 'PRACTICE · WATCH, THEN TAP IT BACK';
         const r = await round(session.content.memory(2));
@@ -126,6 +126,9 @@ export const memory = {
     const stats = { trials: 0, correct: 0, longest: 0 };
     let len = START_LEN;
     while (remaining() > roundMs(len)) {
+      // The last round is short (2 colors), so the drill ends on a success.
+      const last = remaining() < roundMs(len) + roundMs(2);
+      if (last) len = 2;
       countEl.textContent = `${len} colors`;
       const r = await round(session.content.memory(len));
       stats.trials++;
@@ -142,6 +145,7 @@ export const memory = {
       }
       await sleep(1000);
       clearFb();
+      if (last) break;
     }
     // Fill the rest of the slot so the routine stays on schedule.
     stateEl.textContent = '';

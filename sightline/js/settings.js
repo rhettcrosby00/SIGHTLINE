@@ -14,10 +14,10 @@ export const GROUPS = [
   { title: 'Focus', fields: [
     { key: 'length', label: 'Length', stack: true,
       options: ['quick', 'standard', 'full'].map((v) => [v, `${v[0].toUpperCase()}${v.slice(1)} · ${mins(v)}`]),
-      hint: () => 'Minutes for Game Ready. One-part sessions scale the same way.' },
+      hint: () => 'Minutes for Game Ready, instructions included. It never runs past 10.' },
     { key: 'difficulty', label: 'Difficulty', options: [['normal', 'Normal'], ['hard', 'Hard']] },
-    { key: 'guide', label: 'Instructions', options: [['full', 'Full'], ['brief', 'Brief']],
-      hint: () => 'Full shows an example and a short practice before each drill.' },
+    { key: 'guide', label: 'Instructions', stack: true, options: [['auto', 'Auto'], ['full', 'Full'], ['brief', 'Brief']],
+      hint: () => 'Auto shows an example and a short practice the first 3 times you run a drill, then just the rule.' },
     { key: 'sound', label: 'Sound', toggle: true },
   ] },
   { title: 'Leaderboard', flag: 'leaderboard', fields: [
@@ -31,7 +31,7 @@ export const GROUPS = [
 ];
 const FIELDS = GROUPS.flatMap((g) => g.fields);
 
-export const DEFAULTS = { length: 'standard', difficulty: 'normal', sound: 'on', guide: 'full', appearance: 'auto', nameStyle: 'name', cue: 'COMPETE' };
+export const DEFAULTS = { length: 'standard', difficulty: 'normal', sound: 'on', guide: 'auto', appearance: 'auto', nameStyle: 'name', cue: 'COMPETE', guideV: 2 };
 
 // Saved settings → current settings. Anything unknown or out of range falls
 // back to the default; settings that no longer exist (the old Tap/Cones
@@ -43,6 +43,8 @@ export function parseSettings(saved = {}) {
     if (ok.includes(saved?.[f.key])) out[f.key] = saved[f.key];
   }
   if (typeof saved?.cue === 'string') out.cue = cleanCue(saved.cue);
+  // Before v2.4, Full was the default (there was no Auto): move those phones to Auto once.
+  if (saved?.guide === 'full' && saved?.guideV !== 2) out.guide = 'auto';
   return out;
 }
 
@@ -67,7 +69,7 @@ export function describe(s) {
   return [
     `${s.length[0].toUpperCase()}${s.length.slice(1)}`,
     s.difficulty === 'hard' ? 'Hard' : 'Normal',
-    s.guide === 'brief' ? 'Brief instructions' : 'Full instructions',
+    { auto: 'Auto instructions', full: 'Full instructions', brief: 'Brief instructions' }[s.guide] ?? 'Auto instructions',
     `Sound ${s.sound}`,
   ].join(' · ');
 }

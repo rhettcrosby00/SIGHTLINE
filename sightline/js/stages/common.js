@@ -4,17 +4,25 @@
 import { cues } from '../lib/audio.js';
 import { cueById } from '../lib/colors.js';
 
-const BRIEF_MS = 3500;        // Instructions: Brief shows just the rule
+const BRIEF_MS = 3500;        // Brief: just the rule, briefly
+const CARD_MS = 10000;        // Full: the card starts on its own after this (Ready starts sooner)
+const COUNTDOWN_LEFT_MS = 2600;   // time kept back for the 3-2-1 after the card and practice
 
-// How-to card shown before every drill. Runs inside hold(), so reading it
-// never eats into drill time.
-//   Full (default): rule + looping example, then waits for READY.
+// How-to card shown before every drill. Runs inside hold(), so it never eats
+// into the drill's own time, but it does count toward the session: the plan
+// (js/plan.js) gives each drill an instruction budget (step.introMs) and the
+// card starts on its own, so a session never runs past its minutes.
+//   Full: rule + looping example; tap Ready, or it starts after ~10 s.
 //   Brief: the rule for 3.5 s.
+// Sets ctx.introEnd: when the instructions (card, practice, 3-2-1) should be done.
 export async function howTo(ctx, { kicker, title, rule, demo }) {
-  const { el, settings, sleep, hold, ready } = ctx;
-  const full = settings.guide !== 'brief';
+  const { el, sleep, hold, ready, now, step } = ctx;
+  const full = (step?.guide ?? (ctx.settings.guide === 'brief' ? 'brief' : 'full')) !== 'brief';
+  const budget = step?.introMs ?? (full ? 22000 : 6000);
+  const cardMs = Math.max(3000, Math.min(full ? CARD_MS : BRIEF_MS, budget - COUNTDOWN_LEFT_MS));
 
   await hold(async () => {
+    ctx.introEnd = now() + budget;
     el.innerHTML = `
       <div class="howto">
         <p class="howto__kicker">${kicker}</p>
@@ -22,18 +30,22 @@ export async function howTo(ctx, { kicker, title, rule, demo }) {
         <p class="howto__rule">${rule}</p>
         ${full && demo ? '<div class="howto__demo" aria-hidden="true"></div>' : ''}
         ${full
-          ? '<button type="button" class="btn btn--primary btn--block btn--big btn-ready">Ready</button>'
+          ? `<button type="button" class="btn btn--primary btn--block btn--big btn-ready">Ready</button>
+             <div class="howto__timer" aria-hidden="true"><i style="animation-duration:${cardMs}ms"></i></div>`
           : '<p class="howto__soon">Starting in a moment…</p>'}
       </div>`;
     const stop = full && demo ? playDemo(el.querySelector('.howto__demo'), demo) : () => {};
     try {
-      if (full) await ready(el.querySelector('.btn-ready'));
-      else await sleep(BRIEF_MS);
+      if (full) await Promise.race([ready(el.querySelector('.btn-ready')), sleep(cardMs)]);
+      else await sleep(cardMs);
     } finally {
       stop();
     }
   });
 }
+
+// Time left in a drill's instruction budget for practice, keeping the 3-2-1.
+export const practiceLeft = (ctx) => (ctx.introEnd == null ? Infinity : ctx.introEnd - COUNTDOWN_LEFT_MS - ctx.now());
 
 // Big 3-2-1 with a label ("GET SET", "NOW FOR REAL"), drawn over `box`.
 export async function countdown({ sleep }, box, label) {
