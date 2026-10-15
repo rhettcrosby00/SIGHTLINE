@@ -4,6 +4,7 @@
 // answer a tap) and MOVE (js/cone/ui.js — phone on a stand, react and cut).
 
 import { initSettings, updateSetting } from './settings.js';
+import { setMusicMode } from './lib/audio.js';
 import { hydrateIcons, icon } from './lib/icons.js';
 import { showGuide, guideSeen } from './guide.js';
 import { createVariety } from './lib/variety.js';
@@ -11,10 +12,11 @@ import { createLastRuns } from './migrate.js';
 import { initFocus } from './focus.js';
 import { initMove, MOVE_RUNS } from './cone/ui.js';
 import { initLeaderboard } from './score/ui.js';
+import { initRoutineBuilder } from './myroutine-ui.js';
 import { isOn } from './features.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '2.4';
+export const APP_VERSION = '2.5';
 
 const $ = (id) => document.getElementById(id);
 
@@ -49,6 +51,7 @@ const dev = {
   autoReady: params.has('autoready'),
   seed: params.get('seed'),
   only: params.get('only')?.split(','),
+  state: params.get('state'),   // flat | ready | wired, to test the check-in's routines
 };
 const variety = createVariety();
 const lastRuns = createLastRuns();
@@ -57,7 +60,9 @@ const lastRuns = createLastRuns();
 let focus = null;
 let move = null;
 let settingsFrom = 'start';
-const getSettings = initSettings({ onChange: () => { renderHome(); focus?.renderHub(); } });
+const getSettings = initSettings({
+  onChange: (s) => { setMusicMode(s.music === 'on'); renderHome(); focus?.renderHub(); },
+});
 function openSettings(from) {
   settingsFrom = from;
   $('settings-back-label').textContent = from === 'focus' ? 'Focus' : 'Home';
@@ -82,6 +87,12 @@ focus = initFocus({
   show, dev, variety, getSettings, updateSetting, leaderboard,
   onRun: (id) => lastRuns.set('focus', id),
   onOptions: () => openSettings('focus'),
+  onRoutine: () => builder.open(),
+});
+const builder = initRoutineBuilder({
+  show, getSettings,
+  onTry: () => focus.start('myroutine', { from: 'routine' }),
+  onBack: () => { focus.renderHub(); show('focus', { back: true }); },
 });
 move = initMove({ show, dev, leaderboard, onRun: (run) => lastRuns.set('move', run) });
 
@@ -89,10 +100,11 @@ move = initMove({ show, dev, leaderboard, onRun: (run) => lastRuns.set('move', r
 function renderHome() {
   if (!focus) return;
   $('btn-game').innerHTML = `${icon('play')}Game Ready · ${focus.minutes('game')} min`;
+  $('routine-len').textContent = focus.routineLabel();
   $('btn-quick').innerHTML = `${icon('play')}Quick Start · ${move.minutes('quick')} min`;
   const last = lastRuns.get();
   // "Run last" shows when it's something other than the preset button above it.
-  const focusLast = last.focus && last.focus !== 'game' ? last.focus : null;
+  const focusLast = last.focus && last.focus !== 'game' && last.focus !== 'myroutine' ? last.focus : null;
   $('btn-focus-last').hidden = !focusLast;
   if (focusLast) $('focus-last-desc').textContent = `${focus.title(focusLast)} · ${focus.minutes(focusLast)} min`;
   $('btn-move-last').hidden = !last.move;
@@ -104,6 +116,7 @@ renderHome();
 $('btn-focus').addEventListener('click', () => focus.openHub());
 $('btn-move').addEventListener('click', () => move.openHub());
 $('btn-game').addEventListener('click', () => focus.start('game'));
+$('btn-routine').addEventListener('click', () => focus.start('myroutine'));   // one tap from home
 $('btn-quick').addEventListener('click', () => move.open('quick'));
 $('btn-focus-last').addEventListener('click', () => focus.start(lastRuns.get().focus));
 $('btn-move-last').addEventListener('click', () => move.runLast(lastRuns.get().move));

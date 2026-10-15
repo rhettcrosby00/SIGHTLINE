@@ -10,6 +10,7 @@ import {
   TIMING, PACE_LABEL, coneSlots, timingSummary, suggestedRestSec, manualTooFast, farthestYards, drillMs, createTuneStore,
 } from './timing.js';
 import { icon, DIR_ICON } from '../lib/icons.js';
+import { isMusicMode } from '../lib/audio.js';
 
 // Each variant: where it's saved and how a saved setup is cleaned up.
 const VARIANTS = {
@@ -133,7 +134,7 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
     s.fakes === 'off' ? 'No fake-outs' : `Fake-outs ${s.fakes}`,
     usesArrows && s.reverse ? 'Reverse on' : '',
   ].filter(Boolean).join(' · ');
-  const soundSummary = s.sound === 'on' ? (s.callouts ? 'Beep + callouts' : 'Beep') : 'Off';
+  const soundSummary = isMusicMode() ? 'Silent: music mode is on' : s.sound === 'on' ? (s.callouts ? 'Beep + callouts' : 'Beep') : 'Off';
 
   // Distances: one for every cone, or one per cone (Custom setup only). First step ignores distance.
   const tune = tunes.get(s);

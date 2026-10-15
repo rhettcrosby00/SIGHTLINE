@@ -7,7 +7,9 @@ import { _timelines } from '../js/stages/breathe.js';
 import { MODULES } from '../js/routine.js';
 import { STROOP_PAIRS, STROOP_WORDS, MIN_EDGE_DIST, GAP_MS, HARD_GAP } from '../js/content/reaction.js';
 import { MIN_SACCADE_DIST, GAZE_LETTERS } from '../js/content/eyes.js';
-import { SCRIPTS, scriptSeconds } from '../js/content/scripts.js';
+import { ALL_SCRIPTS, scriptSeconds } from '../js/content/scripts.js';
+import { DEFAULT_ROUTINE, routineSeconds } from '../js/myroutine.js';
+import { SPORTS, SKILL_WORDS } from '../js/content/sports.js';
 import { CUE_WORDS } from '../js/content/cues.js';
 import { QUESTIONS } from '../js/data/questions.js';
 import { CUES } from '../js/lib/colors.js';
@@ -154,7 +156,7 @@ test('Math answers are correct and odd → BLUE, even → RED', () => {
 });
 
 // 5 ---------------------------------------------------------------------------------
-test('Game Ready: Regulate → Activate → Challenge → Rehearse; one breathing pattern; ends with Lock In', () => {
+test('Game Ready (Ready): Regulate → Activate → Challenge → Rehearse; one breathing pattern; ends with My Routine', () => {
   const pillarIds = ['regulate', 'activate', 'challenge', 'rehearse'];
   const challengeOrders = new Set();
   const activateOrders = new Set();
@@ -162,7 +164,7 @@ test('Game Ready: Regulate → Activate → Challenge → Rehearse; one breathin
   for (const { d, flags, settings } of runs) {
     const seq = d.steps.map((s) => s.pillar).filter((p, i, a) => p !== a[i - 1]);
     assert(seq.join() === pillarIds.join(), `pillar order ${seq.join()}`);
-    assert(d.steps.at(-1).id === 'lockin' && d.steps.at(-2).id === 'visualize', 'Rehearse order changed');
+    assert(d.steps.at(-1).id === 'myroutine' && d.steps.at(-2).id === 'visualize', 'Rehearse order changed');
     const reg = d.steps.filter((s) => s.pillar === 'regulate');
     assert(reg.length === 1 && reg[0].id !== 'lockin', `Regulate should be one breathing pattern, got ${reg.map((s) => s.id)}`);
     breaths.add(reg[0].id);
@@ -173,17 +175,17 @@ test('Game Ready: Regulate → Activate → Challenge → Rehearse; one breathin
     challengeOrders.add(d.steps.filter((s) => s.pillar === 'challenge').map((s) => s.id).join());
     activateOrders.add(d.steps.filter((s) => s.pillar === 'activate').map((s) => s.id).join());
   }
-  assert(breaths.size === 3, `breathing patterns used: ${[...breaths]}`);
+  assert(breaths.size === 4, `breathing patterns used: ${[...breaths]}`);
   assert(challengeOrders.size === 2, `Challenge orders: ${challengeOrders.size}`);
   assert(activateOrders.size === 8, `Activate orders: ${activateOrders.size}`);
 });
 
 test('One-part sessions run only their part (Breathing, Eyes, Reaction, Rehearse, Extras)', () => {
   const want = {
-    regulate: (f) => ['settle', 'sigh', ...(f.newDrills ? ['breath478'] : []), 'lockin'],
-    activate: () => ['pursuit', 'saccades', 'peripheral'],
+    regulate: (f) => ['settle', 'sigh', 'resonance', ...(f.newDrills ? ['breath478'] : []), 'lockin'],
+    activate: () => ['pursuit', 'saccades', 'peripheral', 'quieteye'],
     challenge: () => ['colorcall', 'gonogo'],
-    rehearse: () => ['visualize', 'lockin'],
+    rehearse: () => ['visualize', 'myroutine'],
     extras: (f) => ['gaze', 'stroop', 'math', 'questions', ...(f.newDrills ? ['memory'] : [])],
   };
   for (let i = 0; i < 200; i++) {
@@ -192,7 +194,8 @@ test('One-part sessions run only their part (Breathing, Eyes, Reaction, Rehearse
         const s = createSession({ sessionId: id, settings: settingsFor(i), seed: i, flags });
         const got = s.steps.map((x) => x.id);
         assert(got.slice().sort().join() === ids(flags).slice().sort().join(), `${id}: ${got}`);
-        if (id === 'regulate' || id === 'rehearse') assert(got.at(-1) === 'lockin', `${id} should finish with Lock In`);
+        if (id === 'regulate') assert(got.at(-1) === 'lockin', 'Breathing only should finish with Lock In');
+        if (id === 'rehearse') assert(got.at(-1) === 'myroutine', 'Rehearse only should finish with My Routine');
       }
     }
   }
@@ -228,7 +231,8 @@ test('Game Ready is 5, 8 or 10 minutes, instructions included, and never more th
           for (const seed of [7, 8, 9]) {
             const s = createSession({ sessionId: id, settings: { length, difficulty: 'normal', guide }, seed, flags, seen });
             const ms = s.steps.reduce((a, x) => a + x.durationMs + x.introMs, 0);
-            assert(ms === totalMinutes(id, length) * 60000, `${id} ${length} ${guide}: ${ms} ms vs ${totalMinutes(id, length)} min`);
+            const want = totalMinutes(id, length, routineSeconds(DEFAULT_ROUTINE)) * 60000;
+            assert(Math.abs(ms - want) < 1, `${id} ${length} ${guide}: ${ms} ms vs ${want} ms`);
             assert(s.steps.every((x) => x.durationMs >= 10000), `${id} ${length}: a drill under 10 s`);
             if (id === 'game') assert(ms <= GAME_DAY_MAX_MIN * 60000, `Game Ready over ${GAME_DAY_MAX_MIN} min`);
           }
@@ -266,10 +270,10 @@ test('Content from the last 3 sessions doesn’t come back (device storage on)',
     for (const past of history.slice(-3)) {
       for (const q of now.questions) assert(!past.questions.includes(q), `session ${i}: question came back: ${q}`);
       for (const m of now.math) assert(!past.math.includes(m), `session ${i}: math problem came back: ${m}`);
-      assert(now.script !== past.script, `session ${i}: script came back: ${now.script}`);
       for (const c of now.cues) assert(!past.cues.includes(c), `session ${i}: cue suggestion came back: ${c}`);
     }
     if (history.length) assert(now.challenge !== history.at(-1).challenge, `session ${i}: same drill order as last time`);
+    if (history.length) assert(now.script !== history.at(-1).script, `session ${i}: same visualization as last time`);
     history.push(now);
   }
 });
@@ -315,7 +319,7 @@ test('Works with device storage disabled (still random, still no repeats)', () =
 // 8 ---------------------------------------------------------------------------------
 test('The same seed replays the same session; different seeds differ', () => {
   const settings = { length: 'standard', difficulty: 'hard' };
-  const recent = [{ questions: [QUESTIONS[0].q], scripts: ['first-1'], math: ['3 + 4'], cues: ['CALM'] }];
+  const recent = [{ questions: [QUESTIONS[0].q], scripts: ['gen-first'], math: ['3 + 4'], cues: ['CALM'] }];
   const a = JSON.stringify(drawSession(createSession({ settings, seed: 424242, recent }), settings));
   const b = JSON.stringify(drawSession(createSession({ settings, seed: 424242, recent }), settings));
   const c = JSON.stringify(drawSession(createSession({ settings, seed: 424243, recent }), settings));
@@ -337,11 +341,14 @@ test('Timing between cues varies within 0.8–1.6 s (shorter on Hard)', () => {
 
 // Content pools -------------------------------------------------------------------
 test('Content pools are big enough and well-formed', () => {
-  assert(SCRIPTS.length >= 12, 'need 12+ visualization scripts');
-  for (const s of SCRIPTS) assert(Math.abs(scriptSeconds(s) - 45) <= 1, `${s.id} is ${scriptSeconds(s)} s`);
-  const themes = new Set(SCRIPTS.map((s) => s.theme));
-  assert(themes.size === 3, 'need 3 script themes');
-  unique(SCRIPTS.map((s) => s.id), 'script id');
+  const all = Object.values(ALL_SCRIPTS).flat();
+  assert(ALL_SCRIPTS.general.length >= 6, 'need 6+ general visualization scripts');
+  for (const s of all) assert(Math.abs(scriptSeconds(s) - 45) <= 1, `${s.id} is ${scriptSeconds(s)} s`);
+  unique(all.map((s) => s.id), 'script id');
+  for (const sp of SPORTS) {
+    assert(ALL_SCRIPTS[sp.id]?.length >= 2, `${sp.id}: needs 2+ scripts`);
+    assert(SKILL_WORDS[sp.id]?.length >= 4 && SKILL_WORDS[sp.id].every((w) => w.length <= 14 && w === w.toUpperCase()), `${sp.id}: skill words`);
+  }
   assert(CUE_WORDS.length >= 20, 'need 20+ cue words');
   unique(CUE_WORDS, 'cue word');
   for (const bad of ['O', 'Q', 'I', 'L']) assert(!GAZE_LETTERS.includes(bad), `${bad} is easy to confuse`);

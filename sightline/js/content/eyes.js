@@ -44,3 +44,20 @@ export const GAZE_LETTERS = 'ABCDEFGHJKMNPRSTUVWXYZ'.split('');
 export function gazeStream(rng) {
   return spaced(rng, GAZE_LETTERS);
 }
+
+// Quiet Eye: where the target sits (-1..1, kept off the edges, never near the
+// last spot) and which symbol flashes inside it (spaced rule).
+export const QE_SYMBOLS = ['▲', '●', '■', '◆'];
+export function quietEyeStream(rng) {
+  const symbol = spaced(rng, QE_SYMBOLS);
+  let last = null;
+  return () => {
+    let p;
+    for (let i = 0; i < 25; i++) {
+      p = { x: rng.range(-0.6, 0.6), y: rng.range(-0.6, 0.6) };
+      if (!last || dist(p, last) >= 0.5) break;
+    }
+    last = p;
+    return { ...p, symbol: symbol() };
+  };
+}

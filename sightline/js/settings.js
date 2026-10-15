@@ -4,6 +4,7 @@
 
 import { totalMinutes } from './plan.js';
 import { cleanCue } from './content/cues.js';
+import { SPORTS, sportById, cleanSport } from './content/sports.js';
 import { isOn } from './features.js';
 
 const STORAGE_KEY = 'sightline.settings.v1';
@@ -18,7 +19,16 @@ export const GROUPS = [
     { key: 'difficulty', label: 'Difficulty', options: [['normal', 'Normal'], ['hard', 'Hard']] },
     { key: 'guide', label: 'Instructions', stack: true, options: [['auto', 'Auto'], ['full', 'Full'], ['brief', 'Brief']],
       hint: () => 'Auto shows an example and a short practice the first 3 times you run a drill, then just the rule.' },
-    { key: 'sound', label: 'Sound', toggle: true },
+  ] },
+  { title: 'You', fields: [
+    { key: 'sport', label: 'Sport', select: () => SPORTS.map((x) => [x.id, x.label]),
+      hint: () => 'Picks your visualization scripts and skill cue words.' },
+    { key: 'position', label: 'Position', select: (s) => [['', 'Any'], ...sportById[s.sport].positions], when: (s) => sportById[s.sport].positions.length > 0 },
+  ] },
+  { title: 'Sound', fields: [
+    { key: 'sound', label: 'Focus sounds', toggle: true },
+    { key: 'music', label: 'Keep my music playing', toggle: true,
+      hint: () => 'The app plays no sound at all, so your own music never stops. Cues come as vibration (on phones that allow it) and on screen. iPhone doesn’t let web apps vibrate, so keep an eye on the screen there.' },
   ] },
   { title: 'Leaderboard', flag: 'leaderboard', fields: [
     { key: 'nameStyle', label: 'Names', options: [['name', 'Name'], ['initials', 'Initials']],
@@ -31,17 +41,22 @@ export const GROUPS = [
 ];
 const FIELDS = GROUPS.flatMap((g) => g.fields);
 
-export const DEFAULTS = { length: 'standard', difficulty: 'normal', sound: 'on', guide: 'auto', appearance: 'auto', nameStyle: 'name', cue: 'COMPETE', guideV: 2 };
+export const DEFAULTS = {
+  length: 'standard', difficulty: 'normal', sound: 'on', music: 'off', guide: 'auto', appearance: 'auto', nameStyle: 'name',
+  sport: 'general', position: '', sportAsked: false, cue: 'COMPETE', guideV: 2,
+};
 
 // Saved settings → current settings. Anything unknown or out of range falls
 // back to the default; settings that no longer exist (the old Tap/Cones
 // "mode") are dropped.
 export function parseSettings(saved = {}) {
   const out = { ...DEFAULTS };
-  for (const f of FIELDS) {
+  for (const f of FIELDS.filter((x) => !x.select)) {
     const ok = f.toggle ? ['on', 'off'] : f.options.map(([v]) => v);
     if (ok.includes(saved?.[f.key])) out[f.key] = saved[f.key];
   }
+  Object.assign(out, cleanSport(saved?.sport, saved?.position));
+  out.sportAsked = saved?.sportAsked === true;
   if (typeof saved?.cue === 'string') out.cue = cleanCue(saved.cue);
   // Before v2.4, Full was the default (there was no Auto): move those phones to Auto once.
   if (saved?.guide === 'full' && saved?.guideV !== 2) out.guide = 'auto';
@@ -87,6 +102,11 @@ const seg = (f, s) => `
       aria-checked="${s[f.key] === v}">${text}</button>`).join('')}
   </div>`;
 
+const select = (f, s) => `
+  <select class="lb-select" data-select="${f.key}" aria-label="${f.label}">
+    ${f.select(s).map(([v, text]) => `<option value="${v}"${s[f.key] === v ? ' selected' : ''}>${text}</option>`).join('')}
+  </select>`;
+
 const toggle = (f, s) => `
   <button type="button" class="switch" role="switch" data-toggle="${f.key}" aria-checked="${s[f.key] === 'on'}" aria-label="${f.label}"></button>`;
 
@@ -95,10 +115,10 @@ function render(el, s) {
     <section class="group" aria-label="${g.title}">
       <h3 class="group__title">${g.title}</h3>
       <div class="group__rows">
-        ${g.fields.map((f) => `
-          <div class="setting${f.stack ? ' setting--stack' : ''}">
+        ${g.fields.filter((f) => !f.when || f.when(s)).map((f) => `
+          <div class="setting${f.stack || f.select ? ' setting--stack' : ''}">
             <span class="setting__label">${f.label}</span>
-            ${f.toggle ? toggle(f, s) : seg(f, s)}
+            ${f.toggle ? toggle(f, s) : f.select ? select(f, s) : seg(f, s)}
             ${f.hint ? `<p class="setting__hint">${f.hint(s)}</p>` : ''}
           </div>`).join('')}
       </div>
@@ -111,6 +131,17 @@ export function initSettings({ onChange = () => {} } = {}) {
   current = settings;
   applyAppearance(settings.appearance);
   const el = document.getElementById('settings-body');
+
+  el.addEventListener('change', (e) => {
+    const key = e.target.dataset?.select;
+    if (!key) return;
+    settings[key] = e.target.value;
+    Object.assign(settings, cleanSport(settings.sport, key === 'sport' ? '' : settings.position));
+    settings.sportAsked = true;
+    save(settings);
+    render(el, settings);
+    onChange({ ...settings });
+  });
 
   el.addEventListener('click', (e) => {
     const b = e.target.closest('button');

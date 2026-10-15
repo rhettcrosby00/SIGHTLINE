@@ -74,6 +74,9 @@
         </button>
         <p class="side__desc"><b>Hold your phone.</b> Breathing, eye and brain drills. Every answer is a tap.</p>
         <button id="btn-game" class="btn btn--primary btn--block" type="button">Game Ready</button>
+        <button id="btn-routine" class="side__last" type="button">
+          <i data-icon="play"></i><span>My Routine · <span id="routine-len"></span></span>
+        </button>
         <button id="btn-focus-last" class="side__last" type="button" hidden>
           <i data-icon="rotate-ccw"></i><span>Run last · <span id="focus-last-desc"></span></span>
         </button>
@@ -99,6 +102,7 @@
 
   <!-- FOCUS: Game Ready + one-part sessions (rendered by js/focus.js) -->
   <section id="screen-focus" class="screen" data-side="focus"><div id="focus-hub"></div></section>
+  <section id="screen-routine" class="screen" data-side="focus"><div id="mr-builder"></div></section>
 
   <!-- MOVE: Quick Start, Custom setup, Signals Only (rendered by js/cone/ui.js) -->
   <section id="screen-move" class="screen" data-side="move"><div id="move-hub"></div></section>

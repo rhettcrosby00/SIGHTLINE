@@ -26,6 +26,18 @@ const SIGH_INTRO = [
   'The fastest way to calm down.<br>In, in again, long out.',
 ];
 
+const RESONANCE_INTRO = [
+  'About 6 breaths a minute.<br>In for 4, out for 6.',
+  'Slow and even.<br>Let the long breath out do the work.',
+  'Breathe low into your belly.<br>In for 4, out for 6.',
+];
+
+const ENERGIZE_INTRO = [
+  'Wake it up.<br>Quick in through the nose, quick out.',
+  'Bring the energy up.<br>Sharp breaths in, push them out.',
+  'Get the body going.<br>Fast in, fast out.',
+];
+
 const FOURSEVEN_INTRO = [
   'In for 4, hold for 7, out for 8.<br>Let the long exhale slow you down.',
   'Slow it all down.<br>In for 4, hold 7, out for 8.',
@@ -55,6 +67,8 @@ export function breathingText(rng) {
     settleIntro: rng.pick(SETTLE_INTRO),
     sighIntro: rng.pick(SIGH_INTRO),
     fourSevenIntro: rng.pick(FOURSEVEN_INTRO),
+    resonanceIntro: rng.pick(RESONANCE_INTRO),
+    energizeIntro: rng.pick(ENERGIZE_INTRO),
     lockInIntro: rng.pick(LOCKIN_INTRO),
     lockInSteady: rng.pick(LOCKIN_STEADY),
     lockInFinal: rng.pick(LOCKIN_FINAL),

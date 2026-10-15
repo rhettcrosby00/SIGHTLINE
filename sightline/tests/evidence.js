@@ -14,9 +14,9 @@ import { parseSettings } from '../js/settings.js';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const LIMITED = ['gaze', 'stroop', 'math', 'questions', 'memory'];
 // Drills nobody can fail (no right or wrong answer)…
-const UNFAILABLE = ['settle', 'sigh', 'breath478', 'lockin', 'pursuit', 'saccades', 'gaze', 'visualize'];
+const UNFAILABLE = ['settle', 'sigh', 'resonance', 'breath478', 'energize', 'lockin', 'pursuit', 'saccades', 'gaze', 'visualize', 'myroutine'];
 // …and scored drills that finish on easy cues (js/stages/reaction.js, memory.js).
-const EASY_FINISH = ['colorcall', 'gonogo', 'peripheral', 'stroop', 'math', 'questions', 'memory'];
+const EASY_FINISH = ['colorcall', 'gonogo', 'peripheral', 'quieteye', 'stroop', 'math', 'questions', 'memory'];
 
 test('Game Ready has no limited-evidence drills; Extras holds exactly those', () => {
   const extras = PILLARS.find((p) => p.id === 'extras').drills.map((d) => d.id).sort();
@@ -66,7 +66,8 @@ test('Every session ends on success: an unfailable last step, or easy last cues'
     for (let seed = 0; seed < 50; seed++) {
       const s = createSession({ sessionId: id, settings: { length: 'standard' }, seed, flags: { newDrills: true } });
       const lastId = s.steps.at(-1).id;
-      if (id === 'game' || id === 'regulate' || id === 'rehearse') assert(lastId === 'lockin', `${id} ends on ${lastId}`);
+      if (id === 'game' || id === 'rehearse' || id === 'myroutine') assert(lastId === 'myroutine', `${id} ends on ${lastId}`);
+      else if (id === 'regulate') assert(lastId === 'lockin', `${id} ends on ${lastId}`);
       else assert(UNFAILABLE.includes(lastId) || EASY_FINISH.includes(lastId), `${id} ends on ${lastId}`);
     }
   }
