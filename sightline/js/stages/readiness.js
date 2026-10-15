@@ -34,8 +34,8 @@ export function askBefore(el, { cue, suggestions }) {
       <input class="check__input" type="text" maxlength="${CUE_MAX}" placeholder="Type your word"
              autocomplete="off" autocapitalize="characters" spellcheck="false" value="" hidden>
       <div class="check__actions">
-        <button type="button" class="btn-ghost check__skip">Skip</button>
-        <button type="button" class="btn-start check__go">LET’S GO</button>
+        <button type="button" class="btn btn--secondary check__skip">Skip</button>
+        <button type="button" class="btn btn--primary check__go">Start</button>
       </div>
     </div>`;
 
@@ -95,7 +95,7 @@ export function askAfter(el, { cue }) {
       ${scale()}
       ${cue ? `<p class="check__word">${esc(cue)}</p>` : ''}
       <div class="check__actions check__actions--single">
-        <button type="button" class="btn-ghost check__skip">Skip</button>
+        <button type="button" class="btn btn--secondary btn--block check__skip">Skip</button>
       </div>
     </div>`;
   const root = el.firstElementChild;

@@ -4,5 +4,6 @@
 import { report } from './harness.js';
 import './routine.js';
 import './cone.js';
+import './design.js';
 
 process.exit(report() ? 1 : 0);

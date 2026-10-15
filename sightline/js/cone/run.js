@@ -4,7 +4,7 @@
 // countdown between sets (tap anywhere to pause). Nothing from Game Ready runs.
 
 import { countdown } from '../stages/common.js';
-import { tone, say } from '../lib/audio.js';
+import { tone, say, buzz } from '../lib/audio.js';
 import { faceHtml, spotStyle } from './render.js';
 import { COUNTDOWN_MS } from './config.js';
 
@@ -59,6 +59,7 @@ async function runDrill(ctx, plan, setup) {
       cueEl.setAttribute('style', spotStyle(e.pos));
       cueEl.classList.toggle('is-placed', !!e.pos);
       tone(e.type === 'hold' ? 330 : 880, { dur: 0.12, gain: 0.14 });
+      buzz(e.type === 'hold' ? [20, 40, 20] : 30);   // cue appears
       if (setup.callouts) say(e.type === 'hold' ? 'hold' : plan.cue.speak(e.face));
       if (setup.display === 'flash') {
         const show = Math.min(setup.flashMs, e.interval);
@@ -70,6 +71,7 @@ async function runDrill(ctx, plan, setup) {
       }
     }
     blank();
+    buzz([40, 60, 40]);   // set complete
     stats.reps += set.reps;
     stats.holds += set.holds;
     stats.sets++;
@@ -84,7 +86,7 @@ async function rest({ sleep, now }, stage, ms, next, total, hud) {
   hud.textContent = `Rest · Set ${next} of ${total} next`;
   const layer = document.createElement('div');
   layer.className = 'cd__rest';
-  layer.innerHTML = `<p class="cd__rest-label">REST</p><p class="cd__rest-time"></p>
+  layer.innerHTML = `<p class="cd__rest-label">Rest</p><p class="cd__rest-time"></p>
     <p class="cd__rest-next">Set ${next} of ${total} next</p><p class="cd__rest-tip">Tap anywhere to pause</p>`;
   stage.appendChild(layer);
   const time = layer.querySelector('.cd__rest-time');

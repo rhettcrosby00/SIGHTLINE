@@ -8,6 +8,11 @@
 import { esc } from '../lib/text.js';
 import { LEVELS } from './readiness.js';
 
+// Small logo mark for result screens (white+lime on dark, black on light/outdoor).
+export const SUM_LOGO = `<img class="sum__logo on-dark" src="assets/logo/logo-mark.svg" alt="Sightline logo" width="272" height="242">
+  <img class="sum__logo on-light" src="assets/logo/logo-mark-mono-dark.svg" alt="Sightline logo" width="272" height="242">`;
+
+const DONE = '<span class="row__val--done">Done</span>';
 const REACTION_DRILLS = new Set(['colorcall', 'gonogo', 'stroop', 'peripheral']);
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
 // Reaction times read as seconds (0.41) — easier to follow than milliseconds.
@@ -37,7 +42,7 @@ export function renderSummary(el, { results, settings, totalMs, readiness = {}, 
     const cueCount = results.reduce((a, r) => a + (r.cues ?? r.targets ?? 0), 0);
     tiles = tile(results.length, '', 'drills done') + tile(cueCount, '', 'cues called') + tile(minutes, 'min', 'warm-up');
     rows = results.map((r) => row(r.name,
-      r.cues != null ? `${r.cues} cues` : r.targets != null ? `${r.targets} targets` : '✓')).join('');
+      r.cues != null ? `${r.cues} cues` : r.targets != null ? `${r.targets} targets` : DONE)).join('');
   } else {
     const scored = results.filter((r) => r.trials);
     // Headline reaction times come from the reaction drills only (brain drills include thinking time).
@@ -51,7 +56,7 @@ export function renderSummary(el, { results, settings, totalMs, readiness = {}, 
     tiles = tile(pct(correct, trials), '%', 'accuracy') + tile(sec(avgRt), avgRt == null ? '' : 's', 'avg reaction') + tile(sec(best), best == null ? '' : 's', 'best reaction');
 
     rows = results.map((r) => {
-      if (!r.trials) return row(r.name, '✓');
+      if (!r.trials) return row(r.name, DONE);
       const misses = [r.misses && `${r.misses} slow`, r.wrong && `${r.wrong} wrong`, r.falseAlarms && `${r.falseAlarms} on red`]
         .filter(Boolean).join(' · ');
       return row(r.name, `${pct(r.correct, r.trials)}%${r.rtMs == null ? '' : ` · ${sec(r.rtMs)} s`}`, `${r.correct}/${r.trials}${misses ? ` · ${misses}` : ''}`);
@@ -66,7 +71,7 @@ export function renderSummary(el, { results, settings, totalMs, readiness = {}, 
   const { before = null, after = null } = readiness;
   const level = (n) => (n == null ? '—' : `${n} <small>${LEVELS[n - 1]}</small>`);
   const head = [
-    settings.cue ? `<div class="head__item"><img class="head__logo" src="assets/logo/logo-mark.svg" alt="Sightline logo" width="272" height="242"><p class="head__label">Cue word</p><p class="head__value">${esc(settings.cue)}</p></div>` : '',
+    settings.cue ? `<div class="head__item"><p class="head__label">Cue word</p><p class="head__value">${esc(settings.cue)}</p></div>` : '',
     before != null || after != null
       ? `<div class="head__item"><p class="head__label">Readiness</p><p class="head__value">${level(before)} → ${level(after)}</p></div>`
       : '',
@@ -74,7 +79,7 @@ export function renderSummary(el, { results, settings, totalMs, readiness = {}, 
 
   el.innerHTML = `
     <div class="sum">
-      <p class="sum__kicker">SESSION COMPLETE</p>
+      <div class="sum__top"><p class="sum__kicker">Session complete</p>${SUM_LOGO}</div>
       <h2 class="sum__title">GAME READY</h2>
       <p class="sum__meta">${meta}</p>
       ${head ? `<div class="head">${head}</div>` : ''}

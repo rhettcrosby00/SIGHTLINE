@@ -5,6 +5,7 @@ import {
   CONE_COLORS, colorById, DIRECTIONS, DIRECTION_PRESETS, SPEEDS, CUSTOM_MS, REPS, TIMED_SECONDS,
   SETS, REST_SECONDS, FLASH_MS, MIN_CONES, MAX_CONES, normalize, validate, intervalMs, COUNTDOWN_MS,
 } from './config.js';
+import { icon, DIR_ICON } from '../lib/icons.js';
 
 const KEY = 'sightline.cone.v1';
 
@@ -15,30 +16,48 @@ function saveSetup(s) {
   try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* storage blocked: still works this visit */ }
 }
 
-const ARROW_GLYPH = { F: '↑', FR: '↗', R: '→', BR: '↘', B: '↓', BL: '↙', L: '←', FL: '↖' };
-export { ARROW_GLYPH };
 
-const seg = (key, value, options) => `
-  <div class="seg" role="radiogroup">
+const seg = (key, value, options, fill = false) => `
+  <div class="seg${fill ? ' seg--fill' : ''}" role="radiogroup">
     ${options.map(([v, label]) => `<button type="button" role="radio" data-set="${key}" data-value="${v}"
       aria-checked="${String(v) === String(value)}">${label}</button>`).join('')}
   </div>`;
 
-const field = (label, body, hint = '') => `
-  <div class="field"><span class="field__label">${label}</span>${body}${hint ? `<p class="field__hint">${hint}</p>` : ''}</div>`;
+// One settings row: label + control side by side, or stacked for wide controls.
+const row = (label, control, { hint = '', stack = false } = {}) => `
+  <div class="setting${stack ? ' setting--stack' : ''}">
+    <span class="setting__label">${label}</span>${control}${hint ? `<p class="setting__hint">${hint}</p>` : ''}
+  </div>`;
+
+const group = (title, rows) => `
+  <section class="group">${title ? `<h3 class="group__title">${title}</h3>` : ''}<div class="group__rows">${rows}</div></section>`;
 
 const stepper = (key, value, [min, max], unit = '') => `
   <div class="stepper">
-    <button type="button" data-step="${key}" data-delta="-1" aria-label="Fewer" ${value <= min ? 'disabled' : ''}>−</button>
+    <button type="button" data-step="${key}" data-delta="-1" aria-label="Fewer" ${value <= min ? 'disabled' : ''}>${icon('minus')}</button>
     <output>${value}${unit}</output>
-    <button type="button" data-step="${key}" data-delta="1" aria-label="More" ${value >= max ? 'disabled' : ''}>+</button>
+    <button type="button" data-step="${key}" data-delta="1" aria-label="More" ${value >= max ? 'disabled' : ''}>${icon('plus')}</button>
   </div>`;
 
 const slider = (key, value, [min, max], step, fmt) => `
-  <div class="slider"><input type="range" data-range="${key}" min="${min}" max="${max}" step="${step}" value="${value}">
+  <div class="slider"><input type="range" data-range="${key}" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${key}">
   <output data-out="${key}">${fmt(value)}</output></div>`;
 
+// A row that folds its settings open in place.
+const expander = (id, label, summary, open, body) => `
+  <button type="button" class="expander" data-expand="${id}" aria-expanded="${open}">
+    <span><span class="setting__label">${label}</span><span class="expander__sum">${summary}</span></span>${icon('chevron-down')}
+  </button>
+  ${open ? `<div class="expand">${body}</div>` : ''}`;
+
+// The preset (2/3/4/5/8) matching these directions, in any order; '' for a custom pick.
+const presetFor = (dirs) => Object.keys(DIRECTION_PRESETS)
+  .find((k) => DIRECTION_PRESETS[k].length === dirs.length && DIRECTION_PRESETS[k].every((d) => dirs.includes(d))) ?? '';
+
+// Config labels are uppercase (for cues); rows read better in sentence case.
+const nice = (t) => t.charAt(0) + t.slice(1).toLowerCase();
 const secs = (ms) => `${(ms / 1000).toFixed(1)} s`;
+const restLabel = (t) => (t < 60 ? `${t}s` : t === 60 ? '1 min' : `${t / 60} min`);
 
 function estimate(s) {
   const per = s.setMode === 'timed' ? s.timedSec * 1000 : s.reps * intervalMs(s);
@@ -47,114 +66,125 @@ function estimate(s) {
   return `${s.sets} set${s.sets > 1 ? 's' : ''} × ${s.setMode === 'timed' ? `${s.timedSec} s` : `${s.reps} reps`} · about ${min} min`;
 }
 
-export function renderSetup(el, s) {
+// ui = { open: Set of expanded section ids, color: index of the cone whose palette is open }
+export function renderSetup(el, s, ui = { open: new Set(), color: -1 }) {
   const usesColors = s.cueType === 'colors' || s.cueType === 'mixed';
   const usesArrows = s.cueType === 'arrows' || s.cueType === 'mixed';
   const colorRows = s.cueType === 'mixed' ? s.directions.length : s.cones;
   const v = validate(s);
 
-  const colorPicker = !s.coloredCones ? '' : Array.from({ length: colorRows }, (_, i) => {
-    const mine = s.colors[i];
-    const label = s.cueType === 'mixed' ? DIRECTIONS.find((d) => d.id === s.directions[i])?.label ?? `Cone ${i + 1}` : `Cone ${i + 1}`;
-    return `<div class="cpick"><span class="cpick__name">${label}</span><div class="cpick__swatches">
-      ${CONE_COLORS.map((c) => {
-        const taken = c.id !== mine && s.colors.slice(0, colorRows).includes(c.id);
-        return `<button type="button" class="swatch ${c.dark ? 'swatch--dark' : ''}" style="--c:${c.hex};--ink:${c.ink}"
-          data-color="${i}" data-value="${c.id}" aria-pressed="${c.id === mine}" ${taken ? 'disabled' : ''}
-          aria-label="${c.label}${taken ? ' (used by another cone)' : ''}">${c.shape}</button>`;
-      }).join('')}
-    </div></div>`;
+  const colorList = !s.coloredCones ? '' : Array.from({ length: colorRows }, (_, i) => {
+    const mine = colorById[s.colors[i]];
+    const name = s.cueType === 'mixed' ? nice(DIRECTIONS.find((d) => d.id === s.directions[i])?.label ?? `Cone ${i + 1}`) : `Cone ${i + 1}`;
+    const open = ui.color === i;
+    return `<div class="setting setting--stack">
+      <button type="button" class="cpick-row" data-colorrow="${i}" aria-expanded="${open}">
+        <span class="cpick-row__chip" style="--c:${mine.hex};--ink:${mine.ink}" aria-hidden="true">${mine.shape}</span>
+        <span class="cpick-row__name">${name}</span>
+        <span class="cpick-row__value">${nice(mine.label)}${icon(open ? 'chevron-down' : 'chevron-right')}</span>
+      </button>
+      ${open ? `<div class="cpick__swatches expand">
+        ${CONE_COLORS.map((c) => {
+          const taken = c.id !== mine.id && s.colors.slice(0, colorRows).includes(c.id);
+          return `<button type="button" class="swatch" style="--c:${c.hex};--ink:${c.ink}"
+            data-color="${i}" data-value="${c.id}" aria-pressed="${c.id === mine.id}" ${taken ? 'disabled' : ''}
+            aria-label="${nice(c.label)}${taken ? ' (used by another cone)' : ''}">${c.shape}</button>`;
+        }).join('')}
+      </div>` : ''}
+    </div>`;
   }).join('');
 
   const compass = `
     <div class="compass" role="group" aria-label="Directions to include">
       ${DIRECTIONS.map((d) => `<button type="button" class="compass__dir compass__dir--${d.id}" data-dir="${d.id}"
-        aria-pressed="${s.directions.includes(d.id)}" aria-label="${d.label}">${ARROW_GLYPH[d.id]}</button>`).join('')}
-      <span class="compass__you">YOU</span>
+        aria-pressed="${s.directions.includes(d.id)}" aria-label="${nice(d.label)}">${icon(DIR_ICON[d.id], { size: 26 })}</button>`).join('')}
+      <span class="compass__you">You</span>
     </div>`;
+
+  const eyeSummary = [
+    { center: 'Center', random: 'Random spots', peripheral: 'Peripheral' }[s.position],
+    s.display === 'flash' ? `Flash ${secs(s.flashMs)}` : 'Hold',
+    s.fakes === 'off' ? 'No fake-outs' : `Fake-outs ${s.fakes}`,
+    usesArrows && s.reverse ? 'Reverse on' : '',
+  ].filter(Boolean).join(' · ');
+  const soundSummary = s.sound === 'on' ? (s.callouts ? 'Beep + callouts' : 'Beep') : 'Off';
 
   el.innerHTML = `
     <div class="cset">
-      <header class="cset__head">
-        <button type="button" class="btn-link" data-nav="menu">‹ Menu</button>
-        <h2 class="cset__title">CONE DRILL</h2>
+      <header class="nav">
+        <button type="button" class="nav__back" data-nav="menu">${icon('chevron-left', { size: 22 })}Home</button>
+        <h2 class="nav__title">Cone Drill</h2>
         <p class="cset__sub">Cognitive change of direction</p>
       </header>
-      <p class="cset__safety">Use a clear, flat area. Warm up before high-speed cuts.</p>
+      <p class="notice">${icon('triangle-alert')}Use a clear, flat area. Warm up before high-speed cuts.</p>
 
-      <section class="cset__group"><h3>Cues</h3>
-        ${field('Cue type', seg('cueType', s.cueType, [['colors', 'Colors'], ['arrows', 'Arrows'], ['numbers', 'Numbers'], ['mixed', 'Mixed']]),
-          { colors: 'Each cone has a color; the screen shows a color.', arrows: 'Cones sit in directions; the screen shows an arrow.',
-            numbers: 'Each cone has a number; the screen shows a number.', mixed: 'Advanced: cones are colored AND in fixed directions; cues switch between colors and arrows.' }[s.cueType])}
-        ${s.cueType === 'mixed' ? '' : field('Number of cones', stepper('cones', s.cones, [MIN_CONES, MAX_CONES]))}
-      </section>
+      ${group('Cues', `
+        ${row('Cue type', seg('cueType', s.cueType, [['colors', 'Colors'], ['arrows', 'Arrows'], ['numbers', 'Numbers'], ['mixed', 'Mixed']], true), {
+          stack: true,
+          hint: { colors: 'Each cone has a color. The screen shows a color.', arrows: 'Cones sit in directions. The screen shows an arrow.',
+            numbers: 'Each cone has a number. The screen shows a number.', mixed: 'Cones are colored and in fixed directions. Cues switch between colors and arrows.' }[s.cueType] })}
+        ${s.cueType === 'mixed' ? '' : row('Cones', stepper('cones', s.cones, [MIN_CONES, MAX_CONES]))}`)}
 
-      ${usesArrows ? `<section class="cset__group"><h3>Directions</h3>
-        ${field('Presets', seg('preset', Object.keys(DIRECTION_PRESETS).find((k) => DIRECTION_PRESETS[k].join() === s.directions.join()) ?? '',
-          Object.keys(DIRECTION_PRESETS).map((k) => [k, k])), '2 = left/right · 3 adds forward · 4 adds back · 5 adds forward diagonals · 8 = all')}
-        ${field('Or tap the exact directions', compass)}
-        ${s.cueType === 'arrows' && s.directions.length !== s.cones ? `<div class="cwarn">
-          <p>${s.directions.length} directions but ${s.cones} cones — set out one cone per direction.</p>
-          <button type="button" class="btn-ghost" data-fixcones="${s.directions.length}">Use ${s.directions.length} cones</button></div>` : ''}
-      </section>` : ''}
+      ${usesArrows ? group('Directions', `
+        ${row('Preset', seg('preset', presetFor(s.directions),
+          Object.keys(DIRECTION_PRESETS).map((k) => [k, k]), true), { stack: true, hint: '2 left/right · 3 adds forward · 4 adds back · 5 adds forward diagonals · 8 all' })}
+        ${row('Or tap the exact directions', compass, { stack: true })}
+        ${s.cueType === 'arrows' && s.directions.length !== s.cones ? `<div class="setting setting--stack">
+          <p class="notice">${icon('triangle-alert')}${s.directions.length} directions but ${s.cones} cones. Set out one cone per direction.</p>
+          <button type="button" class="btn btn--secondary btn--block" data-fixcones="${s.directions.length}">Use ${s.directions.length} cones</button></div>` : ''}`) : ''}
 
-      ${usesColors ? `<section class="cset__group"><h3>Cone colors</h3>
-        ${field('Colored cones', seg('coloredCones', s.coloredCones, [[true, 'Yes, I’ll pick'], [false, 'Use defaults']]))}
-        ${s.coloredCones ? `<div class="cpicks">${colorPicker}</div>`
-          : `<p class="field__hint">Cones use: ${(s.cueType === 'mixed' ? s.directions.length : s.cones) <= 8
-            ? ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'white', 'pink'].slice(0, colorRows).map((id) => colorById[id].label).join(', ') : ''}.</p>`}
-        <p class="field__hint">Each color also shows its shape and name on screen as a backup.</p>
-      </section>` : ''}
+      ${usesColors ? group('Cone colors', `
+        ${row('Colors', seg('coloredCones', s.coloredCones, [[true, 'I’ll pick'], [false, 'Defaults']]))}
+        ${s.coloredCones ? colorList : `<div class="setting setting--stack"><p class="setting__hint">${
+          ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'white', 'pink'].slice(0, colorRows).map((id) => nice(colorById[id].label)).join(' · ')}</p></div>`}`) : ''}
 
-      <section class="cset__group"><h3>Timing</h3>
-        ${field('Cue speed', seg('speed', s.speed, [['slow', 'Slow 3s'], ['medium', 'Med 2s'], ['fast', 'Fast 1.5s'], ['game', 'Game 1s'], ['custom', 'Custom']]),
-          'Time between cues. It varies a little each time so the rhythm can’t be predicted.')}
-        ${s.speed === 'custom' ? field('Custom speed', slider('customMs', s.customMs, CUSTOM_MS, 100, secs)) : ''}
-        ${field('Sets by', seg('setMode', s.setMode, [['reps', 'Reps'], ['timed', 'Time']]))}
+      ${group('Timing', `
+        ${row('Cue speed', seg('speed', s.speed, [['slow', 'Slow'], ['medium', 'Med'], ['fast', 'Fast'], ['game', 'Game'], ['custom', 'Custom']], true), {
+          stack: true, hint: s.speed === 'custom' ? 'Set your own time between cues.' : `${secs(intervalMs(s))} between cues, varied a little so the rhythm can’t be predicted.` })}
+        ${s.speed === 'custom' ? row('Time between cues', slider('customMs', s.customMs, CUSTOM_MS, 100, secs), { stack: true }) : ''}
+        ${row('Sets by', seg('setMode', s.setMode, [['reps', 'Reps'], ['timed', 'Time']]))}
         ${s.setMode === 'reps'
-          ? field('Reps per set', slider('reps', s.reps, REPS, 1, (x) => `${x} reps`))
-          : field('Set length', seg('timedSec', s.timedSec, TIMED_SECONDS.map((t) => [t, `${t}s`])))}
-        ${field('Sets', stepper('sets', s.sets, SETS))}
-        ${s.sets > 1 ? field('Rest between sets', seg('restSec', s.restSec, REST_SECONDS.map((t) => [t, t < 60 ? `${t}s` : t === 60 ? '1 min' : `${t / 60} min`]))) : ''}
-      </section>
+          ? row('Reps per set', slider('reps', s.reps, REPS, 1, (x) => `${x} reps`), { stack: true })
+          : row('Set length', seg('timedSec', s.timedSec, TIMED_SECONDS.map((t) => [t, `${t}s`]), true), { stack: true })}
+        ${row('Sets', stepper('sets', s.sets, SETS))}
+        ${s.sets > 1 ? row('Rest between sets', seg('restSec', s.restSec, REST_SECONDS.map((t) => [t, restLabel(t)]), true), { stack: true }) : ''}`)}
 
-      <section class="cset__group"><h3>Eye engagement</h3>
-        ${field('Cue position', seg('position', s.position, [['center', 'Center'], ['random', 'Random'], ['peripheral', 'Peripheral']]),
-          { center: 'Cues fill the screen.', random: 'Cues pop up in different spots — find it, then go.',
-            peripheral: 'Keep your eyes on the center dot; cues appear near the edge.' }[s.position])}
-        ${field('Display', seg('display', s.display, [['hold', 'Hold'], ['flash', 'Flash']]),
-          s.display === 'hold' ? 'The cue stays up until the next one.' : 'The cue shows briefly, then disappears.')}
-        ${s.display === 'flash' ? field('Flash length', slider('flashMs', s.flashMs, FLASH_MS, 50, secs)) : ''}
-        ${field('Fake-outs', seg('fakes', s.fakes, [['off', 'Off'], ['low', 'Low'], ['medium', 'Medium']]),
-          'A gray HOLD screen now and then — stay still.')}
-        ${usesArrows ? field('Reverse rule', seg('reverse', s.reverse, [[false, 'Off'], [true, 'On']]),
-          'Advanced: when the arrow has a flashing white border, go the OPPOSITE way.') : ''}
-      </section>
+      ${group('', expander('eye', 'Eye engagement', eyeSummary, ui.open.has('eye'), `
+        ${row('Cue position', seg('position', s.position, [['center', 'Center'], ['random', 'Random'], ['peripheral', 'Peripheral']], true), {
+          stack: true, hint: { center: 'Cues fill the screen.', random: 'Cues pop up in different spots. Find it, then go.',
+            peripheral: 'Eyes on the center dot. Cues appear near the edge.' }[s.position] })}
+        ${row('Display', seg('display', s.display, [['hold', 'Hold'], ['flash', 'Flash']]),
+          { hint: s.display === 'hold' ? 'The cue stays up until the next one.' : 'The cue shows briefly, then disappears.' })}
+        ${s.display === 'flash' ? row('Flash length', slider('flashMs', s.flashMs, FLASH_MS, 50, secs), { stack: true }) : ''}
+        ${row('Fake-outs', seg('fakes', s.fakes, [['off', 'Off'], ['low', 'Low'], ['medium', 'Med']]), { hint: 'A gray Hold screen now and then. Stay still.' })}
+        ${usesArrows ? row('Reverse rule', seg('reverse', s.reverse, [[false, 'Off'], [true, 'On']]),
+          { hint: 'When the arrow has a flashing white border, go the opposite way.' }) : ''}`))}
 
-      <section class="cset__group"><h3>Sound</h3>
-        ${field('Sound', seg('sound', s.sound, [['on', 'On'], ['off', 'Off']]), 'A short beep at the start of each cue.')}
-        ${s.sound === 'on' ? field('Spoken callouts', seg('callouts', s.callouts, [[false, 'Off'], [true, 'On']]), 'The phone says the cue (“Red!”, “Left!”) so you can react by ear.') : ''}
-      </section>
-
-      <div class="cset__foot">
-        <p class="cset__est">${estimate(s)}</p>
-        ${v.errors.map((e) => `<p class="cerr">${e}</p>`).join('')}
-        <button type="button" class="btn-start btn-start--sm" data-nav="layout" ${v.ok ? '' : 'disabled'}>NEXT: SET UP CONES</button>
-      </div>
+      ${group('', expander('sound', 'Sound', soundSummary, ui.open.has('sound'), `
+        ${row('Beep on each cue', `<button type="button" class="switch" role="switch" data-flip="sound" aria-checked="${s.sound === 'on'}" aria-label="Sound"></button>`)}
+        ${s.sound === 'on' ? row('Spoken callouts', `<button type="button" class="switch" role="switch" data-flip="callouts" aria-checked="${s.callouts}" aria-label="Spoken callouts"></button>`,
+          { hint: 'The phone says the cue, like “Red” or “Left”.' }) : ''}`))}
+    </div>
+    <div class="screen__foot">
+      <p class="cset__est">${estimate(s)}</p>
+      ${v.errors.map((e) => `<p class="cerr">${e}</p>`).join('')}
+      <button type="button" class="btn btn--primary btn--block" data-nav="layout" ${v.ok ? '' : 'disabled'}>Set up cones</button>
     </div>`;
 }
 
 // Wires the setup screen. onNav('menu' | 'layout', setup) is called for navigation.
 export function initSetup(el, { onNav }) {
   let s = loadSetup();
+  const ui = { open: new Set(), color: -1 };
+  const draw = () => {
+    const y = window.scrollY;
+    renderSetup(el, s, ui);
+    window.scrollTo(0, y);
+  };
   const update = (patch, { rerender = true } = {}) => {
     s = normalize({ ...s, ...patch });
     saveSetup(s);
-    if (rerender) {
-      const y = window.scrollY;
-      renderSetup(el, s);
-      window.scrollTo(0, y);
-    }
+    if (rerender) draw();
   };
 
   el.addEventListener('click', (e) => {
@@ -162,6 +192,9 @@ export function initSetup(el, { onNav }) {
     if (!b || b.disabled) return;
     const d = b.dataset;
     if (d.nav) return onNav(d.nav, s);
+    if (d.expand) { ui.open.has(d.expand) ? ui.open.delete(d.expand) : ui.open.add(d.expand); return draw(); }
+    if (d.colorrow !== undefined) { ui.color = ui.color === Number(d.colorrow) ? -1 : Number(d.colorrow); return draw(); }
+    if (d.flip) return update({ [d.flip]: d.flip === 'sound' ? (s.sound === 'on' ? 'off' : 'on') : !s[d.flip] });
     if (d.set === 'preset') return update({ directions: DIRECTION_PRESETS[d.value].slice(), cones: DIRECTION_PRESETS[d.value].length });
     if (d.set) {
       let val = d.value;
@@ -183,6 +216,7 @@ export function initSetup(el, { onNav }) {
       const other = colors.indexOf(d.value);
       if (other !== -1) colors[other] = colors[i];   // swap so colors never duplicate
       colors[i] = d.value;
+      ui.color = -1;   // close the palette once a color is picked
       return update({ colors });
     }
   });
@@ -200,6 +234,6 @@ export function initSetup(el, { onNav }) {
     if (est) est.textContent = estimate(s);
   });
 
-  renderSetup(el, s);
-  return { get: () => s, render: () => renderSetup(el, s), set: (patch) => update(patch, { rerender: false }) };
+  renderSetup(el, s, ui);
+  return { get: () => s, render: () => renderSetup(el, s, ui), set: (patch) => update(patch, { rerender: false }) };
 }

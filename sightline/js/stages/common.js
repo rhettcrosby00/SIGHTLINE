@@ -25,7 +25,7 @@ export async function howTo(ctx, { kicker, title, rule, demo }) {
         <p class="howto__rule">${rule}</p>
         ${full && demo ? '<div class="howto__demo" aria-hidden="true"></div>' : ''}
         ${waitTap
-          ? '<button type="button" class="btn-ready">I’M READY</button>'
+          ? '<button type="button" class="btn btn--primary btn--block btn--big btn-ready">Ready</button>'
           : '<p class="howto__soon">Starting in a moment…</p>'}
       </div>`;
     const stop = full && demo ? playDemo(el.querySelector('.howto__demo'), demo, cone) : () => {};
