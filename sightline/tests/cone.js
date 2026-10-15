@@ -10,6 +10,7 @@ import { CUES } from '../js/cone/cues/index.js';
 import { coneAngles } from '../js/cone/layout.js';
 import { isOn } from '../js/features.js';
 import { createRng } from '../js/lib/rng.js';
+import { coneSession, SETTLE_MS } from '../js/cone/run.js';
 
 const ALL_DIRS = DIRECTIONS.map((d) => d.id);
 const ALL_COLORS = CONE_COLORS.map((c) => c.id);
@@ -241,4 +242,15 @@ test('Cone layout puts arrow cones in their directions', () => {
   const s = normalize({ cueType: 'arrows', directions: DIRECTION_PRESETS[8], cones: 8 });
   const angles = coneAngles(s);
   for (const { target, angle } of angles) assert(DIRECTIONS.find((d) => d.id === target.dir).angle === angle, 'wrong angle');
+});
+
+test('A Cone Drill session is Settle breathing, then the Cone Drill — nothing else', () => {
+  for (const { setup, plan } of drills.slice(0, 50)) {
+    const { steps, session, totalMs } = coneSession(plan, setup);
+    assert(steps.map((st) => st.id).join() === 'settle,conedrill', `steps were ${steps.map((st) => st.id)}`);
+    assert(steps[0].durationMs === SETTLE_MS && SETTLE_MS === 60_000, 'Settle should be 1 minute');
+    assert(steps[1].durationMs === plan.totalMs, 'drill time wrong');
+    assert(totalMs === SETTLE_MS + plan.totalMs, 'total time wrong');
+    assert(typeof session.content.breathing.tip === 'function', 'breathing wording missing');
+  }
 });

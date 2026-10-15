@@ -4,7 +4,7 @@
 import { initSetup } from './setup.js';
 import { renderLayout } from './layout.js';
 import { planDrill } from './plan.js';
-import { coneStep } from './run.js';
+import { coneSession } from './run.js';
 import { runSession } from '../engine.js';
 import { unlock as unlockAudio } from '../lib/audio.js';
 
@@ -47,10 +47,12 @@ export function initConeDrill({ show, dev = {} }) {
   async function run() {
     unlockAudio(setup.sound === 'on', { voice: setup.callouts });   // inside the tap
     const plan = planDrill(setup, dev.seed);
+    // Settle breathing first, then the drill.
+    const { steps, session, totalMs } = coneSession(plan, setup);
     show('session');
-    const { completed, results } = await runSession([coneStep(plan, setup)], setup, { speed: dev.speed, autoReady: dev.autoReady });
+    const { completed, results } = await runSession(steps, setup, { session, speed: dev.speed, autoReady: dev.autoReady });
     if (!completed) return nav('setup');
-    const r = results[0];
+    const r = results.find((x) => x.id === 'conedrill');
     doneEl.innerHTML = `
       <div class="sum">
         <p class="sum__kicker">CONE DRILL COMPLETE</p>
@@ -58,7 +60,7 @@ export function initConeDrill({ show, dev = {} }) {
         <div class="tiles">
           <div class="tile"><p class="tile__value">${r.reps}</p><p class="tile__label">reps</p></div>
           <div class="tile"><p class="tile__value">${r.sets}</p><p class="tile__label">sets</p></div>
-          <div class="tile"><p class="tile__value">${mmss(plan.totalMs)}</p><p class="tile__label">total time</p></div>
+          <div class="tile"><p class="tile__value">${mmss(totalMs)}</p><p class="tile__label">total time</p></div>
         </div>
         ${r.holds ? `<p class="sum__note">Plus <b>${r.holds}</b> fake-out${r.holds > 1 ? 's' : ''} where you held still.</p>` : ''}
         <p class="sum__foot">Nothing is saved — each drill stands alone.</p>

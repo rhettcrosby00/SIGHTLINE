@@ -1,12 +1,32 @@
-// Runs a planned Cone Drill inside the shared session engine (so it gets the
-// pause button, screen wake lock, and pause-when-hidden for free).
-// Shows each cue full-screen, "Set 2 of 4 · Rep 7" in the top bar, and a big
-// rest countdown between sets (tap anywhere to pause).
+// Runs a Cone Drill session inside the shared session engine (so it gets the
+// pause button, screen wake lock, and pause-when-hidden for free):
+//   1. Settle — the same box-breathing drill that opens Game Ready (1 min)
+//   2. The Cone Drill — each cue full-screen, "Set 2 of 4 · Rep 7" in the top
+//      bar, and a big rest countdown between sets (tap anywhere to pause).
+// Nothing else from Game Ready runs.
 
 import { countdown } from '../stages/common.js';
+import { settle } from '../stages/breathe.js';
 import { tone, say } from '../lib/audio.js';
+import { createRng } from '../lib/rng.js';
+import { breathingText } from '../content/breathing.js';
 import { faceHtml, spotStyle } from './render.js';
 import { COUNTDOWN_MS } from './config.js';
+
+export const SETTLE_MS = 60_000;
+
+// The steps for one Cone Drill session, plus the bit of session content the
+// breathing drill needs (its rotating wording).
+export function coneSession(plan, setup) {
+  return {
+    steps: [
+      { id: 'settle', title: 'Settle', blockId: 'regulate', blockTitle: 'Settle', durationMs: SETTLE_MS, module: settle },
+      coneStep(plan, setup),
+    ],
+    session: { content: { breathing: breathingText(createRng(plan.seed).fork('breathing')) } },
+    totalMs: SETTLE_MS + plan.totalMs,
+  };
+}
 
 export function coneStep(plan, setup) {
   return {
