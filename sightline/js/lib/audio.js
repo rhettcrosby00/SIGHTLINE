@@ -3,9 +3,15 @@
 
 let ctx = null;
 let enabled = false;
+let voiceOn = false;
 
-export function unlock(soundOn) {
+// `voice`: also allow spoken callouts (speech synthesis), primed inside the tap.
+export function unlock(soundOn, { voice = false } = {}) {
   enabled = soundOn;
+  voiceOn = soundOn && voice && 'speechSynthesis' in globalThis;
+  if (voiceOn) {
+    try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(' ')); } catch { voiceOn = false; }
+  }
   if (!enabled) return;
   try {
     ctx ??= new (window.AudioContext || window.webkitAudioContext)();
@@ -31,6 +37,17 @@ export function tone(freq, { toFreq = freq, dur = 0.35, gain = 0.18 } = {}) {
     osc.connect(g).connect(ctx.destination);
     osc.start(t);
     osc.stop(t + dur + 0.05);
+  } catch { /* ignore */ }
+}
+
+// Spoken callout ("Red!", "Left!"). Cuts off the previous one so it never lags.
+export function say(text) {
+  if (!voiceOn) return;
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.2;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
   } catch { /* ignore */ }
 }
 

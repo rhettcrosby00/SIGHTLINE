@@ -48,6 +48,19 @@ Phones download the new version in the background the next time the app is opene
 A "New version ready — tap to update" banner then appears on the start screen (never during
 a session). The version number shows at the bottom of the start screen.
 
+## Cone Drill (feature flag)
+
+Cone Drill is a standalone change-of-direction drill. Its code lives in `js/cone/`:
+- `config.js`: options and validation
+- `cues/`: one file per cue type
+- `plan.js`: balanced, no-repeat cue planning
+- `setup.js`, `layout.js`, `run.js`, `ui.js`: the screens
+
+It's controlled by `js/features.js`:
+- `coneDrill: 'preview'` shows it on preview links and locally, and hides it on
+  sightline-psi.vercel.app. Add `?coneDrill` to the live address to see it there.
+- Change it to `true` to turn it on everywhere once approved.
+
 ## Randomness and variety
 
 - All randomness comes from one seeded generator, `js/lib/rng.js`. `js/session.js` builds each

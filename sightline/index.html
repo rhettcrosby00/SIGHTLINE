@@ -58,6 +58,10 @@
       <img class="brand-logo" src="assets/logo/logo-horizontal.svg" alt="Sightline logo" width="1182" height="242">
       <p id="length-note" class="length-note"></p>
       <button id="btn-start" class="btn-start" type="button">START</button>
+      <button id="btn-cone" class="btn-cone" type="button" hidden>
+        <span class="btn-cone__title">CONE DRILL</span>
+        <span class="btn-cone__sub">Change of direction · eyes</span>
+      </button>
       <p class="disclaimer">A visual reaction &amp; cognitive warm-up. Not a medical, diagnostic, or treatment tool.</p>
       <div id="install" class="install" hidden></div>
       <p id="version" class="version"></p>
@@ -85,6 +89,11 @@
       <button id="btn-about-back" class="btn-big" type="button">BACK</button>
     </div>
   </section>
+
+  <!-- Cone Drill: setup, cone layout, end screen (the drill itself runs in #screen-session) -->
+  <section id="screen-cone-setup" class="screen"><div id="cd-setup"></div></section>
+  <section id="screen-cone-layout" class="screen"><div id="cd-layout"></div></section>
+  <section id="screen-cone-done" class="screen"><div id="cd-done"></div></section>
 
   <!-- Readiness check (before / after the session) -->
   <section id="screen-check" class="screen">

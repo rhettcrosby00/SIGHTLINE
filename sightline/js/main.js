@@ -9,9 +9,11 @@ import { showGuide, guideSeen } from './guide.js';
 import { askBefore, askAfter } from './stages/readiness.js';
 import { createSession } from './session.js';
 import { createVariety } from './lib/variety.js';
+import { isOn } from './features.js';
+import { initConeDrill } from './cone/ui.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '1.3';
+export const APP_VERSION = '1.4';
 
 const $ = (id) => document.getElementById(id);
 
@@ -44,6 +46,14 @@ const hideSplash = () => {
   if (!guideSeen() && !params.has('noguide') && !params.has('autostart')) showGuide();
 };
 setTimeout(hideSplash, params.has('autostart') ? 0 : Math.max(0, 900 - performance.now()));
+
+// Cone Drill: its own option on the start screen. Behind a feature flag:
+// on for previews and local testing, off on the live site until approved.
+if (isOn('coneDrill')) {
+  const cone = initConeDrill({ show, dev: { speed, autoReady, seed: replaySeed } });
+  $('btn-cone').hidden = false;
+  $('btn-cone').addEventListener('click', () => cone.open());
+}
 
 // About screen, with "Reset variety".
 $('btn-about').addEventListener('click', () => { $('variety-status').textContent = ''; show('about'); });
