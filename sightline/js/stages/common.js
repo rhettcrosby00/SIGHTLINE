@@ -3,6 +3,7 @@
 
 import { cues } from '../lib/audio.js';
 import { cueById } from '../lib/colors.js';
+import { toHex } from '../lib/contrast.js';
 
 const BRIEF_MS = 3500;        // Brief: just the rule, briefly
 const CARD_MS = 10000;        // Full: the card starts on its own after this (Ready starts sooner)
@@ -64,6 +65,32 @@ export async function countdown({ sleep }, box, label) {
   } finally {
     layer.remove();
   }
+}
+
+// The color actually behind an element: its own background or the nearest
+// ancestor's (as "#rrggbb"), for working out Low contrast.
+export function backdrop(el) {
+  for (let n = el; n; n = n.parentElement) {
+    const c = getComputedStyle(n).backgroundColor;
+    if (c && !/^(transparent|rgba\(.*,\s*0\))$/.test(c)) return toHex(c);
+  }
+  return '#ffffff';
+}
+
+// Answer taps on a pad of [data-id] buttons: wait(ms) resolves with the
+// tapped id, or null when time runs out (or rejects if the session is quit).
+export function tapper({ sleep }, pad) {
+  let onTap = null;
+  pad.addEventListener('pointerdown', (e) => {
+    const id = e.target.closest('[data-id]')?.dataset.id;
+    if (id && onTap) { e.preventDefault(); onTap(id); }
+  });
+  return (ms) => new Promise((resolve, reject) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; onTap = null; resolve(v); } };
+    onTap = finish;
+    sleep(ms).then(() => finish(null), (err) => { if (!done) { done = true; onTap = null; reject(err); } });
+  });
 }
 
 // Runs `frame(t)` on every animation frame until stopped; t is the step clock.

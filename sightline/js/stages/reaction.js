@@ -1,20 +1,27 @@
-// Reaction drills: Color Call, Go/No-Go, Stroop (Challenge) and Peripheral
-// Flash (Activate). FOCUS only: the athlete holds the phone and taps.
+// Reaction drills: Color Call, Go/No-Go, Stroop (Challenge), Peripheral
+// Flash (Activate) and Target Capture (Vision). FOCUS only: the athlete holds
+// the phone and taps.
 //
 // Every drill runs the same way:
 //   1. How-to card: the rule in one sentence plus a looping example.
 //   2. Practice (Instructions: Full): a few slow, unscored cues; the right
 //      button pulses if the athlete hesitates.
 //   3. "NOW FOR REAL" countdown, then the scored part with the rule pinned at
-//      the top. It starts gentle and speeds up as the drill goes on.
+//      the top. Difficulty adapts cue by cue (js/lib/adapt.js): quicker after
+//      right answers, gentler after misses, aiming at about 80% right.
 // Steps 1–2 and the countdown run inside hold(), so they never use drill time.
 // Big answer buttons; we score correct / wrong / too slow and time.
+// Low contrast (Settings): cues that carry a color (trial.fg) fade toward the
+// background, fainter as the level rises, never below the visible floor.
 
-import { howTo, countdown, mini, practiceLeft } from './common.js';
+import { howTo, countdown, mini, practiceLeft, backdrop } from './common.js';
 import { cueById } from '../lib/colors.js';
 import { cues } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
 import { esc } from '../lib/text.js';
+import { lerp } from '../lib/adapt.js';
+import { opacityFor, lowContrastAt, toHex } from '../lib/contrast.js';
+import { GAP_DIRS, captureAt } from '../content/vision.js';
 
 const GRID = ['green', 'red', 'blue', 'yellow'];   // 2×2 answer grid, reading order
 
@@ -29,8 +36,8 @@ const secs = (ms) => `${(ms / 1000).toFixed(2)} s`;
 const at = (p) => `left:calc(50% + ${p.x.toFixed(3)} * (50% - var(--size) / 2 - 6px));`
   + `top:calc(50% + ${p.y.toFixed(3)} * (50% - var(--size) / 2 - 6px));transform:translate(-50%, -50%)`;
 
-// Speed ramps down to 75% of the starting window by the end of a drill.
-const ramp = (prog) => 1 - 0.25 * Math.min(1, Math.max(0, prog));
+// The answer window by level: 115% of the drill's window at the easiest, 65% at the hardest.
+export const windowAt = (level) => lerp(1.15, 0.65, level);
 const GENTLE_CUES = 3;      // first scored cues get extra time…
 const GENTLE_FACTOR = 1.5;  // …this much
 const FINISH_CUES = 3;      // the last cues are easy (simple cue, extra time)…
@@ -46,12 +53,14 @@ export function finishing(leftMs, windowMs, hard) {
 // ---- Shared runner -------------------------------------------------------------
 // Also used by the brain drills. Spec fields:
 //   kicker?, title, rule, strip, demo, practice (count)
-//   pad: 'colors' | 'oddeven' | 'list' | 'anywhere'
+//   pad: 'colors' | 'oddeven' | 'list' | 'plain' | 'anywhere'
+//   choices [{ id, html }] for 'plain' pads (neutral buttons)
 //   tapWindow (ms), fbMs?
-//   next({ hard, prog, practice, easy }) -> trial   (easy: the simplest cue, for the finish)
+//   next({ hard, practice, easy, level }) -> trial   (easy: the simplest cue, for the finish)
 // Trial fields:
 //   html, answer (cue id, 'go', or null = hold), answerLabel (for "It was …"),
-//   kind?, flashMs?, buttons? [{ id, label }] for 'list' pads
+//   kind?, flashMs?, buttons? [{ id, label }] for 'list' pads,
+//   fg? (the cue's color, or a CSS variable like '--cue-fg', for Low contrast)
 // next() returns null when the drill's content pool is used up; the drill then
 // ends early rather than repeat anything. All randomness comes from
 // ctx.session (js/session.js), so a seed replays the session exactly.
@@ -69,12 +78,14 @@ function padButtons(spec, trial) {
   if (spec.pad === 'colors') return GRID.map((id) => btn(cueById[id], cueById[id].label)).join('');
   if (spec.pad === 'oddeven') return btn(cueById.blue, 'ODD') + btn(cueById.red, 'EVEN');
   if (spec.pad === 'list') return (trial?.buttons ?? []).map((b) => btn(cueById[b.id], b.label)).join('');
+  if (spec.pad === 'plain') return spec.choices.map((b) => `<button type="button" class="pad__btn pad__btn--plain" data-id="${b.id}" aria-label="${b.label}">${b.html}</button>`).join('');
   return '';
 }
 
 async function runTap(ctx, spec) {
-  const { el, settings, session, step, durationMs, sleep, now, remaining, hold } = ctx;
+  const { el, settings, session, step, sleep, now, remaining, hold } = ctx;
   const hard = settings.difficulty === 'hard';
+  const level = session.content.level(step.id);
   const anywhere = spec.pad === 'anywhere';
   const gapMs = session.content.gaps(step.id);
   const practiceN = (step.guide ?? settings.guide) === 'brief' ? 0 : (spec.practice ?? 3);
@@ -93,6 +104,8 @@ async function runTap(ctx, spec) {
   const cueBox = root.querySelector('.rx__cue');
   const fb = root.querySelector('.rx__fb');
   const pad = root.querySelector('.pad');
+  const low = session.content.lowContrast;
+  const cueBg = low ? backdrop(cueBox) : null;
 
   // One listener; the current trial (if any) picks up the tap.
   let onTap = null;
@@ -108,8 +121,12 @@ async function runTap(ctx, spec) {
     sleep(ms).then(() => finish(null), (err) => { if (!done) { done = true; onTap = null; reject(err); } });
   });
 
-  const showTrial = (trial) => {
+  const showTrial = (trial, faint = false) => {
     if (spec.pad === 'list') pad.innerHTML = padButtons(spec, trial);
+    // Low contrast: the cue fades to this level's contrast ratio (full strength on easy cues).
+    const fg = trial.fg?.startsWith('--') ? toHex(getComputedStyle(cueBox).getPropertyValue(trial.fg)) : trial.fg;
+    const strength = faint && low && fg ? opacityFor(fg, cueBg, lowContrastAt(level.value)) : 1;
+    cueBox.style.setProperty('--cue-strength', String(strength));
     cueBox.innerHTML = trial.html;
     root.dataset.cue = trial.kind ?? '';
     if (trial.flashMs) {
@@ -135,7 +152,7 @@ async function runTap(ctx, spec) {
         ruleEl.textContent = `PRACTICE ${i} of ${practiceN} · ${spec.strip}`;
         blank();
         await sleep(700);
-        const trial = spec.next({ hard: false, prog: 0, practice: true });
+        const trial = spec.next({ hard: false, practice: true, level: 0 });
         if (!trial) break;
         showTrial(trial);
         let answered = false;
@@ -170,11 +187,11 @@ async function runTap(ctx, spec) {
   const stats = { trials: 0, correct: 0, misses: 0, wrong: 0, falseAlarms: 0, rts: [] };
   while (true) {
     const left = remaining();
-    const prog = 1 - left / durationMs;
-    // Pacing from the check-in: calmer when wired, snappier when flat.
-    const base = spec.tapWindow * (hard ? 0.75 : 1) * ramp(prog) * (session.pacing?.window ?? 1);
+    // The level sets the answer window; pacing from the check-in: calmer when wired, snappier when flat.
+    const base = spec.tapWindow * windowAt(level.value) * (session.pacing?.window ?? 1);
     const easy = finishing(left, base, hard);
     const gentle = easy ? FINISH_FACTOR : stats.trials < GENTLE_CUES ? GENTLE_FACTOR : 1;
+    const counts = gentle === 1;   // only ordinary cues move the level
     const windowMs = base * gentle;
     const gap = gapMs(hard) * (session.pacing?.gap ?? 1);
     if (left < gap + windowMs + 400) break;
@@ -182,10 +199,10 @@ async function runTap(ctx, spec) {
     blank();
     await sleep(gap);
 
-    const trial = spec.next({ hard: hard && !easy, prog, practice: false, easy });
+    const trial = spec.next({ hard: hard && !easy, practice: false, easy, level: easy ? 0 : level.value });
     if (!trial) break;
     countEl.textContent = `#${stats.trials + 1}`;
-    showTrial(trial);
+    showTrial(trial, !easy);
     const shownAt = now();
     const resp = await waitTap(windowMs);
     const rt = now() - shownAt;
@@ -202,6 +219,7 @@ async function runTap(ctx, spec) {
       if (!ok) stats.wrong++;
     }
     if (ok) { stats.correct++; if (resp != null) stats.rts.push(rt); }
+    if (counts) level.update(ok);
     // Leaderboard points: right (speed bonus for taps), wrong or tapped on red, or too slow.
     session.scorer?.trial(ok ? { outcome: 'correct', rtMs: resp == null ? null : rt }
       : { outcome: resp == null ? 'missed' : 'wrong' });
@@ -247,7 +265,7 @@ export const colorCall = {
       },
       next() {
         const c = cueById[ctx.session.content.colorCall().color];
-        return { answer: c.id, answerLabel: c.label, html: fill(c) };
+        return { answer: c.id, answerLabel: c.label, fg: c.hex, html: fill(c) };
       },
     });
   },
@@ -333,21 +351,60 @@ export const peripheral = {
           { cue: mini.periph('yellow', 'top'), answer: 'yellow', caption: 'YELLOW flashed → tap YELLOW' },
         ],
       },
-      next({ hard, practice, easy }) {
+      next({ hard, practice, easy, level }) {
         // Anywhere along an edge, never the same side twice in a row and well
         // away from the last spot. Hard adds a white number as a distractor.
+        // The flash gets shorter as the level rises (450 → 150 ms).
         const t = ctx.session.content.peripheral({ lure: hard && !practice && !easy });
         const c = cueById[t.color];
         const lure = t.lure ? `<div class="flash flash--lure" style="${at(t.lure)}">${t.lure.digit}</div>` : '';
-        const flashMs = practice || easy ? 900 : hard ? 200 : 350;
+        const flashMs = practice || easy ? 900 : Math.round(lerp(450, 150, level));
         return {
           answer: c.id,
           answerLabel: c.label,
+          fg: c.hex,
           flashMs,
           html: `<div class="cue cue--periph">
                    <div class="rx__fix rx__fix--lock"></div>
                    <div class="flash" style="--c:${c.hex};--ink:${c.ink};${at(t)}">${c.shape}</div>
                    ${lure}
+                 </div>`,
+        };
+      },
+    });
+  },
+};
+
+// Target Capture: a tiny ring with a gap (a Landolt C, the eye-test symbol)
+// flashes near an edge; tap the ring whose gap faces the same way. The flash
+// gets shorter and the ring smaller as the level rises (js/content/vision.js).
+const TURN = { right: 0, down: 90, left: 180, up: 270 };
+const ring = (gap) => `<svg class="ring" viewBox="0 0 10 10" aria-hidden="true"><path d="M8.873 6A4 4 0 1 1 8.873 4" transform="rotate(${TURN[gap]} 5 5)"/></svg>`;
+
+export const capture = {
+  run(ctx) {
+    return runDrill(ctx, {
+      kicker: 'Vision',
+      title: 'Target Capture',
+      rule: 'Start with your eyes on the dot. A tiny ring flashes near an edge. Tap the ring with its gap facing the same way.',
+      strip: 'FIND THE RING · MATCH ITS GAP',
+      pad: 'plain',
+      choices: GAP_DIRS.map((g) => ({ id: g, label: `Gap ${g}`, html: ring(g) })),
+      tapWindow: 2500,
+      demo: { html: `<div class="mini"><div class="mini__phone mini__phone--eyes"><i class="mini__ring">${ring('left')}</i></div>
+        <p class="mini__cap">Ring flashes → its gap faces left → tap that one</p></div>` },
+      next({ practice, easy, level }) {
+        const t = ctx.session.content.capture();
+        const big = practice || easy;
+        const { flashMs, sizePx } = captureAt(level);
+        return {
+          answer: t.gap,
+          answerLabel: t.gap.toUpperCase(),
+          fg: '--cue-fg',
+          flashMs: big ? 900 : flashMs,
+          html: `<div class="cue cue--periph">
+                   <div class="rx__fix rx__fix--lock"></div>
+                   <div class="flash flash--ring" style="--size:${big ? 44 : sizePx}px;${at(t)}">${ring(t.gap)}</div>
                  </div>`,
         };
       },

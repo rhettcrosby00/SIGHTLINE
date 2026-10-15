@@ -19,6 +19,10 @@ export const GROUPS = [
     { key: 'difficulty', label: 'Difficulty', options: [['normal', 'Normal'], ['hard', 'Hard']] },
     { key: 'guide', label: 'Instructions', stack: true, options: [['auto', 'Auto'], ['full', 'Full'], ['brief', 'Brief']],
       hint: () => 'Auto shows an example and a short practice the first 3 times you run a drill, then just the rule.' },
+    { key: 'contrast', label: 'Contrast', options: [['full', 'Full'], ['low', 'Low']],
+      hint: () => 'Low fades the cues toward the background, like poor light, shadow or glare: Color Call, Saccade Jumps, Peripheral Flash and Target Capture. Turn your brightness up outdoors.' },
+    { key: 'occlusion', label: 'Occlusion (training)', toggle: true, flag: 'occlusion',
+      hint: () => 'Never in Game Ready. In Smooth Pursuit, Saccade Jumps and Object Tracking the moving target disappears and comes back, so you predict where it went. Only the target, never the screen. Leave it off if flashing light bothers you.' },
   ] },
   { title: 'You', fields: [
     { key: 'sport', label: 'Sport', select: () => SPORTS.map((x) => [x.id, x.label]),
@@ -44,7 +48,12 @@ const FIELDS = GROUPS.flatMap((g) => g.fields);
 export const DEFAULTS = {
   length: 'standard', difficulty: 'normal', sound: 'on', music: 'off', guide: 'auto', appearance: 'auto', nameStyle: 'name',
   sport: 'general', position: '', sportAsked: false, cue: 'COMPETE', guideV: 2,
+  contrast: 'full', occlusion: 'off', occlusionOk: false,
 };
+
+// Shown once, the first time Occlusion is turned on.
+export const OCCLUSION_WARNING = 'Occlusion makes the moving target disappear and come back (never more than 3 changes a second). The screen itself never flashes.\n\n'
+  + 'If you have epilepsy, have ever had a seizure, or flashing light bothers you, leave it off. Stop if you feel dizzy or unwell.\n\nTurn it on?';
 
 // Saved settings → current settings. Anything unknown or out of range falls
 // back to the default; settings that no longer exist (the old Tap/Cones
@@ -57,6 +66,7 @@ export function parseSettings(saved = {}) {
   }
   Object.assign(out, cleanSport(saved?.sport, saved?.position));
   out.sportAsked = saved?.sportAsked === true;
+  out.occlusionOk = saved?.occlusionOk === true;
   if (typeof saved?.cue === 'string') out.cue = cleanCue(saved.cue);
   // Before v2.4, Full was the default (there was no Auto): move those phones to Auto once.
   if (saved?.guide === 'full' && saved?.guideV !== 2) out.guide = 'auto';
@@ -84,6 +94,7 @@ export function describe(s) {
   return [
     `${s.length[0].toUpperCase()}${s.length.slice(1)}`,
     s.difficulty === 'hard' ? 'Hard' : 'Normal',
+    ...(s.contrast === 'low' ? ['Low contrast'] : []),
     { auto: 'Auto instructions', full: 'Full instructions', brief: 'Brief instructions' }[s.guide] ?? 'Auto instructions',
     `Sound ${s.sound}`,
   ].join(' · ');
@@ -115,7 +126,7 @@ function render(el, s) {
     <section class="group" aria-label="${g.title}">
       <h3 class="group__title">${g.title}</h3>
       <div class="group__rows">
-        ${g.fields.filter((f) => !f.when || f.when(s)).map((f) => `
+        ${g.fields.filter((f) => (!f.when || f.when(s)) && (!f.flag || isOn(f.flag))).map((f) => `
           <div class="setting${f.stack || f.select ? ' setting--stack' : ''}">
             <span class="setting__label">${f.label}</span>
             ${f.toggle ? toggle(f, s) : f.select ? select(f, s) : seg(f, s)}
@@ -146,9 +157,17 @@ export function initSettings({ onChange = () => {} } = {}) {
   el.addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
+    const key = b.dataset.toggle;
     if (b.dataset.key) settings[b.dataset.key] = b.dataset.value;
-    else if (b.dataset.toggle) settings[b.dataset.toggle] = settings[b.dataset.toggle] === 'on' ? 'off' : 'on';
-    else return;
+    else if (key) {
+      const on = settings[key] !== 'on';
+      // Occlusion: a photosensitivity warning the first time it's turned on.
+      if (key === 'occlusion' && on && !settings.occlusionOk) {
+        if (!confirm(OCCLUSION_WARNING)) return;
+        settings.occlusionOk = true;
+      }
+      settings[key] = on ? 'on' : 'off';
+    } else return;
     save(settings);
     if (b.dataset.key === 'appearance') applyAppearance(settings.appearance);
     render(el, settings);

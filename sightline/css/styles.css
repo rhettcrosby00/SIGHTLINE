@@ -547,7 +547,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .cdf--arrow { background: var(--cue-bg); }
 .cdf__arrow { width: min(84vw, 56dvh); height: auto; fill: var(--cue-fg); }
 .is-placed .cdf__arrow { width: 92%; }
-.cdf--arrow.is-reverse { box-shadow: inset 0 0 0 18px #fff; animation: cd-reverse 0.25s steps(1) infinite; }
+/* Blinks once a second (2 changes): under the 3-changes-a-second flash limit. */
+.cdf--arrow.is-reverse { box-shadow: inset 0 0 0 18px #fff; animation: cd-reverse 1s steps(1) infinite; }
 @keyframes cd-reverse { 50% { box-shadow: inset 0 0 0 18px #000; } }
 .cdf--number { background: var(--cue-bg); color: var(--cue-fg); }
 .cdf--number span { font-family: var(--font-num); font-variation-settings: var(--wdth-narrow); font-size: min(80vw, 52dvh); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -646,3 +647,53 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .pad__btn--plain .pad__shape { font-size: 2rem; }
 .pad__btn--plain[disabled] { opacity: 0.4; }
 @media (prefers-reduced-motion: reduce) { .qe--busy .qe__lure { animation: none; } }
+
+/* ---------- Visual skills (Near-Far, Target Capture, Perception Span) + Object Tracking ---------- */
+/* Low contrast: the cue fades toward the background (js/lib/contrast.js sets --cue-strength). */
+.rx__cue .cue--fill, .rx__cue .flash { opacity: var(--cue-strength, 1); }
+/* Occlusion (Training only): only the target hides; nothing else on screen changes. */
+.is-occluded, .mot__field.is-occluded .mot__dot { visibility: hidden; }
+.flash--ring { background: none; color: var(--cue-fg); border-radius: 0; }
+.ring { display: block; width: 100%; height: 100%; }
+.ring path { fill: none; stroke: currentColor; stroke-width: 2; }
+.pad--plain { grid-template-columns: 1fr 1fr; }
+.pad--plain .pad__btn { min-height: max(72px, 10dvh); }
+.pad__btn--plain .ring { width: 44px; height: 44px; }
+.nf .rx__cue > * { grid-area: 1 / 1; }
+.nf__far { display: grid; justify-items: center; gap: var(--space-1); color: var(--cue-accent); text-align: center; }
+.nf__far b { font-family: var(--font-display); font-variation-settings: var(--wdth-wide); font-weight: 900; font-size: clamp(3rem, 18vw, 5rem); line-height: 1; }
+.nf__far span { color: var(--cue-fg); font-weight: 600; }
+.nf__far[hidden], .nf__letter[hidden] { display: none; }
+.nf__letter { color: var(--cue-fg); font-weight: 700; line-height: 1; }
+.nf__note { align-self: end; padding-bottom: var(--space-3); color: var(--cue-muted); font: 600 var(--text-caption) var(--font-body); }
+.sp__grid { --n: 3; display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 6px; padding: 10px; }
+.sp__cell { position: relative; border-radius: 10px; border: 2px solid var(--cue-muted); touch-action: none; }
+.sp__cell::after { content: ""; position: absolute; inset: 24%; border-radius: 50%; }
+.sp__cell.is-lit::after { background: var(--cue-fg); }
+.sp__cell.is-picked { border-color: var(--cue-accent); }
+.sp__cell.is-picked::after, .sp__cell.is-right::after { background: var(--cue-accent); }
+.sp__cell.is-missed::after { box-shadow: inset 0 0 0 3px var(--cue-fg); }
+.sp__cell.is-wrong::after { background: var(--cue-muted); }
+.mot__field { touch-action: none; }
+.mot__dot { position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--cue-fg); will-change: transform; }
+.mot__dot.is-target, .mot__dot.is-right { background: var(--cue-accent); }
+.mot__dot.is-picked { box-shadow: 0 0 0 3px var(--cue-bg), 0 0 0 6px var(--cue-accent); }
+.mot__dot.is-missed { background: none; box-shadow: inset 0 0 0 4px var(--cue-accent); }
+.mot__dot.is-wrong { background: var(--cue-muted); }
+.mini__ring { position: absolute; right: 12px; top: 22px; width: 22px; height: 22px; color: var(--cue-fg); animation: mini-flash 3s steps(1) infinite; }
+.mini__phone--nf { place-items: center; }
+.mini__far, .mini__near { grid-area: 1 / 1; font-weight: 900; animation: mini-nf 3s steps(1) infinite; }
+.mini__far { color: var(--cue-accent); font-family: var(--font-display); font-variation-settings: var(--wdth-wide); font-size: 1.75rem; }
+.mini__near { color: var(--cue-fg); font-size: 0.875rem; animation-delay: -1.5s; }
+@keyframes mini-nf { 0% { opacity: 1; } 50% { opacity: 0; } }
+.mini__grid { display: grid; grid-template-columns: repeat(3, 18px); gap: 4px; margin: auto; }
+.mini__grid i { width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--cue-muted); }
+.mini__grid i:nth-child(2), .mini__grid i:nth-child(4), .mini__grid i:nth-child(9) { background: var(--cue-fg); }
+.mini__mot { position: absolute; inset: 0; }
+.mini__mot i { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--cue-fg); animation: mini-mot 2.6s ease-in-out infinite alternate; }
+.mini__mot i:nth-child(1) { left: 20px; top: 20px; background: var(--cue-accent); }
+.mini__mot i:nth-child(2) { left: 110px; top: 30px; animation-direction: alternate-reverse; }
+.mini__mot i:nth-child(3) { left: 40px; top: 80px; animation-duration: 3.1s; }
+.mini__mot i:nth-child(4) { left: 120px; top: 84px; animation-duration: 2.2s; animation-direction: alternate-reverse; }
+@keyframes mini-mot { from { transform: translate(0, 0); } to { transform: translate(-24px, -14px); } }
+@media (prefers-reduced-motion: reduce) { .mini__mot i { animation: none; } }

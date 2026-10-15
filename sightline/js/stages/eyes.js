@@ -2,9 +2,14 @@
 // (targets pop up anywhere on screen) and Gaze Stabilization (eyes stay on a
 // letter while the head moves). Eyes only, no scoring. All randomness comes
 // from the session (ctx.session).
+// Occlusion (Training only, opt-in): the dot or number disappears and comes
+// back (js/content/vision.js), never faster than 3 changes a second.
+// Low contrast: the saccade numbers fade toward the background.
 
-import { howTo, countdown, animate } from './common.js';
+import { howTo, countdown, animate, backdrop } from './common.js';
 import { tone } from '../lib/audio.js';
+import { occludedSaccade } from '../content/vision.js';
+import { opacityFor, lowContrastAt } from '../lib/contrast.js';
 
 const TAU = Math.PI * 2;
 const KICKER = 'Activate';
@@ -62,10 +67,12 @@ export const pursuit = {
     const count = Math.max(2, Math.round(avail / 7000));
     const segMs = avail / count;
     const segments = session.content.pursuit(count, hard).map((s) => ({ ...s, ...PATHS[s.id] }));
+    const occ = session.content.occlusion?.('pursuit');
 
     const start = now();
     const stop = animate(now, (t) => {
       const local = t - start;
+      if (occ) dot.classList.toggle('is-occluded', !occ.visible(local));
       const i = Math.min(count - 1, Math.floor(local / segMs));
       const seg = segments[i];
       const st = local - i * segMs;
@@ -99,6 +106,12 @@ export const saccades = {
     const root = board(el, '<div class="eyes__target" hidden><span></span></div>');
     const target = root.querySelector('.eyes__target');
     const label = target.querySelector('span');
+    // Low contrast: unscored, so a set level (fainter on Hard).
+    if (session.content.lowContrast) {
+      const fg = backdrop(target);
+      target.style.opacity = String(opacityFor(fg, backdrop(root), lowContrastAt(hard ? 0.8 : 0.3)));
+    }
+    const occluded = !!session.content.occlusion;
     await hold(() => countdown(ctx, root, 'GET SET'));
 
     const gap = session.content.gaps('saccades');
@@ -112,7 +125,15 @@ export const saccades = {
       tone(660, { dur: 0.08, gain: 0.08 });
       shown++;
       // Irregular timing so the next jump can't be anticipated.
-      await sleep(Math.min(remaining(), gap(hard)));
+      if (occluded) {
+        // Occlusion: the number shows, then hides before the next jump.
+        const o = occludedSaccade(gap(hard));
+        await sleep(Math.min(remaining(), o.showMs));
+        target.hidden = true;
+        await sleep(Math.min(remaining(), o.hiddenMs));
+      } else {
+        await sleep(Math.min(remaining(), gap(hard)));
+      }
     }
     return { targets: shown };
   },

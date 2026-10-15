@@ -26,8 +26,9 @@ const SCORED = { intro: { full: 22, brief: 6 }, min: 20, weight: 60 };
 // flag is on (js/features.js). Finishers and special drills never join a
 // shuffle: Lock In and Energize are placed on purpose, Quiet Eye isn't in Game
 // Ready (My Routine has its own quiet-eye moment), and My Routine runs last.
-// Extras are optional: the evidence for generic brain games and head-turn
-// drills is limited.
+// Vision (sports-vision skills) runs as its own session, not in Game Ready.
+// Extras are optional: the evidence for generic brain games, head-turn drills
+// and object tracking on its own is limited.
 export const PILLARS = [
   { id: 'regulate', title: 'Regulate', drills: [
     { id: 'settle', title: 'Box Breathing', ...BREATH },
@@ -47,6 +48,11 @@ export const PILLARS = [
     { id: 'colorcall', title: 'Color Call', ...SCORED },
     { id: 'gonogo', title: 'Go / No-Go', ...SCORED },
   ] },
+  { id: 'vision', title: 'Vision', drills: [
+    { id: 'nearfar', title: 'Near-Far Focus', ...SCORED, intro: { full: 24, brief: 6 }, min: 30 },
+    { id: 'capture', title: 'Target Capture', ...SCORED },
+    { id: 'span', title: 'Perception Span', ...SCORED, min: 30 },
+  ] },
   { id: 'rehearse', title: 'Rehearse', drills: [
     { id: 'visualize', title: 'Visualization', intro: { full: 10, brief: 4 }, min: 30, weight: 45 },
     { id: 'myroutine', title: 'My Routine', intro: { full: 0, brief: 0 }, min: 0, weight: 0, special: true },
@@ -57,6 +63,7 @@ export const PILLARS = [
     { id: 'math', title: 'Quick Math', ...SCORED },
     { id: 'questions', title: 'Quick Questions', ...SCORED },
     { id: 'memory', title: 'Memory Sequence', ...SCORED, intro: { full: 25, brief: 6 }, flag: 'newDrills' },
+    { id: 'mot', title: 'Object Tracking', ...SCORED, intro: { full: 14, brief: 6 }, min: 30 },
   ] },
 ];
 
@@ -64,16 +71,16 @@ const drillById = Object.fromEntries(PILLARS.flatMap((p) => p.drills.map((d) => 
 const pillarById = Object.fromEntries(PILLARS.map((p) => [p.id, p]));
 
 // The FOCUS menu. minutes: whole-session length for Quick / Standard / Full.
-//   check: the readiness check (+ cue word) runs before ('before') or before and after ('both').
-//   check: the readiness check-in runs before ('before') or before and after ('both').
+//   check: the readiness check-in (+ cue word) runs before ('before') or before and after ('both').
 //   unscored: no leaderboard entry. timedByRoutine: as long as the athlete's routine.
 export const FOCUS_SESSIONS = [
   { id: 'game', title: 'Game Ready', short: 'Regulate → Activate → Challenge → Rehearse', check: 'both', minutes: [5, 8, 10] },
   { id: 'regulate', title: 'Breathing only', short: 'Calm down or wake up, matched to how you feel', check: 'before', minutes: [2.5, 3.5, 5] },
   { id: 'activate', title: 'Eyes only', short: 'Tracking, eye jumps, side vision, quiet eye', minutes: [2.5, 3.5, 4.5] },
+  { id: 'vision', title: 'Visual skills', short: 'Near-far focus, target capture, perception span', minutes: [3, 4, 5] },
   { id: 'challenge', title: 'Reaction only', short: 'Color Call and Go / No-Go', minutes: [2, 3, 4] },
   { id: 'rehearse', title: 'Rehearse only', short: 'Cue word, visualization, My Routine', check: 'before', minutes: [1.5, 1.5, 2] },
-  { id: 'extras', title: 'Extras', short: 'Optional: Stroop, math, trivia, memory, head turns', minutes: [4, 6, 8], extra: true },
+  { id: 'extras', title: 'Extras', short: 'Optional: Stroop, math, trivia, memory, head turns, object tracking', minutes: [4, 6, 8], extra: true },
   { id: 'myroutine', title: 'My Routine', short: 'Your 20–40 second pre-performance routine', minutes: [0.5, 0.5, 0.5], unscored: true, timedByRoutine: true },
 ];
 export const sessionById = Object.fromEntries(FOCUS_SESSIONS.map((s) => [s.id, s]));
@@ -178,6 +185,9 @@ export function planSteps(sessionId, settings, rng, { avoid = {}, flags = {}, gu
   const need = (l) => l.reduce((a, x) => a + introSeconds(x.d.id, x.guide) + (x.fixed ?? x.d.min), 0);
   // Too much for a short session (e.g. Wired + Quick)? Drop the least essential drills.
   for (const id of DROP_ORDER) if (need(list) > total) list = list.filter((x) => x.d.id !== id);
+  // A one-part session with full instructions (e.g. Quick Extras): the last
+  // drill in the shuffle sits this one out. Finishers always stay.
+  while (need(list) > total && list.length > 2 && list.at(-1).fixed == null && !list.at(-1).d.special) list = list.slice(0, -1);
 
   const intro = list.reduce((a, x) => a + introSeconds(x.d.id, x.guide), 0);
   const fixed = list.reduce((a, x) => a + (x.fixed ?? 0), 0);

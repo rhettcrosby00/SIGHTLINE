@@ -27,7 +27,23 @@ GO. Built on the FOCUS screen, saved on the phone only, and run as the last step
 Ready or on its own with one tap from home.
 
 Each pillar can also run on its own (Breathing only, Eyes only with a standalone **Quiet Eye**
-drill, Reaction only, Rehearse only). **Extras** (optional): Gaze Stabilization, Stroop, Quick
+drill, Reaction only, Rehearse only).
+
+**Visual skills** (its own session, 3 / 4 / 5 min, not in Game Ready): Near-Far Focus (look at a
+spot 10+ ft away, then back: tap the small letter that showed), Target Capture (a tiny ring with a
+gap flashes near an edge: match the gap) and Perception Span (dots flash on a 3×3 to 5×5 grid:
+tap the same squares). Object Tracking (follow a few dots among identical moving ones) is in Extras.
+
+**Adaptive difficulty** (`js/lib/adapt.js`): every scored drill gets harder after right answers
+and eases off after misses (a weighted staircase that settles at about 80% right), inside a band
+set by Normal (levels 0–0.6) or Hard (0.4–1). Each drill's level is remembered on the phone.
+**Low contrast** (Settings → Contrast) fades Color Call, Saccade Jumps, Peripheral Flash and Target
+Capture toward the background, never below 2.5:1 (`js/lib/contrast.js`).
+
+**Occlusion** (behind the `occlusion` flag; Training only, never Game Ready): in Smooth Pursuit,
+Saccade Jumps and Object Tracking the moving target disappears and comes back, never faster than
+3 changes a second. Only the target, never the screen. A photosensitivity warning shows the
+first time it's turned on. **Extras** (optional): Gaze Stabilization, Stroop, Quick
 Math, Quick Questions, Memory Sequence. These are lab-style drills with weaker evidence for sport,
 so they're kept out of Game Ready. Instructions are **Auto** by default: the full how-to the
 first 3 times a phone runs a drill, then just the rule. How-to cards start on their own, so a
@@ -119,11 +135,13 @@ a session). The version number shows at the bottom of the start screen.
 sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 - `newDrills: 'preview'`: 4-7-8 Breathing, Memory Sequence.
 - `leaderboard: true` (approved): name entry, the online board and coach tools.
+- `occlusion: 'preview'`: the opt-in Occlusion setting. Stays preview-only until Training Mode (Sub-phase E).
 
 ## Saved on the phone
 
-- `sightline.settings.v1`: FOCUS options, theme, cue word, sport and position, music mode
+- `sightline.settings.v1`: FOCUS options, theme, cue word, sport and position, music mode, contrast, occlusion
 - `sightline.routine.v1`: My Routine (breath, imagery line, quiet-eye seconds)
+- `sightline.levels.v1`: each drill's adaptive difficulty level
 - `sightline.cone.v1` / `sightline.signals.v1`: MOVE custom setup / Signals Only setup
 - `sightline.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
 - `sightline.name.v1`, `sightline.lbqueue.v1`: last leaderboard name; scores waiting to post
@@ -184,6 +202,8 @@ Keep answers short (about 12 characters or fewer) so they fit on a button.
 | `js/plan.js` | FOCUS pillars, sessions, minutes for each length, and the check-in's changes |
 | `js/myroutine.js`, `js/myroutine-ui.js` | My Routine: its parts and timing, the saved copy, the builder screen |
 | `js/content/sports.js`, `js/content/scripts.js` | Sports, positions, skill cue words, visualization scripts |
+| `js/content/vision.js` | Visual skills content: letters, rings, grids, tracking motion, occlusion timing, scoring |
+| `js/lib/adapt.js`, `js/lib/contrast.js` | Adaptive difficulty (and saved levels); Low contrast math |
 | `js/routine.js` | Maps each FOCUS drill to the code that runs it |
 | `js/engine.js` | Runs the steps; progress bar, pause/quit, wake lock |
 | `js/stages/*.js` | One file per FOCUS drill group, plus `summary.js` |
@@ -196,12 +216,13 @@ Keep answers short (about 12 characters or fewer) so they fit on a button.
 
 - `?only=stroop,lockin` runs just those drills. IDs: `settle`, `sigh`, `resonance`, `breath478`,
   `energize`, `pursuit`, `saccades`, `gaze`, `peripheral`, `quieteye`, `colorcall`, `gonogo`,
-  `stroop`, `math`, `questions`, `memory`, `visualize`, `lockin`, `myroutine`.
+  `nearfar`, `capture`, `span`, `stroop`, `math`, `questions`, `memory`, `mot`, `visualize`, `lockin`,
+  `myroutine`.
 - `?state=wired` (or `flat`, `ready`) builds the session as if that check-in was picked; use it
   with `?autoready=1`, which skips the check-in.
 - `?speed=20` fast-forwards time.
 - `?autostart=1` starts Game Ready; add `&session=regulate` (or `activate`, `challenge`,
-  `rehearse`, `extras`, `myroutine`) for one part. `?autostart=quick` (or `custom`, `signals`) starts a MOVE drill.
+  `vision`, `rehearse`, `extras`, `myroutine`) for one part. `?autostart=quick` (or `custom`, `signals`) starts a MOVE drill.
 - `?autoready=1` skips the I'M READY taps on the how-to cards.
 - `?noguide=1` skips the first-run "How it works" guide.
 - `?sw=1` turns on offline caching on localhost. It is off there by default so edits show

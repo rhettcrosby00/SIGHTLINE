@@ -14,6 +14,7 @@ import { unlock as unlockAudio, buzz } from './lib/audio.js';
 import { icon } from './lib/icons.js';
 import { isOn } from './features.js';
 import { createSeen } from './lib/seen.js';
+import { createLevelStore } from './lib/adapt.js';
 import { createRoutineStore, routineSeconds } from './myroutine.js';
 
 const $ = (id) => document.getElementById(id);
@@ -23,8 +24,9 @@ const $ = (id) => document.getElementById(id);
 // leaderboard (optional) gets the score after each finished session.
 export function initFocus({ show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {}, onRoutine = () => {}, leaderboard = null }) {
   const hubEl = $('focus-hub');
-  const flags = { newDrills: isOn('newDrills') };
+  const flags = { newDrills: isOn('newDrills'), occlusion: isOn('occlusion') };
   const seen = createSeen();   // drills this phone has run, for Auto instructions
+  const levels = createLevelStore();   // adaptive difficulty: each drill's level, on this phone
   const routines = createRoutineStore();   // My Routine, saved on this phone
   let from = 'start';   // where Done (or quitting) goes back to
 
@@ -94,7 +96,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     // Every session is freshly shuffled; content from the last few sessions rests.
     const build = (state, seed) => createSession({
       sessionId: meta.id, settings, seed, recent: dev.seed ? [] : variety.recent(), flags, seen: seen.get(),
-      state, routine: routines.get(),
+      state, routine: routines.get(), levels: levels.get(),
     });
     let session = build('ready', dev.seed);
 
@@ -129,6 +131,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     const { completed, results } = await runSession(steps, settings, { session, speed: dev.speed, autoReady: dev.autoReady });
     if (!dev.seed) variety.add(session.record());   // also after a quit: they saw it
     seen.add(results.map((r) => r.id));             // Auto instructions get shorter as drills get familiar
+    levels.save(session.levels());                  // next time, each drill starts where it ended
     if (!completed) { back(); return; }
     buzz([60, 80, 120]);   // session complete
     if (meta.timedByRoutine) { back(); return; }   // My Routine on its own: straight back, nothing to sum up

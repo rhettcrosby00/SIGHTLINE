@@ -1,6 +1,7 @@
 // Draws one Cone Drill cue full-screen: a color fill, a giant arrow, a giant
 // number, or a gray HOLD screen. Random/peripheral cues are drawn smaller at
-// their spot. Reverse cues get a thick flashing border.
+// their spot. Reverse cues get a thick border that blinks slowly (once a
+// second, under the 3-changes-a-second flash limit).
 
 import { colorById, dirById } from './config.js';
 import { icon } from '../lib/icons.js';

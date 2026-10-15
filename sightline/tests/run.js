@@ -8,6 +8,7 @@ import './timing.js';
 import './leaderboard.js';
 import './evidence.js';
 import './readiness.js';
+import './vision.js';
 import './design.js';
 import './sides.js';
 import './deadcode.js';
