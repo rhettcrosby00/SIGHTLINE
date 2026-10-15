@@ -3,21 +3,23 @@
 // inside the target for a moment, and they tap which one it was, which only
 // works if their eyes stayed put. Hard adds dots drifting around the target.
 // The last target is easy (longer look, no distractions), so it ends on a success.
+// The symbol's time adapts (js/lib/adapt.js): shorter after right answers.
 // The symbol shows once per target (seconds apart): far under 3 flashes a second.
 
 import { howTo, countdown } from './common.js';
 import { cues } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
 import { QE_SYMBOLS } from '../content/eyes.js';
+import { lerp } from '../lib/adapt.js';
 
 const ANSWER_MS = 3000;
 
 export const quietEye = {
   async run(ctx) {
-    const { el, settings, session, sleep, now, remaining, hold } = ctx;
+    const { el, settings, session, step, sleep, now, remaining, hold } = ctx;
     const hard = settings.difficulty === 'hard';
+    const level = session.content.level(step.id);
     const lockMs = hard ? 2000 : 2500;
-    const showMs = hard ? 220 : 350;
     const trialMs = 600 + lockMs + 700 + ANSWER_MS / 2 + 900;
 
     await howTo(ctx, {
@@ -85,7 +87,7 @@ export const quietEye = {
       const shownAt = now();
       buttons.forEach((b) => { b.disabled = false; });
       const tap = waitTap(ANSWER_MS);
-      await sleep(easy ? 700 : showMs).catch(() => {});
+      await sleep(easy ? 700 : Math.round(lerp(450, 170, level.value))).catch(() => {});
       symbolEl.textContent = '';
       const resp = await tap;
       const rt = now() - shownAt;
@@ -94,6 +96,7 @@ export const quietEye = {
       stats.trials++;
       const ok = resp === t.symbol;
       if (ok) { stats.correct++; stats.rts.push(rt); } else if (resp == null) stats.misses++; else stats.wrong++;
+      if (!easy) level.update(ok);
       session.scorer?.trial(ok ? { outcome: 'correct', rtMs: rt } : { outcome: resp == null ? 'missed' : 'wrong' });
       (ok ? cues.correct : cues.wrong)();
       say(ok ? 'is-ok' : 'is-bad', ok ? `${icon('check')}<span>Locked in</span>` : `<span>It was ${t.symbol}</span>`);

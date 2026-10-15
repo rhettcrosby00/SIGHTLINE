@@ -11,7 +11,9 @@
 //     seen    drill id → times this phone has run it (Auto instructions)
 //     state   'flat' | 'ready' | 'wired' from the check-in (shapes breathing and pacing)
 //     routine the athlete's My Routine (js/myroutine.js)
+//     levels  drill id → last adaptive level on this phone (js/lib/adapt.js)
 //
+// session.levels() gives each drill's level at the end, to save for next time.
 // session.record() lists what this session actually used, for the variety list.
 
 import { createRng, deck } from './lib/rng.js';
@@ -25,10 +27,12 @@ import { breathingText } from './content/breathing.js';
 import { scriptsFor } from './content/scripts.js';
 import { CUE_WORDS, CUE_SUGGESTIONS } from './content/cues.js';
 import { SKILL_WORDS, cleanSport } from './content/sports.js';
+import { nearFarStream, captureStream, spanStream, motField, createOcclusion } from './content/vision.js';
+import { createLevel } from './lib/adapt.js';
 
 const setsOf = (recent, field) => recent.map((r) => new Set(r?.[field] ?? []));
 
-export function createSession({ sessionId = 'game', settings, seed, recent = [], flags = {}, seen = {}, state = 'ready', routine = DEFAULT_ROUTINE }) {
+export function createSession({ sessionId = 'game', settings, seed, recent = [], flags = {}, seen = {}, state = 'ready', routine = DEFAULT_ROUTINE, levels = {} }) {
   const rng = createRng(seed);
   const last = recent[0]?.order ?? {};
   const mood = STATES.includes(state) ? state : 'ready';
@@ -36,7 +40,7 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
   const { sport, position } = cleanSport(settings.sport, settings.position);
 
   const steps = planSteps(sessionId, settings, rng.fork('order'), {
-    avoid: { regulate: last.regulate, activate: last.activate, challenge: last.challenge, extras: last.extras },
+    avoid: { regulate: last.regulate, activate: last.activate, vision: last.vision, challenge: last.challenge, extras: last.extras },
     flags,
     guideFor: guideChooser(settings.guide, seen),
     state: mood,
@@ -56,6 +60,10 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
 
   let script = null;
   const gapStreams = {};
+  const levelOf = {};
+  const motRng = rng.fork('mot');
+  // Occlusion: Training only (opt-in, behind its flag). Never on Game Day.
+  const occlusion = !!flags.occlusion && settings.occlusion === 'on' && sessionId !== 'game';
 
   const content = {
     colorCall: colorCallStream(rng.fork('colorcall')),
@@ -77,6 +85,14 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
     routine: myRoutine,
     // Each drill gets its own gap stream so drill order doesn't change timing.
     gaps: (drillId) => (gapStreams[drillId] ??= gaps(rng.fork(`gaps:${drillId}`))),
+    nearFar: nearFarStream(rng.fork('nearfar')),
+    capture: captureStream(rng.fork('capture')),
+    span: spanStream(rng.fork('span')),
+    mot: (opts) => motField(motRng, opts),
+    // Adaptive difficulty: one staircase per drill, starting where this phone left off.
+    level: (drillId) => (levelOf[drillId] ??= createLevel(levels[drillId], settings.difficulty)),
+    lowContrast: settings.contrast === 'low',
+    occlusion: occlusion ? (drillId) => createOcclusion(rng.fork(`occlusion:${drillId}`)) : null,
   };
 
   const orderOf = (pillarId) => steps.filter((s) => s.pillarId === pillarId).map((s) => s.id);
@@ -88,6 +104,7 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
     seed: rng.seed,
     steps,
     content,
+    levels: () => Object.fromEntries(Object.entries(levelOf).map(([id, l]) => [id, l.value])),
     record: () => ({
       questions: questions.used(),
       scripts: script ? [script.id] : [],
@@ -95,7 +112,7 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
       cues: cueSuggestions.slice(),
       order: {
         regulate: orderOf('regulate').filter((id) => id !== 'lockin'),
-        activate: orderOf('activate'), challenge: orderOf('challenge'), extras: orderOf('extras'),
+        activate: orderOf('activate'), vision: orderOf('vision'), challenge: orderOf('challenge'), extras: orderOf('extras'),
       },
     }),
   };

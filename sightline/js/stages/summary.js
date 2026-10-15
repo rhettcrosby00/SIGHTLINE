@@ -14,7 +14,7 @@ export const SUM_LOGO = `<img class="sum__logo on-dark" src="assets/logo/logo-ma
   <img class="sum__logo on-light" src="assets/logo/logo-mark-mono-dark.svg" alt="Sightline logo" width="272" height="242">`;
 
 const DONE = '<span class="row__val--done">Done</span>';
-const REACTION_DRILLS = new Set(['colorcall', 'gonogo', 'stroop', 'peripheral']);
+const REACTION_DRILLS = new Set(['colorcall', 'gonogo', 'stroop', 'peripheral', 'capture']);
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
 // Reaction times read as seconds (0.41) — easier to follow than milliseconds.
 const sec = (v) => (v == null ? '—' : (v / 1000).toFixed(2));
@@ -59,6 +59,7 @@ export function renderSummary(el, { title, results, settings, totalMs, readiness
     rows = results.map((r) => {
       if (!r.trials) return row(r.name, r.targets != null ? `${r.targets} targets` : DONE);
       if (r.longest != null) return row(r.name, `${pct(r.correct, r.trials)}%`, `Longest ${r.longest} · ${r.correct}/${r.trials} sequences`);
+      if (r.note) return row(r.name, `${pct(r.correct, r.trials)}%`, `${r.correct}/${r.trials} · ${r.note}`);
       const misses = [r.misses && `${r.misses} slow`, r.wrong && `${r.wrong} wrong`, r.falseAlarms && `${r.falseAlarms} on red`]
         .filter(Boolean).join(' · ');
       return row(r.name, `${pct(r.correct, r.trials)}%${r.rtMs == null ? '' : ` · ${sec(r.rtMs)} s`}`, `${r.correct}/${r.trials}${misses ? ` · ${misses}` : ''}`);

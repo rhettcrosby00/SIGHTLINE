@@ -180,20 +180,24 @@ test('Game Ready (Ready): Regulate → Activate → Challenge → Rehearse; one 
   assert(activateOrders.size === 8, `Activate orders: ${activateOrders.size}`);
 });
 
-test('One-part sessions run only their part (Breathing, Eyes, Reaction, Rehearse, Extras)', () => {
+test('One-part sessions run only their part (Breathing, Eyes, Visual skills, Reaction, Rehearse, Extras)', () => {
   const want = {
     regulate: (f) => ['settle', 'sigh', 'resonance', ...(f.newDrills ? ['breath478'] : []), 'lockin'],
     activate: () => ['pursuit', 'saccades', 'peripheral', 'quieteye'],
+    vision: () => ['nearfar', 'capture', 'span'],
     challenge: () => ['colorcall', 'gonogo'],
     rehearse: () => ['visualize', 'myroutine'],
-    extras: (f) => ['gaze', 'stroop', 'math', 'questions', ...(f.newDrills ? ['memory'] : [])],
+    extras: (f) => ['gaze', 'stroop', 'math', 'questions', ...(f.newDrills ? ['memory'] : []), 'mot'],
   };
   for (let i = 0; i < 200; i++) {
     for (const flags of FLAGS) {
       for (const [id, ids] of Object.entries(want)) {
         const s = createSession({ sessionId: id, settings: settingsFor(i), seed: i, flags });
         const got = s.steps.map((x) => x.id);
-        assert(got.slice().sort().join() === ids(flags).slice().sort().join(), `${id}: ${got}`);
+        // Extras has more drills than a Quick session with full instructions holds: one may sit out.
+        const all = ids(flags);
+        assert(got.every((x) => all.includes(x)) && new Set(got).size === got.length, `${id}: ${got}`);
+        assert(got.length >= all.length - (id === 'extras' ? 1 : 0), `${id}: ${got}`);
         if (id === 'regulate') assert(got.at(-1) === 'lockin', 'Breathing only should finish with Lock In');
         if (id === 'rehearse') assert(got.at(-1) === 'myroutine', 'Rehearse only should finish with My Routine');
       }
