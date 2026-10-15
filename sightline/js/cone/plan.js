@@ -10,11 +10,16 @@
 //   - Reverse cues (arrows only, when the opposite direction is in use):
 //     never first, never back-to-back.
 //   - Random / peripheral cue spots never repeat back-to-back.
-//   - Time between cues varies ±15% around the chosen speed.
+//   - Time after each cue comes from the cone just called (distance, rep
+//     style, pace; js/cone/timing.js), varied ±10% but never below the
+//     realistic minimum. Cone to cone uses the distance from the last cone.
+//   Each event keeps its base time, minimum and variation, so "Too fast /
+//   Too slow" can rescale later sets while the drill runs.
 
 import { createRng, spaced } from '../lib/rng.js';
 import { CUES } from './cues/index.js';
-import { intervalMs, JITTER, FAKE_RATES, REVERSE_RATE, COUNTDOWN_MS } from './config.js';
+import { FAKE_RATES, REVERSE_RATE, COUNTDOWN_MS } from './config.js';
+import { TIMING, coneSlots, repTiming, holdSeconds, averageRepSeconds, finalMs, restSec } from './timing.js';
 
 // Cue spots in -1..1 screen space. RANDOM: a 3×3 grid. PERIPHERAL: the 8
 // spots around the edge (the eyes stay on the center dot).
@@ -53,14 +58,14 @@ function orderTargets(rng, keys, count) {
   throw new Error(`Could not order ${count} cues over ${n} cones`);
 }
 
-function planSet(rng, setup, cue, targets) {
-  const base = intervalMs(setup);
+function planSet(rng, setup, cue, targets, tune) {
   const fakeRate = FAKE_RATES[setup.fakes] ?? 0;
 
   let goCount;
   let holdCount;
   if (setup.setMode === 'timed') {
-    const slots = Math.max(2, Math.round((setup.timedSec * 1000) / base));
+    const avgMs = averageRepSeconds(setup) * 1000 * tune;
+    const slots = Math.max(2, Math.round((setup.timedSec * 1000) / avgMs));
     holdCount = Math.round(slots * fakeRate);
     goCount = slots - holdCount;
   } else {
@@ -99,8 +104,25 @@ function planSet(rng, setup, cue, targets) {
     for (const e of events) e.pos = spot();
   }
 
-  // Time until the next cue, varied so the rhythm can't be guessed.
-  for (const e of events) e.interval = Math.round(base * rng.range(1 - JITTER, 1 + JITTER));
+  // Time until the next cue: set by the cone just called (Cone to cone: from
+  // the last cone), varied so the rhythm can't be guessed. A fake-out keeps
+  // the athlete where they are.
+  const slotByKey = Object.fromEntries(coneSlots(setup).map((sl) => [sl.key, sl]));
+  const holdMs = Math.round(holdSeconds(setup.pace) * 1000);
+  let from = null;
+  for (const e of events) {
+    if (e.type === 'go') {
+      const t = repTiming(setup, slotByKey[e.key], from);
+      e.baseMs = Math.round(t.base * 1000);
+      e.minMs = Math.round(t.min * 1000);
+      if (setup.style === 'conetocone') from = slotByKey[e.key];
+    } else {
+      e.baseMs = Math.min(holdMs, e.baseMs ?? holdMs);
+      e.minMs = e.baseMs;
+    }
+    e.jitter = rng.range(-TIMING.jitter, TIMING.jitter);
+    e.interval = finalMs(e, tune);
+  }
 
   return {
     events,
@@ -111,12 +133,13 @@ function planSet(rng, setup, cue, targets) {
 }
 
 // The whole drill: every set planned up front, plus the total running time.
-export function planDrill(setup, seed) {
+// `tune` is the athlete's saved "Too fast / Too slow" factor for this setup.
+export function planDrill(setup, seed, { tune = 1 } = {}) {
   const rng = createRng(seed);
   const cue = CUES[setup.cueType];
   const targets = cue.targets(setup);
-  const sets = Array.from({ length: setup.sets }, (_, i) => planSet(rng.fork(`set:${i}`), setup, cue, targets));
-  const restMs = setup.restSec * 1000;
+  const sets = Array.from({ length: setup.sets }, (_, i) => planSet(rng.fork(`set:${i}`), setup, cue, targets, tune));
+  const restMs = restSec(setup) * 1000;
   const totalMs = sets.reduce((a, st) => a + COUNTDOWN_MS + st.durationMs, 0) + restMs * (setup.sets - 1);
   return { seed: rng.seed, cue, targets, sets, restMs, totalMs };
 }

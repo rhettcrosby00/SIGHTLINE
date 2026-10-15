@@ -1,25 +1,13 @@
 // Cone setup helper: a top-down diagram of where to put the cones for the
-// current setup, with a suggested distance. Arrow/mixed setups put each cone
-// in its direction; color/number setups use a semicircle in front (2–5 cones)
-// or a full circle (6–8).
+// current setup, drawn at the chosen distances. Arrow/mixed setups put each
+// cone in its direction; color/number setups use a semicircle in front (2–5
+// cones) or a full circle (6–8). Positions come from js/cone/timing.js, the
+// same ones the Cone to cone timing uses.
 
-import { colorById, dirById, DISTANCE_YD } from './config.js';
+import { colorById, dirById } from './config.js';
 import { CUES } from './cues/index.js';
+import { coneSlots, timingSummary, STYLE_LABEL } from './timing.js';
 import { icon, DIR_ICON } from '../lib/icons.js';
-
-// Where each cone goes, as an angle in degrees (0 = toward the phone, clockwise).
-export function coneAngles(setup) {
-  const cue = CUES[setup.cueType];
-  const targets = cue.targets(setup);
-  if (setup.cueType === 'arrows' || setup.cueType === 'mixed') {
-    return targets.map((t) => ({ target: t, angle: dirById[t.dir].angle }));
-  }
-  const n = targets.length;
-  const angles = n <= 5
-    ? targets.map((_, i) => -90 + (180 * (i + 0.5)) / n)          // semicircle in front
-    : targets.map((_, i) => -90 + (360 * i) / n);                  // full circle
-  return targets.map((t, i) => ({ target: t, angle: angles[i] }));
-}
 
 function layoutSvg(setup) {
   const W = 320;
@@ -27,30 +15,39 @@ function layoutSvg(setup) {
   const cx = W / 2;
   const cy = 205;
   const R = 112;
-  const cones = coneAngles(setup).map(({ target, angle }) => {
+  const slots = coneSlots(setup);
+  const each = setup.distanceMode === 'each' && setup.style !== 'firststep';
+  const far = Math.max(...slots.map((sl) => sl.yards));
+  // Same distance: every cone on one ring. Each cone: farther cones sit farther out.
+  const radius = (yards) => (each ? 56 + (R - 56) * (yards / far) : R);
+  const cones = slots.map(({ target, angle, yards }) => {
     const rad = (angle * Math.PI) / 180;
-    const x = cx + R * Math.sin(rad);
-    const y = cy - R * Math.cos(rad);
+    const r = radius(yards);
+    const x = cx + r * Math.sin(rad);
+    const y = cy - r * Math.cos(rad);
+    const ydTag = each ? ` · ${yards} YD` : '';
     // Cone colors stay pure; outlines and labels follow the theme.
     let body;
     if (target.color) {
       const c = colorById[target.color];
       body = `<circle cx="${x}" cy="${y}" r="22" fill="${c.hex}" class="lay__cone"/>
         <text x="${x}" y="${y + 7}" text-anchor="middle" font-size="20" fill="${c.ink}">${c.shape}</text>
-        <text x="${x}" y="${y + 40}" text-anchor="middle" class="lay__small">${target.dir ? `${dirById[target.dir].label} · ` : ''}${c.label}</text>`;
+        <text x="${x}" y="${y + 40}" text-anchor="middle" class="lay__small">${target.dir ? `${dirById[target.dir].label} · ` : ''}${c.label}${ydTag}</text>`;
     } else if (target.num) {
       body = `<circle cx="${x}" cy="${y}" r="22" fill="#fff" class="lay__cone"/>
-        <text x="${x}" y="${y + 9}" text-anchor="middle" class="lay__num">${target.num}</text>`;
+        <text x="${x}" y="${y + 9}" text-anchor="middle" class="lay__num">${target.num}</text>
+        ${each ? `<text x="${x}" y="${y + 40}" text-anchor="middle" class="lay__small">${yards} YD</text>` : ''}`;
     } else {
       body = `<circle cx="${x}" cy="${y}" r="22" fill="${colorById.orange.hex}" class="lay__cone"/>
         <g class="lay__arrowglyph" transform="translate(${x - 13} ${y - 13})">${icon(DIR_ICON[target.dir], { size: 26 })}</g>
-        <text x="${x}" y="${y + 40}" text-anchor="middle" class="lay__small">${dirById[target.dir].label}</text>`;
+        <text x="${x}" y="${y + 40}" text-anchor="middle" class="lay__small">${dirById[target.dir].label}${ydTag}</text>`;
     }
-    return { x, y, body };
+    return { x, y, rad, body };
   });
   const ref = cones[0];
-  // Label the start→cone line partway out, nudged to its side.
-  const a0 = (coneAngles(setup)[0].angle * Math.PI) / 180;
+  // Same distance: one dashed line, labeled partway out and nudged to its side.
+  // Each cone: a dashed line to every cone (each label carries its yards).
+  const a0 = ref.rad;
   const nx = Math.cos(a0);
   const dist = {
     x: cx + 0.5 * R * Math.sin(a0) + 14 * nx,
@@ -62,17 +59,17 @@ function layoutSvg(setup) {
       <rect x="${cx - 34}" y="6" width="68" height="26" rx="6" class="lay__phone"/>
       <text x="${cx}" y="24" text-anchor="middle" class="lay__small">PHONE</text>
       <text x="${cx}" y="46" text-anchor="middle" class="lay__tiny">facing you</text>
-      <line x1="${cx + 26 * Math.sin(a0)}" y1="${cy - 26 * Math.cos(a0)}" x2="${ref.x}" y2="${ref.y}" class="lay__line" stroke-dasharray="5 5" stroke-width="2"/>
-      <text x="${dist.x}" y="${dist.y}" text-anchor="${dist.anchor}" class="lay__dist">${setup.distance} yd</text>
+      ${(each ? cones : [ref]).map((c) => `<line x1="${cx + 26 * Math.sin(c.rad)}" y1="${cy - 26 * Math.cos(c.rad)}" x2="${c.x - 24 * Math.sin(c.rad)}" y2="${c.y + 24 * Math.cos(c.rad)}" class="lay__line" stroke-dasharray="5 5" stroke-width="2"/>`).join('')}
+      ${each || setup.style === 'firststep' ? '' : `<text x="${dist.x}" y="${dist.y}" text-anchor="${dist.anchor}" class="lay__dist">${setup.distance} yd</text>`}
       <circle cx="${cx}" cy="${cy}" r="24" fill="none" class="lay__ring" stroke-width="3" stroke-dasharray="6 4"/>
       <text x="${cx}" y="${cy + 4}" text-anchor="middle" class="lay__you">START</text>
       ${cones.map((c) => c.body).join('')}
     </svg>`;
 }
 
-// Quick Start uses a fixed distance and goes back to the MOVE screen;
-// Custom setup can adjust the distance and goes back to its setup.
-export function renderLayout(el, setup, { preset = false } = {}) {
+// Quick Start goes back to the MOVE screen; Custom setup goes back to its
+// setup (where distances are set). `tune` is the saved Too fast / Too slow factor.
+export function renderLayout(el, setup, { preset = false, tune = 1 } = {}) {
   const n = CUES[setup.cueType].targets(setup).length;
   el.innerHTML = `
     <div class="clay">
@@ -82,13 +79,13 @@ export function renderLayout(el, setup, { preset = false } = {}) {
       </header>
       <p class="clay__how">Place them around your start spot like this. Stand the phone up facing you, where you can see it from every cone.</p>
       ${layoutSvg(setup)}
-      ${preset ? `<p class="clay__how">Each cone ${setup.distance} yards from your start spot.</p>` : `<section class="group"><div class="group__rows">
-        <div class="setting setting--stack">
-          <span class="setting__label">Distance from start</span>
-          <div class="slider"><input type="range" data-range="distance" min="${DISTANCE_YD[0]}" max="${DISTANCE_YD[1]}" step="1" value="${setup.distance}" aria-label="Distance from start">
-          <output data-out="distance">${setup.distance} yd</output></div>
-        </div>
-      </div></section>`}
+      <p class="clay__how">${{
+        outback: setup.distanceMode === 'each' && !preset ? 'Each cone at the distance shown. Sprint out, plant, come back to the start.'
+          : `Each cone ${setup.distance} yards from your start spot. Sprint out, plant, come back to the start.`,
+        firststep: 'First step: explode 2–3 steps toward the cone called, then reset. The cones mark the direction.',
+        conetocone: `${STYLE_LABEL.conetocone}: go straight from one cone to the next. Start from the middle.`,
+      }[setup.style]}</p>
+      <p class="timing__sum">${timingSummary(setup, tune)}</p>
     </div>
     <div class="screen__foot">
       <button type="button" class="btn btn--primary btn--block" data-nav="start">Cones set</button>

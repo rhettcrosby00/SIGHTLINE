@@ -8,8 +8,9 @@
 import { initSetup } from './setup.js';
 import { renderLayout } from './layout.js';
 import { planDrill } from './plan.js';
-import { coneSession } from './run.js';
-import { validate, intervalMs, quickStart, drillMs } from './config.js';
+import { coneSession, tuneButtons, wireTune } from './run.js';
+import { validate, quickStart } from './config.js';
+import { PACE_LABEL, STYLE_LABEL, TIMING, coneSlots, drillMs, applyTune, createTuneStore } from './timing.js';
 import { runSession } from '../engine.js';
 import { unlock as unlockAudio, buzz } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
@@ -21,17 +22,26 @@ const mmss = (ms) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 const CUE_NAME = { colors: 'Colors', arrows: 'Arrows', numbers: 'Numbers', mixed: 'Mixed' };
-const PACE = { slow: 'Slow', medium: 'Medium', fast: 'Fast', game: 'Game' };
 
 export const MOVE_RUNS = { quick: 'Quick Start', custom: 'Custom setup', signals: 'Signals Only' };
 
-// One line per way in, e.g. "4 cones · Colors · 5 yd · Medium · 3 sets".
+// "5 yd", or "3–10 yd" when each cone has its own distance.
+function yardsText(s) {
+  const yards = coneSlots(s).map((sl) => sl.yards);
+  const lo = Math.min(...yards);
+  const hi = Math.max(...yards);
+  return `${lo === hi ? lo : `${lo}–${hi}`} yd`;
+}
+
+// One line per way in, e.g. "4 cones · Colors · 5 yd · Training · 3 sets".
 function describeSetup(s, run = 'custom') {
-  const pace = s.speed === 'custom' ? `${(intervalMs(s) / 1000).toFixed(1)} s` : PACE[s.speed];
+  const pace = s.manual ? `${s.manualS.toFixed(1)} s per rep` : PACE_LABEL[s.pace];
   const sets = `${s.sets} set${s.sets > 1 ? 's' : ''}`;
-  if (run === 'signals') return `${s.directions.length} directions · ${pace} · ${sets}`;
+  const dist = s.style === 'firststep' ? STYLE_LABEL.firststep
+    : `${yardsText(s)}${s.style === 'conetocone' ? ' cone to cone' : ''}`;
+  if (run === 'signals') return `${s.directions.length} directions · ${dist} · ${pace} · ${sets}`;
   const what = s.cueType === 'arrows' || s.cueType === 'mixed' ? `${s.directions.length} directions` : `${s.cones} cones`;
-  return `${what} · ${CUE_NAME[s.cueType]} · ${s.distance} yd · ${pace} · ${sets}`;
+  return `${what} · ${CUE_NAME[s.cueType]} · ${dist} · ${pace} · ${sets}`;
 }
 const minutesOf = (s) => Math.max(1, Math.round(drillMs(s) / 60000));
 
@@ -41,6 +51,7 @@ export function initMove({ show, dev = {}, onRun = () => {} }) {
   const hubEl = $('move-hub');
   const layoutEl = $('cd-layout');
   const doneEl = $('cd-done');
+  const tunes = createTuneStore();
   let run = 'custom';
   let setup = null;
 
@@ -53,7 +64,7 @@ export function initMove({ show, dev = {}, onRun = () => {} }) {
       ctl.render();
       return show(run === 'signals' ? 'signals' : 'cone-setup', { back });
     }
-    if (where === 'layout') { renderLayout(layoutEl, setup, { preset: run === 'quick' }); return show('cone-layout'); }
+    if (where === 'layout') { renderLayout(layoutEl, setup, { preset: run === 'quick', tune: tunes.get(setup) }); return show('cone-layout'); }
     if (where === 'start') return go();
   };
 
@@ -103,20 +114,25 @@ export function initMove({ show, dev = {}, onRun = () => {} }) {
     const where = e.target.closest('[data-nav]')?.dataset.nav;
     if (where) nav(where, { back: where !== 'start' });
   });
-  layoutEl.addEventListener('input', (e) => {
-    if (e.target.dataset.range !== 'distance') return;
-    // Custom setup only. Update the labels only, so the slider keeps working while dragged.
-    custom.set({ distance: Number(e.target.value) });
-    setup = custom.get();
-    layoutEl.querySelector('[data-out="distance"]').textContent = `${setup.distance} yd`;
-    layoutEl.querySelector('.lay__dist').textContent = `${setup.distance} yd`;
-  });
 
   async function go() {
     unlockAudio(setup.sound === 'on', { voice: setup.callouts });   // inside the tap
     onRun(run);
-    const plan = planDrill(setup, dev.seed);
-    const { steps, session, totalMs } = coneSession(plan, setup);
+    // "Too fast / Too slow": start from this setup's saved answer; each answer
+    // applies from the next set and is saved for this distance and rep style.
+    const tuning = {
+      factor: tunes.get(setup),
+      choice: 'same',
+      pick(choice) { this.choice = choice; },
+      commit() {
+        if (this.choice === 'same') return;
+        this.factor = applyTune(this.factor, this.choice);
+        this.choice = 'same';
+        tunes.set(setup, this.factor);
+      },
+    };
+    const plan = planDrill(setup, dev.seed, { tune: tuning.factor });
+    const { steps, session, totalMs } = coneSession(plan, setup, tuning);
     $('screen-session').dataset.side = 'move';
     show('session');
     const { completed, results } = await runSession(steps, setup, { session, speed: dev.speed, autoReady: dev.autoReady });
@@ -134,7 +150,8 @@ export function initMove({ show, dev = {}, onRun = () => {} }) {
           <div class="tile"><p class="tile__value">${mmss(totalMs)}</p><p class="tile__label">total time</p></div>
         </div>
         ${r.holds ? `<p class="sum__note">Plus <b>${r.holds}</b> fake-out${r.holds > 1 ? 's' : ''} where you held still.</p>` : ''}
-        <p class="sum__foot">Nothing is saved. Each drill stands alone.</p>
+        ${tuneButtons('How was the pace?')}
+        <p class="sum__foot">Only your pace answer is saved, for this distance and rep style.</p>
         <p class="sum__seed">Session code ${plan.seed}</p>
       </div>
       <div class="screen__foot">
@@ -144,6 +161,16 @@ export function initMove({ show, dev = {}, onRun = () => {} }) {
           <button type="button" class="btn btn--secondary" data-nav="home">Home</button>
         </div>
       </div>`;
+    // The answer here sets the pace for next time (an exact manual time stays as set).
+    const before = tuning.factor;
+    const pct = Math.round(TIMING.tuneStep * 100);
+    const saved = setup.manual ? 'Your exact time stays as you set it.'
+      : `Saved for ${setup.style === 'firststep' ? 'First step' : `${yardsText(setup)} ${STYLE_LABEL[setup.style].toLowerCase()}`}.`;
+    wireTune(doneEl, (choice) => tunes.set(setup, applyTune(before, choice)), {
+      slower: `Next time: ${pct}% more time per rep. ${saved}`,
+      same: `Next time: same pace. ${saved}`,
+      faster: `Next time: ${pct}% less time per rep. ${saved}`,
+    });
     show('cone-done');
   }
 

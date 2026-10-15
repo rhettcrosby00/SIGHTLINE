@@ -12,7 +12,7 @@ import { initFocus } from './focus.js';
 import { initMove, MOVE_RUNS } from './cone/ui.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '2.0';
+export const APP_VERSION = '2.1';
 
 const $ = (id) => document.getElementById(id);
 

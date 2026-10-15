@@ -3,9 +3,12 @@
 // history), so the athlete doesn't re-enter it each time.
 
 import {
-  CONE_COLORS, colorById, DIRECTIONS, DIRECTION_PRESETS, CUSTOM_MS, REPS, TIMED_SECONDS,
-  SETS, REST_SECONDS, FLASH_MS, MIN_CONES, MAX_CONES, normalize, normalizeSignals, validate, intervalMs, drillMs,
+  CONE_COLORS, colorById, dirById, DIRECTIONS, DIRECTION_PRESETS, REPS, TIMED_SECONDS, SETS, REST_SEC, FLASH_MS,
+  MIN_CONES, MAX_CONES, DISTANCE_YD, MANUAL_S, normalize, normalizeSignals, validate,
 } from './config.js';
+import {
+  TIMING, PACE_LABEL, coneSlots, timingSummary, suggestedRestSec, manualTooFast, farthestYards, drillMs, createTuneStore,
+} from './timing.js';
 import { icon, DIR_ICON } from '../lib/icons.js';
 
 // Each variant: where it's saved and how a saved setup is cleaned up.
@@ -38,11 +41,11 @@ const row = (label, control, { hint = '', stack = false } = {}) => `
 const group = (title, rows) => `
   <section class="group">${title ? `<h3 class="group__title">${title}</h3>` : ''}<div class="group__rows">${rows}</div></section>`;
 
-const stepper = (key, value, [min, max], unit = '') => `
+const stepper = (key, value, [min, max], { unit = '', step = 1, fmt = (v) => `${v}${unit}`, label = '' } = {}) => `
   <div class="stepper">
-    <button type="button" data-step="${key}" data-delta="-1" aria-label="Fewer" ${value <= min ? 'disabled' : ''}>${icon('minus')}</button>
-    <output>${value}${unit}</output>
-    <button type="button" data-step="${key}" data-delta="1" aria-label="More" ${value >= max ? 'disabled' : ''}>${icon('plus')}</button>
+    <button type="button" data-step="${key}" data-delta="${-step}" aria-label="Less${label ? ` ${label}` : ''}" ${value <= min ? 'disabled' : ''}>${icon('minus')}</button>
+    <output>${fmt(value)}</output>
+    <button type="button" data-step="${key}" data-delta="${step}" aria-label="More${label ? ` ${label}` : ''}" ${value >= max ? 'disabled' : ''}>${icon('plus')}</button>
   </div>`;
 
 const slider = (key, value, [min, max], step, fmt) => `
@@ -63,7 +66,24 @@ const presetFor = (dirs) => Object.keys(DIRECTION_PRESETS)
 // Config labels are uppercase (for cues); rows read better in sentence case.
 const nice = (t) => t.charAt(0) + t.slice(1).toLowerCase();
 const secs = (ms) => `${(ms / 1000).toFixed(1)} s`;
-const restLabel = (t) => (t < 60 ? `${t}s` : t === 60 ? '1 min' : `${t / 60} min`);
+const mmss = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+const tunes = createTuneStore();
+
+const STYLE_HINT = {
+  outback: 'Sprint to the cone, plant, come back to the start.',
+  firststep: 'Explode 2–3 steps toward it, then reset. Short and sharp; distance doesn’t matter.',
+  conetocone: 'Go straight from cone to cone without coming back. Time comes from the distance between cones.',
+};
+const SIGNAL_STYLE_HINT = {
+  firststep: 'Explode 2–3 steps the way it points, then reset.',
+  outback: 'Cut or shuffle that far the way it points, then come back.',
+};
+const PACE_HINT = {
+  learning: 'Extra time while you learn the cues.',
+  training: 'Steady, quality reps.',
+  game: 'Game speed for trained athletes.',
+  overdrive: 'Conditioning: faster than game speed.',
+};
 
 function estimate(s) {
   const min = Math.round(drillMs(s) / 6000) / 10;
@@ -115,6 +135,18 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
   ].filter(Boolean).join(' · ');
   const soundSummary = s.sound === 'on' ? (s.callouts ? 'Beep + callouts' : 'Beep') : 'Off';
 
+  // Distances: one for every cone, or one per cone (Custom setup only). First step ignores distance.
+  const tune = tunes.get(s);
+  const slotName = (sl, i) => (usesArrows ? nice(dirById[sl.slot].label)
+    : `Cone ${i + 1}${usesColors ? ` · ${nice(colorById[sl.target.color].label)}` : ''}`);
+  const yd = { unit: ' yd', label: 'distance' };
+  const distanceRows = s.style === 'firststep' ? ''
+    : signals ? row('Distance', stepper('distance', s.distance, DISTANCE_YD, yd))
+      : `${row('Distance', seg('distanceMode', s.distanceMode, [['same', 'Same for all'], ['each', 'Each cone']]))}
+        ${s.distanceMode === 'same'
+          ? row('Every cone', stepper('distance', s.distance, DISTANCE_YD, yd), { hint: 'From your start spot.' })
+          : coneSlots(s).map((sl, i) => row(slotName(sl, i), stepper(`cone:${sl.slot}`, sl.yards, DISTANCE_YD, yd))).join('')}`;
+
   el.innerHTML = `
     <div class="cset">
       <header class="nav">
@@ -144,16 +176,34 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
         ${s.coloredCones ? colorList : `<div class="setting setting--stack"><p class="setting__hint">${
           ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'white', 'pink'].slice(0, colorRows).map((id) => nice(colorById[id].label)).join(' · ')}</p></div>`}`) : ''}
 
-      ${group('Timing', `
-        ${row('Cue speed', seg('speed', s.speed, [['slow', 'Slow'], ['medium', 'Med'], ['fast', 'Fast'], ['game', 'Game'], ['custom', 'Custom']], true), {
-          stack: true, hint: s.speed === 'custom' ? 'Set your own time between cues.' : `${secs(intervalMs(s))} between cues, varied a little so the rhythm can’t be predicted.` })}
-        ${s.speed === 'custom' ? row('Time between cues', slider('customMs', s.customMs, CUSTOM_MS, 100, secs), { stack: true }) : ''}
+      ${group('Reps', `
+        ${row('Rep style', seg('style', s.style, signals
+          ? [['firststep', 'First step'], ['outback', 'Out & back']]
+          : [['outback', 'Out & back'], ['firststep', 'First step'], ['conetocone', 'Cone to cone']], true),
+        { stack: true, hint: (signals ? SIGNAL_STYLE_HINT : STYLE_HINT)[s.style] })}
+        ${distanceRows}
+        ${row('Pace', seg('pace', s.pace, [['learning', 'Learning'], ['training', 'Training'], ['game', 'Game'], ['overdrive', 'Overdrive']], true),
+          { stack: true, hint: s.manual ? 'Using your exact time (Advanced).' : PACE_HINT[s.pace] })}
+        <div class="setting setting--stack">
+          <p class="timing__sum">${timingSummary(s, tune)}</p>
+          ${tune !== 1 ? `<p class="setting__hint">${Math.round(Math.abs(tune - 1) * 100)}% ${tune > 1 ? 'more' : 'less'} time per rep than the formula, from your “Too fast / Too slow” answers at this distance.
+            <button type="button" class="link-btn" data-tune-reset>Reset</button></p>` : ''}
+        </div>`)}
+
+      ${group('Sets', `
         ${row('Sets by', seg('setMode', s.setMode, [['reps', 'Reps'], ['timed', 'Time']]))}
         ${s.setMode === 'reps'
           ? row('Reps per set', slider('reps', s.reps, REPS, 1, (x) => `${x} reps`), { stack: true })
           : row('Set length', seg('timedSec', s.timedSec, TIMED_SECONDS.map((t) => [t, `${t}s`]), true), { stack: true })}
         ${row('Sets', stepper('sets', s.sets, SETS))}
-        ${s.sets > 1 ? row('Rest between sets', seg('restSec', s.restSec, REST_SECONDS.map((t) => [t, restLabel(t)]), true), { stack: true }) : ''}`)}
+        ${s.sets > 1 ? row('Rest between sets', seg('restMode', s.restMode, [['auto', `Suggested · ${mmss(suggestedRestSec(s))}`], ['custom', 'Custom']], true),
+          { stack: true, hint: `About 1:${TIMING.restRatio[s.pace]} work to rest at ${PACE_LABEL[s.pace]} pace.` }) : ''}
+        ${s.sets > 1 && s.restMode === 'custom' ? row('Rest', stepper('restSec', s.restSec, REST_SEC, { step: 15, fmt: mmss, label: 'rest' })) : ''}`)}
+
+      ${group('', expander('advanced', 'Advanced', s.manual ? `Exact time · ${s.manualS.toFixed(1)} s per rep` : 'Time set by distance and pace', ui.open.has('advanced'), `
+        ${row('Exact seconds per rep', `<button type="button" class="switch" role="switch" data-flip="manual" aria-checked="${s.manual}" aria-label="Exact seconds per rep"></button>`,
+          { hint: 'Every rep gets the same time, whatever the distance.' })}
+        ${s.manual ? row('Seconds per rep', slider('manualS', s.manualS, MANUAL_S, 0.1, (x) => `${Number(x).toFixed(1)} s`), { stack: true }) : ''}`))}
 
       ${group('', expander('eye', 'Eye engagement', eyeSummary, ui.open.has('eye'), `
         ${row('Cue position', seg('position', s.position, [['center', 'Center'], ['random', 'Random'], ['peripheral', 'Peripheral']], true), {
@@ -172,18 +222,27 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
           { hint: 'The phone says the cue, like “Red” or “Left”.' }) : ''}`))}
     </div>
     <div class="screen__foot">
+      ${ui.confirm ? `
+      <p class="notice" role="alert">${icon('triangle-alert')}${s.style === 'firststep'
+        ? 'This may be faster than is realistic for First step.' : `This may be faster than is realistic at ${Math.round(farthestYards(s))} yds.`} Continue?</p>
+      <div class="cdone__row">
+        <button type="button" class="btn btn--secondary" data-confirm="no">Change time</button>
+        <button type="button" class="btn btn--primary" data-confirm="yes">Continue</button>
+      </div>` : `
       <p class="cset__est">${estimate(s)}</p>
       ${v.errors.map((e) => `<p class="cerr">${e}</p>`).join('')}
       ${signals
         ? `<button type="button" class="btn btn--primary btn--block" data-nav="start" ${v.ok ? '' : 'disabled'}>${icon('play')}Start</button>`
-        : `<button type="button" class="btn btn--primary btn--block" data-nav="layout" ${v.ok ? '' : 'disabled'}>Set up cones</button>`}
+        : `<button type="button" class="btn btn--primary btn--block" data-nav="layout" ${v.ok ? '' : 'disabled'}>Set up cones</button>`}`}
     </div>`;
 }
 
 // Wires a setup screen. onNav('menu' | 'layout' | 'start', setup) is called for navigation.
 export function initSetup(el, { onNav, variant = 'custom' }) {
   let s = loadSetup(variant);
-  const ui = { open: new Set(), color: -1 };
+  // open: expanded sections; color: the cone whose palette is open; confirm:
+  // where to go once a too-fast exact time is confirmed.
+  const ui = { open: new Set(), color: -1, confirm: null };
   const draw = () => {
     const y = window.scrollY;
     renderSetup(el, s, ui, variant);
@@ -192,6 +251,7 @@ export function initSetup(el, { onNav, variant = 'custom' }) {
   const update = (patch, { rerender = true } = {}) => {
     s = VARIANTS[variant].normalize({ ...s, ...patch });
     saveSetup(variant, s);
+    ui.confirm = null;
     if (rerender) draw();
   };
 
@@ -199,7 +259,19 @@ export function initSetup(el, { onNav, variant = 'custom' }) {
     const b = e.target.closest('button');
     if (!b || b.disabled) return;
     const d = b.dataset;
-    if (d.nav) return onNav(d.nav, s);
+    if (d.nav) {
+      // An exact time faster than realistic for the distance: confirm on screen first.
+      if ((d.nav === 'layout' || d.nav === 'start') && manualTooFast(s)) { ui.confirm = d.nav; return draw(); }
+      return onNav(d.nav, s);
+    }
+    if (d.confirm) {
+      const where = ui.confirm;
+      ui.confirm = null;
+      if (d.confirm === 'yes') return onNav(where, s);
+      ui.open.add('advanced');
+      return draw();
+    }
+    if (b.hasAttribute('data-tune-reset')) { tunes.set(s, 1); return draw(); }
     if (d.expand) { ui.open.has(d.expand) ? ui.open.delete(d.expand) : ui.open.add(d.expand); return draw(); }
     if (d.colorrow !== undefined) { ui.color = ui.color === Number(d.colorrow) ? -1 : Number(d.colorrow); return draw(); }
     if (d.flip) return update({ [d.flip]: d.flip === 'sound' ? (s.sound === 'on' ? 'off' : 'on') : !s[d.flip] });
@@ -211,6 +283,11 @@ export function initSetup(el, { onNav, variant = 'custom' }) {
       const patch = { [d.set]: val };
       if (d.set === 'cueType' && val === 'mixed') patch.cones = s.directions.length;
       return update(patch);
+    }
+    if (d.step?.startsWith('cone:')) {
+      const slot = d.step.slice(5);
+      const now = coneSlots(s).find((sl) => sl.slot === slot)?.yards ?? s.distance;
+      return update({ coneYards: { ...s.coneYards, [slot]: now + Number(d.delta) } });
     }
     if (d.step) return update({ [d.step]: s[d.step] + Number(d.delta) });
     if (d.dir) {
@@ -236,10 +313,12 @@ export function initSetup(el, { onNav, variant = 'custom' }) {
     const key = r.dataset.range;
     const val = Number(r.value);
     const out = el.querySelector(`[data-out="${key}"]`);
-    if (out) out.textContent = key === 'reps' ? `${val} reps` : secs(val);
+    if (out) out.textContent = key === 'reps' ? `${val} reps` : key === 'manualS' ? `${val.toFixed(1)} s` : secs(val);
     update({ [key]: val }, { rerender: false });
     const est = el.querySelector('.cset__est');
     if (est) est.textContent = estimate(s);
+    const sum = el.querySelector('.timing__sum');
+    if (sum) sum.textContent = timingSummary(s, tunes.get(s));
   });
 
   renderSetup(el, s, ui, variant);
