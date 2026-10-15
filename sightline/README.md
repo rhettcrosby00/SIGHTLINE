@@ -16,6 +16,22 @@ A pre-game visual reaction and cognitive warm-up for athletes, in two sides:
    **My Routine**. It always ends on something that can't be failed, and every scored drill
    ends on a few easy cues.
 
+**Game Day or Training** (the switch at the top of home, remembered on the phone). Game Day:
+Game Ready (5 / 8 / 10 min, calm, ends easy) and MOVE Game Day. Training (non-game days):
+the Training session (10 / 15 / 20 min: every pillar plus the Visual skills, at a harder
+adaptive level, Occlusion allowed if turned on) and MOVE Training (the athlete's cones with
+the Decision Layer, 5 × 30 s). Parts run from the FOCUS screen in Training mode are harder
+too; Game Ready never is. Home shows this week's training days against 2–4 and a weekly
+streak (weeks in a row with 2+ training days; `js/lib/streak.js`, this phone only).
+
+**Focus Check** (optional, Settings; `js/lib/check.js`, `js/stages/focuscheck.js`): about 30
+seconds at the start and end of Game Ready and Training, or on its own from the FOCUS screen.
+Two warm-up taps, 6 reaction taps (tap when the circle turns green), then 8 go / no-go cues.
+Timed from pointer-down events against the frame the cue was drawn in; guesses (< 0.1 s),
+lapses (> 1 s) and outliers are dropped and the median is used. Compared only with the last
+10 checks on the same phone; noticeably slower (10%+, with 3+ earlier checks) offers the
+Quick version. Never medical or diagnostic wording.
+
 **Check-in.** Before Game Ready: "How do you feel right now?" Flat · Ready · Wired, one tap,
 plus the cue word (skill words for their sport, energy words, or their own). The first time it
 also asks their sport and position. It asks again at the end; the before → after shows on the
@@ -152,14 +168,16 @@ a session). The version number shows at the bottom of the start screen.
 sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 - `newDrills: 'preview'`: 4-7-8 Breathing, Memory Sequence.
 - `leaderboard: true` (approved): name entry, the online board and coach tools.
-- `occlusion: 'preview'`: the opt-in Occlusion setting. Stays preview-only until Training Mode (Sub-phase E).
+- `occlusion: true` (approved with Training Mode): the opt-in Occlusion setting; Training only.
 - `partner: 'preview'`: MOVE Partner mode (a coach's phone sends the cues).
 
 ## Saved on the phone
 
-- `sightline.settings.v1`: FOCUS options, theme, cue word, sport and position, music mode, contrast, occlusion
+- `sightline.settings.v1`: FOCUS options, theme, cue word, sport and position, music mode, contrast, occlusion, Focus Check, Game Day or Training
 - `sightline.routine.v1`: My Routine (breath, imagery line, quiet-eye seconds)
 - `sightline.levels.v1`: each drill's adaptive difficulty level
+- `sightline.check.v1`: the last 10 Focus Check times
+- `sightline.training.v1`: training days (last 120 days), for the weekly streak
 - `sightline.cone.v1` / `sightline.signals.v1`: MOVE custom setup / Signals Only setup
 - `sightline.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
 - `sightline.name.v1`, `sightline.lbqueue.v1`: last leaderboard name; scores waiting to post
@@ -223,6 +241,7 @@ Keep answers short (about 12 characters or fewer) so they fit on a button.
 | `js/content/vision.js` | Visual skills content: letters, rings, grids, tracking motion, occlusion timing, scoring |
 | `js/lib/adapt.js`, `js/lib/contrast.js` | Adaptive difficulty (and saved levels); Low contrast math |
 | `js/cone/decide.js`, `js/cone/patterns.js`, `js/cone/cues/sport.js` | MOVE Decision Layer, planned patterns, sport calls |
+| `js/lib/check.js`, `js/stages/focuscheck.js`, `js/lib/streak.js` | Focus Check (plan, timing math, screens) and the weekly training streak |
 | `js/cone/partner.js`, `api/partner.js` | Partner mode (preview): the stand phone and the coach's phone, and the room server |
 | `js/routine.js` | Maps each FOCUS drill to the code that runs it |
 | `js/engine.js` | Runs the steps; progress bar, pause/quit, wake lock |
@@ -242,7 +261,8 @@ Keep answers short (about 12 characters or fewer) so they fit on a button.
   with `?autoready=1`, which skips the check-in.
 - `?speed=20` fast-forwards time.
 - `?autostart=1` starts Game Ready; add `&session=regulate` (or `activate`, `challenge`,
-  `vision`, `rehearse`, `extras`, `myroutine`) for one part. `?autostart=quick` (or `custom`, `signals`) starts a MOVE drill.
+  `vision`, `rehearse`, `extras`, `myroutine`, `training`) for one part; `?autostart=gameday` or
+  `training` starts those MOVE drills. `?autostart=quick` (or `custom`, `signals`) starts a MOVE drill.
 - `?autoready=1` skips the I'M READY taps on the how-to cards.
 - `?noguide=1` skips the first-run "How it works" guide.
 - `?sw=1` turns on offline caching on localhost. It is off there by default so edits show

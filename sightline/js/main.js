@@ -11,12 +11,13 @@ import { createVariety } from './lib/variety.js';
 import { createLastRuns } from './migrate.js';
 import { initFocus } from './focus.js';
 import { initMove, MOVE_RUNS } from './cone/ui.js';
+import { createTrainingLog, WEEK_GOAL } from './lib/streak.js';
 import { initLeaderboard } from './score/ui.js';
 import { initRoutineBuilder } from './myroutine-ui.js';
 import { isOn } from './features.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '2.7';
+export const APP_VERSION = '2.8';
 
 const $ = (id) => document.getElementById(id);
 
@@ -55,6 +56,7 @@ const dev = {
 };
 const variety = createVariety();
 const lastRuns = createLastRuns();
+const trainingLog = createTrainingLog();   // training days, for the weekly streak (this phone only)
 
 // ---- Settings (FOCUS options + theme), reachable from home and from FOCUS ----
 let focus = null;
@@ -86,6 +88,7 @@ if (leaderboard) {
 focus = initFocus({
   show, dev, variety, getSettings, updateSetting, leaderboard,
   onRun: (id) => lastRuns.set('focus', id),
+  onTrained: () => trainingLog.add(),
   onOptions: () => openSettings('focus'),
   onRoutine: () => builder.open(),
 });
@@ -99,30 +102,50 @@ const sport = {
   get: () => getSettings().sport,
   set(value) { updateSetting('sport', value); updateSetting('position', ''); updateSetting('sportAsked', true); },
 };
-move = initMove({ show, dev, leaderboard, sport, onRun: (run) => lastRuns.set('move', run) });
+move = initMove({ show, dev, leaderboard, sport, onRun: (run) => lastRuns.set('move', run), onTrained: () => trainingLog.add() });
 
-// ---- Home: two choices, each with its preset, time and "Run last" ----
+// ---- Home: Game Day or Training, then two choices, each with its preset, time and "Run last" ----
+// Game Day: Game Ready and MOVE's Game Day. Training: the Training session and MOVE Training.
+const mains = () => (getSettings().day === 'training' ? { focus: 'training', move: 'training' } : { focus: 'game', move: 'gameday' });
 function renderHome() {
   if (!focus) return;
-  $('btn-game').innerHTML = `${icon('play')}Game Ready · ${focus.minutes('game')} min`;
+  const day = getSettings().day;
+  const main = mains();
+  document.querySelectorAll('[data-day]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.day === day)));
+  if (day === 'training') {
+    const { thisWeek, streak } = trainingLog.summary();
+    $('day-note').innerHTML = `Longer and harder, on days without a game. This week: <b>${thisWeek}</b> of ${WEEK_GOAL[0]}–${WEEK_GOAL[1]} training days${
+      streak ? ` · <b>${streak}</b>-week streak` : ''}.`;
+  } else {
+    $('day-note').textContent = 'Short and calm, ends easy. Before you compete.';
+  }
+  $('btn-game').innerHTML = `${icon('play')}${focus.title(main.focus)} · ${focus.minutes(main.focus)} min`;
   $('routine-len').textContent = focus.routineLabel();
-  $('btn-quick').innerHTML = `${icon('play')}Quick Start · ${move.minutes('quick')} min`;
+  $('btn-quick').innerHTML = `${icon('play')}${MOVE_RUNS[main.move]} · ${move.minutes(main.move)} min`;
   const last = lastRuns.get();
   // "Run last" shows when it's something other than the preset button above it.
-  const focusLast = last.focus && last.focus !== 'game' && last.focus !== 'myroutine' ? last.focus : null;
+  const focusLast = last.focus && last.focus !== main.focus && last.focus !== 'myroutine' ? last.focus : null;
   $('btn-focus-last').hidden = !focusLast;
   if (focusLast) $('focus-last-desc').textContent = `${focus.title(focusLast)} · ${focus.minutes(focusLast)} min`;
-  $('btn-move-last').hidden = !last.move;
-  if (last.move) $('move-last-desc').textContent = `${MOVE_RUNS[last.move]} · ${move.minutes(last.move)} min`;
+  const moveLast = last.move && last.move !== main.move ? last.move : null;
+  $('btn-move-last').hidden = !moveLast;
+  if (moveLast) $('move-last-desc').textContent = `${MOVE_RUNS[moveLast]} · ${move.minutes(moveLast)} min`;
 }
 onHome = renderHome;
 renderHome();
 
 $('btn-focus').addEventListener('click', () => focus.openHub());
 $('btn-move').addEventListener('click', () => move.openHub());
-$('btn-game').addEventListener('click', () => focus.start('game'));
+$('btn-game').addEventListener('click', () => focus.start(mains().focus));
 $('btn-routine').addEventListener('click', () => focus.start('myroutine'));   // one tap from home
-$('btn-quick').addEventListener('click', () => move.open('quick'));
+$('btn-quick').addEventListener('click', () => move.open(mains().move));
+document.querySelector('.home__day').addEventListener('click', (e) => {
+  const day = e.target.closest('[data-day]')?.dataset.day;
+  if (!day) return;
+  updateSetting('day', day);
+  renderHome();
+  focus.renderHub();
+});
 $('btn-focus-last').addEventListener('click', () => focus.start(lastRuns.get().focus));
 $('btn-move-last').addEventListener('click', () => move.runLast(lastRuns.get().move));
 

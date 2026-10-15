@@ -7,6 +7,10 @@
 // included: Game Ready is 5, 8 or 10 minutes, never more (research: short
 // beats long on game day; long, demanding mental work causes fatigue).
 //
+// Training (non-game days) is 10, 15 or 20 minutes: every pillar plus the
+// Visual skills, harder (js/lib/adapt.js), Occlusion allowed. It still ends
+// with My Routine.
+//
 // The readiness check-in shapes it (STATES):
 //   wired  2–3 cyclic sighs, then 60–90 s of slow breathing (6 a minute), calmer cue pacing
 //   flat   a short calm, then energizing breaths, quicker cue pacing
@@ -75,6 +79,7 @@ const pillarById = Object.fromEntries(PILLARS.map((p) => [p.id, p]));
 //   unscored: no leaderboard entry. timedByRoutine: as long as the athlete's routine.
 export const FOCUS_SESSIONS = [
   { id: 'game', title: 'Game Ready', short: 'Regulate → Activate → Challenge → Rehearse', check: 'both', minutes: [5, 8, 10] },
+  { id: 'training', title: 'Training', short: 'Every pillar plus visual skills, harder', check: 'both', minutes: [10, 15, 20], training: true },
   { id: 'regulate', title: 'Breathing only', short: 'Calm down or wake up, matched to how you feel', check: 'before', minutes: [2.5, 3.5, 5] },
   { id: 'activate', title: 'Eyes only', short: 'Tracking, eye jumps, side vision, quiet eye', minutes: [2.5, 3.5, 4.5] },
   { id: 'vision', title: 'Visual skills', short: 'Near-far focus, target capture, perception span', minutes: [3, 4, 5] },
@@ -134,6 +139,17 @@ function drillsFor(sessionId, length, rng, avoid, flags, state, routineS) {
     return [
       ...regulate(),
       ...shuffled(rng, eyes, avoid.activate).map((d) => step(d.id)),
+      ...shuffled(rng, available('challenge', flags), avoid.challenge).map((d) => step(d.id)),
+      step('visualize'),
+      step('myroutine', null, routineS),
+    ];
+  }
+  if (sessionId === 'training') {
+    // Every pillar plus the Visual skills, each shuffled; then Visualization and My Routine.
+    return [
+      ...regulate(),
+      ...shuffled(rng, available('activate', flags), avoid.activate).map((d) => step(d.id)),
+      ...shuffled(rng, available('vision', flags), avoid.vision).map((d) => step(d.id)),
       ...shuffled(rng, available('challenge', flags), avoid.challenge).map((d) => step(d.id)),
       step('visualize'),
       step('myroutine', null, routineS),

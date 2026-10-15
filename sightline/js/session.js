@@ -12,6 +12,8 @@
 //     state   'flat' | 'ready' | 'wired' from the check-in (shapes breathing and pacing)
 //     routine the athlete's My Routine (js/myroutine.js)
 //     levels  drill id → last adaptive level on this phone (js/lib/adapt.js)
+// Training: the Training session, or any part run in Training mode (settings.day):
+// harder levels, and Occlusion if the athlete turned it on. Never Game Ready.
 //
 // session.levels() gives each drill's level at the end, to save for next time.
 // session.record() lists what this session actually used, for the variety list.
@@ -62,8 +64,9 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
   const gapStreams = {};
   const levelOf = {};
   const motRng = rng.fork('mot');
+  const training = sessionId === 'training' || (settings.day === 'training' && sessionId !== 'game' && sessionId !== 'myroutine');
   // Occlusion: Training only (opt-in, behind its flag). Never on Game Day.
-  const occlusion = !!flags.occlusion && settings.occlusion === 'on' && sessionId !== 'game';
+  const occlusion = !!flags.occlusion && settings.occlusion === 'on' && training;
 
   const content = {
     colorCall: colorCallStream(rng.fork('colorcall')),
@@ -90,7 +93,7 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
     span: spanStream(rng.fork('span')),
     mot: (opts) => motField(motRng, opts),
     // Adaptive difficulty: one staircase per drill, starting where this phone left off.
-    level: (drillId) => (levelOf[drillId] ??= createLevel(levels[drillId], settings.difficulty)),
+    level: (drillId) => (levelOf[drillId] ??= createLevel(levels[drillId], settings.difficulty, { training })),
     lowContrast: settings.contrast === 'low',
     occlusion: occlusion ? (drillId) => createOcclusion(rng.fork(`occlusion:${drillId}`)) : null,
   };
@@ -99,6 +102,7 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
 
   return {
     id: sessionId,
+    training,
     state: mood,
     pacing: PACING[mood],
     seed: rng.seed,

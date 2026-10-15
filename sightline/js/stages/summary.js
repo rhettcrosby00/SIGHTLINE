@@ -30,7 +30,7 @@ function row(name, detail, sub = '') {
   return `<li><span class="row__name">${name}${sub ? `<small>${sub}</small>` : ''}</span><span class="row__val">${detail}</span></li>`;
 }
 
-export function renderSummary(el, { title, results, settings, totalMs, readiness = {}, seed }) {
+export function renderSummary(el, { title, results, settings, totalMs, readiness = {}, checked = {}, seed }) {
   // Whole minutes, or halves under 2 minutes (matches the menus).
   const m = totalMs / 60000;
   const minutes = m < 2 ? Math.round(m * 2) / 2 : Math.round(m);
@@ -77,6 +77,10 @@ export function renderSummary(el, { title, results, settings, totalMs, readiness
     settings.cue ? `<div class="head__item"><p class="head__label">Cue word</p><p class="head__value">${esc(settings.cue)}</p></div>` : '',
     before != null || after != null
       ? `<div class="head__item"><p class="head__label">How you felt</p><p class="head__value">${level(before)} → ${level(after)}</p></div>`
+      : '',
+    // Focus Check, start → end (reaction, seconds).
+    checked.before?.rtMs != null || checked.after?.rtMs != null
+      ? `<div class="head__item"><p class="head__label">Focus Check</p><p class="head__value">${sec(checked.before?.rtMs)} → ${sec(checked.after?.rtMs)} s</p></div>`
       : '',
   ].join('');
 

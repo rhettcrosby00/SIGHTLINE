@@ -4,13 +4,14 @@
 // about 80% right (the research aim: 75–85%, challenged but not crushed).
 //
 // A level runs 0 (easiest) to 1 (hardest) inside the band for the Difficulty
-// setting; each drill turns it into its own numbers (answer time, flash time,
-// grid size…). Levels are remembered per drill on this phone, so the next
-// session starts where the last one ended. With storage blocked every drill
+// setting (higher in Training mode); each drill turns it into its own numbers
+// (answer time, flash time, grid size…). Levels are remembered per drill on
+// this phone, so the next session starts where the last one ended. With storage blocked every drill
 // starts fresh.
 
 export const TARGET = 0.8;
 export const LEVEL_RANGE = { normal: [0, 0.6], hard: [0.4, 1] };
+export const TRAINING_RANGE = { normal: [0.2, 0.8], hard: [0.5, 1] };   // Training: harder
 const EASE = 0.1;                                   // step down after a miss
 const PUSH = (EASE * (1 - TARGET)) / TARGET;        // step up after a right answer (0.025)
 const START = 0.25;                                 // a new drill starts a quarter of the way up its band
@@ -18,8 +19,9 @@ const START = 0.25;                                 // a new drill starts a quar
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
 // saved: this drill's last level (or undefined). Returns the live staircase.
-export function createLevel(saved, difficulty = 'normal') {
-  const [lo, hi] = LEVEL_RANGE[difficulty] ?? LEVEL_RANGE.normal;
+export function createLevel(saved, difficulty = 'normal', { training = false } = {}) {
+  const bands = training ? TRAINING_RANGE : LEVEL_RANGE;
+  const [lo, hi] = bands[difficulty] ?? bands.normal;
   let level = Number.isFinite(saved) ? clamp(saved, lo, hi) : lo + START * (hi - lo);
   return {
     get value() { return level; },

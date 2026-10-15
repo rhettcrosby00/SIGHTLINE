@@ -11,6 +11,7 @@ import './readiness.js';
 import './vision.js';
 import './decisions.js';
 import './partner.js';
+import './training.js';
 import './design.js';
 import './sides.js';
 import './deadcode.js';

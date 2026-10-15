@@ -749,3 +749,21 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .ppad__btn b { font-family: var(--font-display); font-variation-settings: var(--wdth-narrow); font-weight: 900; font-size: 1.75rem; line-height: 1; }
 .ppad__btn:active { transform: scale(0.97); }
 .ppad__btn--hold { background: #6b6b6b; color: #fff; }
+
+/* ---------- Game Day / Training (home) and Focus Check ---------- */
+.home__day { display: grid; gap: var(--space-2); }
+.home__note { color: var(--muted); font-size: var(--text-caption); line-height: 1.4; min-height: 2.8em; }
+.home__note b { color: var(--text); }
+.fc { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-5); touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.fc__label { font: 700 var(--text-label)/1.2 var(--font-body); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--side-text); }
+.fc__circle { width: min(64vw, 38dvh); aspect-ratio: 1; border-radius: 50%; border: 6px solid var(--line-strong); display: grid; place-items: center; font-size: min(26vw, 15dvh); line-height: 1; color: #000; }
+.fc__circle.is-go { background: #12c48b; border-color: #12c48b; }
+.fc__circle.is-go::after { content: "■"; }
+.fc__circle.is-nogo { background: #ff4d2e; border-color: #ff4d2e; }
+.fc__circle.is-nogo::after { content: "▲"; }
+.fc__msg { min-height: 1.5em; font-weight: 700; font-size: 1.125rem; font-variant-numeric: tabular-nums; }
+.fc-intro__text { line-height: 1.5; }
+.fc-res__note { color: var(--muted); line-height: 1.45; }
+.fc-res__note b { color: var(--text); }
+.fc-res__flag { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3) var(--space-4); border-radius: var(--radius-m); background: var(--raised); font-weight: 600; line-height: 1.4; }
+.fc-res__foot { color: var(--muted); font-size: var(--text-caption); text-align: center; }
