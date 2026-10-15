@@ -2,11 +2,14 @@
 // current setup, drawn at the chosen distances. Arrow/mixed setups put each
 // cone in its direction; color/number setups use a semicircle in front (2–5
 // cones) or a full circle (6–8). Positions come from js/cone/timing.js, the
-// same ones the Cone to cone timing uses.
+// same ones the Cone to cone timing uses. Sport cones are labeled with their
+// call. Planned drills draw the pattern and its route.
 
 import { colorById, dirById } from './config.js';
 import { CUES } from './cues/index.js';
 import { coneSlots, timingSummary, STYLE_LABEL } from './timing.js';
+import { PATTERNS } from './patterns.js';
+import { RIGHT_HANDED } from './cues/sport.js';
 import { icon, DIR_ICON } from '../lib/icons.js';
 
 function layoutSvg(setup) {
@@ -40,7 +43,7 @@ function layoutSvg(setup) {
     } else {
       body = `<circle cx="${x}" cy="${y}" r="22" fill="${colorById.orange.hex}" class="lay__cone"/>
         <g class="lay__arrowglyph" transform="translate(${x - 13} ${y - 13})">${icon(DIR_ICON[target.dir], { size: 26 })}</g>
-        <text x="${x}" y="${y + 40}" text-anchor="middle" class="lay__small">${dirById[target.dir].label}${ydTag}</text>`;
+        <text x="${x}" y="${y + 40}" text-anchor="middle" class="lay__small">${target.call ? `${target.call} · ` : ''}${dirById[target.dir].label}${ydTag}</text>`;
     }
     return { x, y, rad, body };
   });
@@ -67,9 +70,51 @@ function layoutSvg(setup) {
     </svg>`;
 }
 
+// A planned pattern from above: its cones, the start, and the route in order
+// (toward the phone is up; legs that double back are drawn a little apart).
+function patternSvg(id) {
+  const p = PATTERNS[id];
+  const W = 320;
+  const H = 300;
+  const xs = p.cones.map((c) => c.x);
+  const ys = p.cones.map((c) => c.y);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const k = 220 / Math.max(x1 - x0, y1 - y0, 5);
+  const px = (c) => ({ x: W / 2 + (c.x - (x0 + x1) / 2) * k, y: 170 - (c.y - (y0 + y1) / 2) * k });
+  const STEP = { F: [0, 1], B: [0, -1], L: [-1, 0], R: [1, 0] };
+  let at = p.cones[p.start];
+  const pts = [px(at)];
+  for (const [d, yd] of p.legs) { at = { x: at.x + STEP[d][0] * yd, y: at.y + STEP[d][1] * yd }; pts.push(px(at)); }
+  return `
+    <svg class="lay" viewBox="0 0 ${W} ${H}" role="img" aria-label="${p.name} from above">
+      <rect x="${W / 2 - 34}" y="6" width="68" height="26" rx="6" class="lay__phone"/>
+      <text x="${W / 2}" y="24" text-anchor="middle" class="lay__small">PHONE</text>
+      <polyline points="${pts.map((q, i) => `${q.x},${q.y + i * 6}`).join(' ')}" fill="none" class="lay__line" stroke-dasharray="5 5" stroke-width="2"/>
+      ${p.cones.map((c, i) => { const q = px(c); return `<circle cx="${q.x}" cy="${q.y}" r="16" fill="${colorById.orange.hex}" class="lay__cone"/>${i === p.start ? `<text x="${q.x}" y="${q.y - 24}" text-anchor="middle" class="lay__you">START</text>` : ''}`; }).join('')}
+    </svg>`;
+}
+
 // Quick Start goes back to the MOVE screen; Custom setup goes back to its
 // setup (where distances are set). `tune` is the saved Too fast / Too slow factor.
 export function renderLayout(el, setup, { preset = false, tune = 1 } = {}) {
+  if (setup.mode === 'planned') {
+    const p = PATTERNS[setup.pattern];
+    el.innerHTML = `
+      <div class="clay">
+        <header class="nav">
+          <button type="button" class="nav__back" data-nav="setup">${icon('chevron-left', { size: 22 })}Setup</button>
+          <h2 class="nav__title">Set out ${p.cones.length} cones</h2>
+        </header>
+        <p class="clay__how">${p.name}. Stand the phone up where you can see it from the start.</p>
+        ${patternSvg(setup.pattern)}
+        <p class="clay__how">${p.how} On GO, run it. Then walk back while the phone counts down to the next one.</p>
+        <p class="timing__sum">${timingSummary(setup, tune)}</p>
+      </div>
+      <div class="screen__foot">
+        <button type="button" class="btn btn--primary btn--block" data-nav="start">Cones set</button>
+      </div>`;
+    return;
+  }
   const n = CUES[setup.cueType].targets(setup).length;
   el.innerHTML = `
     <div class="clay">
@@ -85,6 +130,7 @@ export function renderLayout(el, setup, { preset = false, tune = 1 } = {}) {
         firststep: 'First step: explode 2–3 steps toward the cone called, then reset. The cones mark the direction.',
         conetocone: `${STYLE_LABEL.conetocone}: go straight from one cone to the next. Start from the middle.`,
       }[setup.style]}</p>
+      ${setup.cueType === 'sport' && RIGHT_HANDED.includes(setup.sport) ? '<p class="clay__how">Calls assume a right-hander. Left-handed? Swap the left and right cones.</p>' : ''}
       <p class="timing__sum">${timingSummary(setup, tune)}</p>
     </div>
     <div class="screen__foot">

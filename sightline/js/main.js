@@ -16,7 +16,7 @@ import { initRoutineBuilder } from './myroutine-ui.js';
 import { isOn } from './features.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '2.6';
+export const APP_VERSION = '2.7';
 
 const $ = (id) => document.getElementById(id);
 
@@ -94,7 +94,12 @@ const builder = initRoutineBuilder({
   onTry: () => focus.start('myroutine', { from: 'routine' }),
   onBack: () => { focus.renderHub(); show('focus', { back: true }); },
 });
-move = initMove({ show, dev, leaderboard, onRun: (run) => lastRuns.set('move', run) });
+// MOVE's Sport calls use the sport picked for Focus (asked once, on this phone).
+const sport = {
+  get: () => getSettings().sport,
+  set(value) { updateSetting('sport', value); updateSetting('position', ''); updateSetting('sportAsked', true); },
+};
+move = initMove({ show, dev, leaderboard, sport, onRun: (run) => lastRuns.set('move', run) });
 
 // ---- Home: two choices, each with its preset, time and "Run last" ----
 function renderHome() {

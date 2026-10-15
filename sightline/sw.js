@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v2.6';
+const CACHE_VERSION = 'v2.7';
 const CACHE = `sightline-${CACHE_VERSION}`;
 
 // Google Fonts (Archivo + Schibsted Grotesk) live in their own cache that
@@ -31,7 +31,10 @@ const ASSETS = [
   './js/session.js',
   './js/settings.js',
   './js/cone/config.js',
+  './js/cone/decide.js',
   './js/cone/layout.js',
+  './js/cone/partner.js',
+  './js/cone/patterns.js',
   './js/cone/plan.js',
   './js/cone/render.js',
   './js/cone/run.js',
@@ -80,6 +83,7 @@ const ASSETS = [
   './js/cone/cues/index.js',
   './js/cone/cues/mixed.js',
   './js/cone/cues/number.js',
+  './js/cone/cues/sport.js',
   './icons/apple-touch-icon.png',
   './icons/favicon-32.png',
   './icons/icon-192.png',

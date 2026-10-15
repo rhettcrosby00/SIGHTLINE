@@ -14,7 +14,8 @@ async function request() {
 }
 
 // The browser drops the lock when the tab is hidden; take it back on return.
-document.addEventListener('visibilitychange', () => {
+// (No document when the tests load this in Node.)
+globalThis.document?.addEventListener('visibilitychange', () => {
   if (wanted && !sentinel && document.visibilityState === 'visible') request();
 });
 

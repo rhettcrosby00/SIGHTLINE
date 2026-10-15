@@ -1,11 +1,18 @@
 // MOVE setup screens: Custom setup (every Cone Drill option) and Signals Only
 // (arrows, no cones). Every change is saved on this device (setup only; no
 // history), so the athlete doesn't re-enter it each time.
+// Custom setup also picks Reactive or Planned (a known pattern), the Sport
+// cue type (calls from the athlete's sport) and the Decision Layer.
 
 import {
   CONE_COLORS, colorById, dirById, DIRECTIONS, DIRECTION_PRESETS, REPS, TIMED_SECONDS, SETS, REST_SEC, FLASH_MS,
-  MIN_CONES, MAX_CONES, DISTANCE_YD, MANUAL_S, normalize, normalizeSignals, validate,
+  MIN_CONES, MAX_CONES, DISTANCE_YD, MANUAL_S, DECISIONS, normalize, normalizeSignals, validate,
 } from './config.js';
+import { PATTERNS, PATTERN_IDS } from './patterns.js';
+import { SPORT_DIRS, packFor, RIGHT_HANDED } from './cues/sport.js';
+import { DECISION_LABEL, DECISION_HINT, decisionsFor } from './decide.js';
+import { readableYards } from './render.js';
+import { SPORTS } from '../content/sports.js';
 import {
   TIMING, PACE_LABEL, coneSlots, timingSummary, suggestedRestSec, manualTooFast, farthestYards, drillMs, createTuneStore,
 } from './timing.js';
@@ -27,8 +34,8 @@ function saveSetup(variant, s) {
 }
 
 
-const seg = (key, value, options, fill = false) => `
-  <div class="seg${fill ? ' seg--fill' : ''}" role="radiogroup">
+const seg = (key, value, options, fill = false, cls = '') => `
+  <div class="seg${fill ? ' seg--fill' : ''}${cls ? ` ${cls}` : ''}" role="radiogroup">
     ${options.map(([v, label]) => `<button type="button" role="radio" data-set="${key}" data-value="${v}"
       aria-checked="${String(v) === String(value)}">${label}</button>`).join('')}
   </div>`;
@@ -95,6 +102,7 @@ function estimate(s) {
 // variant: 'custom' (cones) or 'signals' (arrows only, no cones, no layout step).
 function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'custom') {
   const signals = variant === 'signals';
+  const planned = !signals && s.mode === 'planned';
   const usesColors = s.cueType === 'colors' || s.cueType === 'mixed';
   const usesArrows = s.cueType === 'arrows' || s.cueType === 'mixed';
   const colorRows = s.cueType === 'mixed' ? s.directions.length : s.cones;
@@ -132,13 +140,37 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
     { center: 'Center', random: 'Random spots', peripheral: 'Peripheral' }[s.position],
     s.display === 'flash' ? `Flash ${secs(s.flashMs)}` : 'Hold',
     s.fakes === 'off' ? 'No fake-outs' : `Fake-outs ${s.fakes}`,
-    usesArrows && s.reverse ? 'Reverse on' : '',
   ].filter(Boolean).join(' · ');
+  // Decision Layer: what this setup can use, and why the rest can't.
+  const usable = new Set(decisionsFor({ ...s, decision: true, decisions: DECISIONS }));
+  const WHY_NOT = {
+    parity: 'needs a left and a right cone', stroop: 'needs colored cones', opposite: 'needs cones opposite each other',
+  };
+  const decisionRows = !s.decision ? '' : `
+    <div class="setting setting--stack">
+      <div class="chips" role="group" aria-label="Decisions">
+        ${DECISIONS.map((d) => `<button type="button" class="chip" role="checkbox" data-decision="${d}"
+          aria-checked="${s.decisions.includes(d) && usable.has(d)}" ${usable.has(d) ? '' : 'disabled'}>${DECISION_LABEL[d]}</button>`).join('')}
+      </div>
+      <ul class="dec__list">${DECISIONS.filter((d) => usable.has(d) && s.decisions.includes(d)).map((d) => `<li>${DECISION_HINT[d]}</li>`).join('')}</ul>
+      ${DECISIONS.some((d) => !usable.has(d)) ? `<p class="setting__hint">${DECISIONS.filter((d) => !usable.has(d)).map((d) => `${DECISION_LABEL[d]} ${WHY_NOT[d]}`).join('. ')}.</p>` : ''}
+    </div>`;
+  // Sport calls: the sport picked on this phone, each call's direction, and how far it reads.
+  const pack = packFor(s.sport);
+  const calls = SPORT_DIRS.map((d) => pack[d]);
+  const sportRows = s.cueType !== 'sport' ? '' : `
+    ${row('Sport', `<select class="lb-select" data-sport aria-label="Sport">${SPORTS.map((x) => `<option value="${x.id}"${x.id === s.sport ? ' selected' : ''}>${x.label}</option>`).join('')}</select>`,
+      { stack: true, hint: 'The same sport as your visualization in Focus.' })}
+    <div class="setting setting--stack">
+      <ul class="calls">${SPORT_DIRS.map((d) => `<li><b>${pack[d]}</b><span>${icon(DIR_ICON[d], { size: 18 })}${nice(dirById[d].label)}</span></li>`).join('')}</ul>
+      <p class="setting__hint">Short calls read from farther: these read at a glance from about ${Math.floor(Math.min(...calls.map((c) => readableYards(c))))} yd on a phone.${
+        RIGHT_HANDED.includes(s.sport) ? ' Calls assume a right-hander; lefties swap the left and right cones.' : ''}</p>
+    </div>`;
   const soundSummary = isMusicMode() ? 'Silent: music mode is on' : s.sound === 'on' ? (s.callouts ? 'Beep + callouts' : 'Beep') : 'Off';
 
   // Distances: one for every cone, or one per cone (Custom setup only). First step ignores distance.
   const tune = tunes.get(s);
-  const slotName = (sl, i) => (usesArrows ? nice(dirById[sl.slot].label)
+  const slotName = (sl, i) => (usesArrows || s.cueType === 'sport' ? nice(dirById[sl.slot].label)
     : `Cone ${i + 1}${usesColors ? ` · ${nice(colorById[sl.target.color].label)}` : ''}`);
   const yd = { unit: ' yd', label: 'distance' };
   const distanceRows = s.style === 'firststep' ? ''
@@ -157,14 +189,28 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
       </header>
       <p class="notice">${icon('triangle-alert')}Use a clear, flat area. Warm up before high-speed cuts.</p>
 
-      ${signals ? '' : group('Cues', `
-        ${row('Cue type', seg('cueType', s.cueType, [['colors', 'Colors'], ['arrows', 'Arrows'], ['numbers', 'Numbers'], ['mixed', 'Mixed']], true), {
+      ${signals ? '' : group('Drill', `
+        ${row('Drill type', seg('mode', s.mode, [['reactive', 'Reactive'], ['planned', 'Planned']], true), {
+          stack: true,
+          hint: 'Different skills. Reactive: you don’t know where until the cue (agility, closer to what games demand). Planned: a set route, the phone just says go (change-of-direction speed).' })}
+        ${planned ? row('Pattern', seg('pattern', s.pattern, PATTERN_IDS.map((id) => [id, PATTERNS[id].label]), true), { stack: true, hint: PATTERNS[s.pattern].how }) : ''}`)}
+
+      ${signals || planned ? '' : group('Cues', `
+        ${row('Cue type', seg('cueType', s.cueType, [['colors', 'Colors'], ['arrows', 'Arrows'], ['numbers', 'Numbers'], ['mixed', 'Mixed'], ['sport', 'Sport']], true, 'seg--three'), {
           stack: true,
           hint: { colors: 'Each cone has a color. The screen shows a color.', arrows: 'Cones sit in directions. The screen shows an arrow.',
-            numbers: 'Each cone has a number. The screen shows a number.', mixed: 'Cones are colored and in fixed directions. Cues switch between colors and arrows.' }[s.cueType] })}
-        ${s.cueType === 'mixed' ? '' : row('Cones', stepper('cones', s.cones, [MIN_CONES, MAX_CONES]))}`)}
+            numbers: 'Each cone has a number. The screen shows a number.', mixed: 'Cones are colored and in fixed directions. Cues switch between colors and arrows.',
+            sport: 'Calls from your sport, each one a direction.' }[s.cueType] })}
+        ${s.cueType === 'mixed' || s.cueType === 'sport' ? '' : row('Cones', stepper('cones', s.cones, [MIN_CONES, MAX_CONES]))}
+        ${sportRows}`)}
 
-      ${usesArrows ? group('Directions', `
+      ${planned ? '' : group('Decision Layer', `
+        ${row('Decisions', `<button type="button" class="switch" role="switch" data-flip="decision" aria-checked="${s.decision}" aria-label="Decision Layer"></button>`,
+          { hint: s.decision ? 'About 4 in 10 cues need a quick decision before you cut. The first and last cue of a set never do.'
+            : 'Off: just react (best to start). On: some cues need a quick decision first. Thinking while moving carries over best.' })}
+        ${decisionRows}`)}
+
+      ${usesArrows && !planned && s.cueType !== 'sport' ? group('Directions', `
         ${row('Preset', seg('preset', presetFor(s.directions),
           Object.keys(DIRECTION_PRESETS).map((k) => [k, k]), true), { stack: true, hint: '2 left/right · 3 adds forward · 4 adds back · 5 adds forward diagonals · 8 all' })}
         ${row('Or tap the exact directions', compass, { stack: true })}
@@ -172,12 +218,15 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
           <p class="notice">${icon('triangle-alert')}${s.directions.length} directions but ${s.cones} cones. Set out one cone per direction.</p>
           <button type="button" class="btn btn--secondary btn--block" data-fixcones="${s.directions.length}">Use ${s.directions.length} cones</button></div>` : ''}`) : ''}
 
-      ${usesColors ? group('Cone colors', `
+      ${usesColors && !planned ? group('Cone colors', `
         ${row('Colors', seg('coloredCones', s.coloredCones, [[true, 'I’ll pick'], [false, 'Defaults']]))}
         ${s.coloredCones ? colorList : `<div class="setting setting--stack"><p class="setting__hint">${
           ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'white', 'pink'].slice(0, colorRows).map((id) => nice(colorById[id].label)).join(' · ')}</p></div>`}`) : ''}
 
-      ${group('Reps', `
+      ${planned ? group('Reps', `
+        ${row('Pace', seg('pace', s.pace, [['learning', 'Learning'], ['training', 'Training'], ['game', 'Game'], ['overdrive', 'Overdrive']], true),
+          { stack: true, hint: PACE_HINT[s.pace] })}
+        <div class="setting setting--stack"><p class="timing__sum">${timingSummary(s, tune)}</p></div>`) : group('Reps', `
         ${row('Rep style', seg('style', s.style, signals
           ? [['firststep', 'First step'], ['outback', 'Out & back']]
           : [['outback', 'Out & back'], ['firststep', 'First step'], ['conetocone', 'Cone to cone']], true),
@@ -192,7 +241,7 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
         </div>`)}
 
       ${group('Sets', `
-        ${row('Sets by', seg('setMode', s.setMode, [['reps', 'Reps'], ['timed', 'Time']]))}
+        ${planned ? '' : row('Sets by', seg('setMode', s.setMode, [['reps', 'Reps'], ['timed', 'Time']]))}
         ${s.setMode === 'reps'
           ? row('Reps per set', slider('reps', s.reps, REPS, 1, (x) => `${x} reps`), { stack: true })
           : row('Set length', seg('timedSec', s.timedSec, TIMED_SECONDS.map((t) => [t, `${t}s`]), true), { stack: true })}
@@ -201,21 +250,19 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
           { stack: true, hint: `About 1:${TIMING.restRatio[s.pace]} work to rest at ${PACE_LABEL[s.pace]} pace.` }) : ''}
         ${s.sets > 1 && s.restMode === 'custom' ? row('Rest', stepper('restSec', s.restSec, REST_SEC, { step: 15, fmt: mmss, label: 'rest' })) : ''}`)}
 
-      ${group('', expander('advanced', 'Advanced', s.manual ? `Exact time · ${s.manualS.toFixed(1)} s per rep` : 'Time set by distance and pace', ui.open.has('advanced'), `
+      ${planned ? '' : group('', expander('advanced', 'Advanced', s.manual ? `Exact time · ${s.manualS.toFixed(1)} s per rep` : 'Time set by distance and pace', ui.open.has('advanced'), `
         ${row('Exact seconds per rep', `<button type="button" class="switch" role="switch" data-flip="manual" aria-checked="${s.manual}" aria-label="Exact seconds per rep"></button>`,
           { hint: 'Every rep gets the same time, whatever the distance.' })}
         ${s.manual ? row('Seconds per rep', slider('manualS', s.manualS, MANUAL_S, 0.1, (x) => `${Number(x).toFixed(1)} s`), { stack: true }) : ''}`))}
 
-      ${group('', expander('eye', 'Eye engagement', eyeSummary, ui.open.has('eye'), `
+      ${planned ? '' : group('', expander('eye', 'Eye engagement', eyeSummary, ui.open.has('eye'), `
         ${row('Cue position', seg('position', s.position, [['center', 'Center'], ['random', 'Random'], ['peripheral', 'Peripheral']], true), {
           stack: true, hint: { center: 'Cues fill the screen.', random: 'Cues pop up in different spots. Find it, then go.',
             peripheral: 'Eyes on the center dot. Cues appear near the edge.' }[s.position] })}
         ${row('Display', seg('display', s.display, [['hold', 'Hold'], ['flash', 'Flash']]),
           { hint: s.display === 'hold' ? 'The cue stays up until the next one.' : 'The cue shows briefly, then disappears.' })}
         ${s.display === 'flash' ? row('Flash length', slider('flashMs', s.flashMs, FLASH_MS, 50, secs), { stack: true }) : ''}
-        ${row('Fake-outs', seg('fakes', s.fakes, [['off', 'Off'], ['low', 'Low'], ['medium', 'Med']]), { hint: 'A gray Hold screen now and then. Stay still.' })}
-        ${usesArrows ? row('Reverse rule', seg('reverse', s.reverse, [[false, 'Off'], [true, 'On']]),
-          { hint: 'When the arrow has a flashing white border, go the opposite way.' }) : ''}`))}
+        ${row('Fake-outs', seg('fakes', s.fakes, [['off', 'Off'], ['low', 'Low'], ['medium', 'Med']]), { hint: 'A gray Hold screen now and then. Stay still.' })}`))}
 
       ${group('', expander('sound', 'Sound', soundSummary, ui.open.has('sound'), `
         ${row('Beep on each cue', `<button type="button" class="switch" role="switch" data-flip="sound" aria-checked="${s.sound === 'on'}" aria-label="Sound"></button>`)}
@@ -239,8 +286,9 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
 }
 
 // Wires a setup screen. onNav('menu' | 'layout' | 'start', setup) is called for navigation.
-export function initSetup(el, { onNav, variant = 'custom' }) {
-  let s = loadSetup(variant);
+// sport = { get, set }: the sport picked on this phone (shared with Focus).
+export function initSetup(el, { onNav, variant = 'custom', sport = { get: () => 'general', set() {} } }) {
+  let s = VARIANTS[variant].normalize({ ...loadSetup(variant), sport: sport.get() });
   // open: expanded sections; color: the cone whose palette is open; confirm:
   // where to go once a too-fast exact time is confirmed.
   const ui = { open: new Set(), color: -1, confirm: null };
@@ -276,6 +324,11 @@ export function initSetup(el, { onNav, variant = 'custom' }) {
     if (d.expand) { ui.open.has(d.expand) ? ui.open.delete(d.expand) : ui.open.add(d.expand); return draw(); }
     if (d.colorrow !== undefined) { ui.color = ui.color === Number(d.colorrow) ? -1 : Number(d.colorrow); return draw(); }
     if (d.flip) return update({ [d.flip]: d.flip === 'sound' ? (s.sound === 'on' ? 'off' : 'on') : !s[d.flip] });
+    if (d.decision) {
+      const on = s.decisions.includes(d.decision);
+      const next = on ? s.decisions.filter((x) => x !== d.decision) : [...s.decisions, d.decision];
+      return update({ decisions: next.length ? next : s.decisions });   // keep at least one
+    }
     if (d.set === 'preset') return update({ directions: DIRECTION_PRESETS[d.value].slice(), cones: DIRECTION_PRESETS[d.value].length });
     if (d.set) {
       let val = d.value;
@@ -307,6 +360,13 @@ export function initSetup(el, { onNav, variant = 'custom' }) {
     }
   });
 
+  // The sport (shared with Focus): saved for both sides.
+  el.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-sport]')) return;
+    sport.set(e.target.value);
+    update({ sport: e.target.value });
+  });
+
   // Sliders: update the label while dragging, save when released.
   el.addEventListener('input', (e) => {
     const r = e.target.closest('input[type="range"]');
@@ -323,5 +383,9 @@ export function initSetup(el, { onNav, variant = 'custom' }) {
   });
 
   renderSetup(el, s, ui, variant);
-  return { get: () => s, render: () => renderSetup(el, s, ui, variant), set: (patch) => update(patch, { rerender: false }) };
+  return {
+    get: () => (s = VARIANTS[variant].normalize({ ...s, sport: sport.get() })),
+    render: () => renderSetup(el, s = VARIANTS[variant].normalize({ ...s, sport: sport.get() }), ui, variant),
+    set: (patch) => update(patch, { rerender: false }),
+  };
 }

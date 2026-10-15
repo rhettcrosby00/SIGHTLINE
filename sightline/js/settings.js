@@ -74,6 +74,7 @@ export function parseSettings(saved = {}) {
 }
 
 let current = null;   // live settings object, shared with updateSetting()
+let redraw = () => {};   // redraws the Settings screen (after a change from elsewhere)
 
 function load() {
   try { return parseSettings(JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')); } catch { return { ...DEFAULTS }; }
@@ -105,6 +106,7 @@ export function updateSetting(key, value) {
   if (!current) return;
   current[key] = value;
   save(current);
+  redraw();
 }
 
 const seg = (f, s) => `
@@ -174,6 +176,7 @@ export function initSettings({ onChange = () => {} } = {}) {
     onChange({ ...settings });
   });
 
+  redraw = () => render(el, settings);
   render(el, settings);
   onChange({ ...settings });
   return () => ({ ...settings });

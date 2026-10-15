@@ -9,6 +9,8 @@ import './leaderboard.js';
 import './evidence.js';
 import './readiness.js';
 import './vision.js';
+import './decisions.js';
+import './partner.js';
 import './design.js';
 import './sides.js';
 import './deadcode.js';

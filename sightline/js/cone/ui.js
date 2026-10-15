@@ -1,5 +1,6 @@
-// MOVE: cognitive change of direction with the phone on a stand. Three ways in:
+// MOVE: cognitive change of direction with the phone on a stand. Four ways in:
 //   Quick Start   fixed preset → cone layout → drill
+//   Game Day      your custom cones, 3 short sets at Game Speed, full rest → layout → drill
 //   Custom setup  every Cone Drill option → cone layout → drill
 //   Signals Only  arrows, no cones → drill
 // The drill runs in the shared session engine (pause, wake lock). No taps
@@ -9,12 +10,15 @@ import { initSetup } from './setup.js';
 import { renderLayout } from './layout.js';
 import { planDrill } from './plan.js';
 import { coneSession, tuneButtons, wireTune } from './run.js';
-import { validate, quickStart } from './config.js';
+import { validate, quickStart, gameDay, GAME_DAY } from './config.js';
+import { PATTERNS } from './patterns.js';
 import { PACE_LABEL, STYLE_LABEL, TIMING, coneSlots, drillMs, applyTune, createTuneStore } from './timing.js';
 import { runSession } from '../engine.js';
 import { unlock as unlockAudio, buzz } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
 import { SUM_LOGO } from '../stages/summary.js';
+import { initPartner } from './partner.js';
+import { isOn } from '../features.js';
 import { moveScore, moveMultiplier, SCORING } from '../score/scoring.js';
 
 const $ = (id) => document.getElementById(id);
@@ -22,9 +26,9 @@ const mmss = (ms) => {
   const s = Math.round(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
-const CUE_NAME = { colors: 'Colors', arrows: 'Arrows', numbers: 'Numbers', mixed: 'Mixed' };
+const CUE_NAME = { colors: 'Colors', arrows: 'Arrows', numbers: 'Numbers', mixed: 'Mixed', sport: 'Sport calls' };
 
-export const MOVE_RUNS = { quick: 'Quick Start', custom: 'Custom setup', signals: 'Signals Only' };
+export const MOVE_RUNS = { quick: 'Quick Start', gameday: 'Game Day', custom: 'Custom setup', signals: 'Signals Only' };
 
 // "5 yd", or "3–10 yd" when each cone has its own distance.
 function yardsText(s) {
@@ -37,19 +41,21 @@ function yardsText(s) {
 // One line per way in, e.g. "4 cones · Colors · 5 yd · Training · 3 sets".
 function describeSetup(s, run = 'custom') {
   const pace = s.manual ? `${s.manualS.toFixed(1)} s per rep` : PACE_LABEL[s.pace];
-  const sets = `${s.sets} set${s.sets > 1 ? 's' : ''}`;
+  const sets = `${s.sets} set${s.sets > 1 ? 's' : ''}${s.setMode === 'timed' ? ` × ${s.timedSec} s` : ''}`;
+  if (s.mode === 'planned') return `${PATTERNS[s.pattern].label} · Planned · ${pace} · ${sets}`;
   const dist = s.style === 'firststep' ? STYLE_LABEL.firststep
     : `${yardsText(s)}${s.style === 'conetocone' ? ' cone to cone' : ''}`;
   if (run === 'signals') return `${s.directions.length} directions · ${dist} · ${pace} · ${sets}`;
   const what = s.cueType === 'arrows' || s.cueType === 'mixed' ? `${s.directions.length} directions` : `${s.cones} cones`;
-  return `${what} · ${CUE_NAME[s.cueType]} · ${dist} · ${pace} · ${sets}`;
+  return `${what} · ${CUE_NAME[s.cueType]}${s.decision ? ' + decisions' : ''} · ${dist} · ${pace} · ${sets}`;
 }
 const minutesOf = (s) => Math.max(1, Math.round(drillMs(s) / 60000));
 
 // show(name, {back}) switches screens; dev = { speed, autoReady, seed } from
 // the URL; onRun(run) fires when a drill starts (for "Run last"); leaderboard
-// (optional) gets the score once a drill ends with at least one full set.
-export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null }) {
+// (optional) gets the score once a drill ends with at least one full set;
+// sport = { get, set }: the sport picked on this phone (shared with Focus).
+export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null, sport }) {
   const hubEl = $('move-hub');
   const layoutEl = $('cd-layout');
   const doneEl = $('cd-done');
@@ -62,20 +68,27 @@ export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null 
     if (where === 'board') return leaderboard?.openBoard('cone-done', { side: 'move' });
     if (where === 'menu') { renderHub(); return show('move', { back: true }); }
     if (where === 'custom') return open('custom');
+    if (where === 'partner' && partner) { partner.open(); return show('partner'); }
     if (where === 'setup') {
       const ctl = run === 'signals' ? signals : custom;
       ctl.render();
       return show(run === 'signals' ? 'signals' : 'cone-setup', { back });
     }
-    if (where === 'layout') { renderLayout(layoutEl, setup, { preset: run === 'quick', tune: tunes.get(setup) }); return show('cone-layout'); }
+    if (where === 'layout') { renderLayout(layoutEl, setup, { preset: run === 'quick' || run === 'gameday', tune: tunes.get(setup) }); return show('cone-layout'); }
     if (where === 'start') return go();
   };
 
   // The two editable setups; Quick Start is built fresh each time.
   const fromSetup = (variant) => (where, s) => { run = variant; setup = s; nav(where); };
-  const custom = initSetup($('cd-setup'), { onNav: fromSetup('custom'), variant: 'custom' });
-  const signals = initSetup($('cd-signals'), { onNav: fromSetup('signals'), variant: 'signals' });
-  const setupFor = (r) => (r === 'quick' ? quickStart(custom.get()) : r === 'signals' ? signals.get() : custom.get());
+  const custom = initSetup($('cd-setup'), { onNav: fromSetup('custom'), variant: 'custom', sport });
+  // Partner mode (preview): the stand phone uses the Custom setup's cones (reactive).
+  const partner = isOn('partner') ? initPartner($('cd-partner'), {
+    getSetup: () => ({ ...custom.get(), mode: 'reactive' }),
+    onBack: () => nav('menu'),
+  }) : null;
+  const signals = initSetup($('cd-signals'), { onNav: fromSetup('signals'), variant: 'signals', sport });
+  const setupFor = (r) => (r === 'quick' ? quickStart(custom.get()) : r === 'gameday' ? gameDay(custom.get())
+    : r === 'signals' ? signals.get() : custom.get());
 
   function renderHub() {
     const rowFor = (r, sub, trail) => `
@@ -90,21 +103,29 @@ export function initMove({ show, dev = {}, onRun = () => {}, leaderboard = null 
         <h2 class="nav__title">React · Cut · Compete</h2>
         <p class="cset__sub">Set your phone down facing you. No taps during a set.</p>
       </header>
+      <section class="group"><h3 class="group__title">Game day</h3><div class="group__rows">
+        ${rowFor('gameday', `${GAME_DAY.sets} × ${GAME_DAY.timedSec} s at Game Speed, full rest · ${describeSetup(setupFor('gameday'), 'gameday').split(' · ').slice(0, 2).join(' · ')}`, 'play')}
+      </div><p class="setting__hint">Short and sharp before you compete, on your custom cones.</p></section>
       <section class="group"><h3 class="group__title">Your setups</h3><div class="group__rows">
         ${rowFor('custom', describeSetup(custom.get(), 'custom'), 'chevron-right')}
         ${rowFor('signals', `No cones · ${describeSetup(signals.get(), 'signals')}`, 'chevron-right')}
       </div></section>
+      ${partner ? `<section class="group"><h3 class="group__title">With a coach · preview</h3><div class="group__rows">
+        <button type="button" class="hub-row" data-nav="partner">
+          <span class="hub-row__text"><strong>Partner mode</strong><small>A coach’s phone sends the cues</small></span>${icon('chevron-right')}
+        </button></div></section>` : ''}
       <div class="screen__foot">
         <p class="cset__est">${describeSetup(setupFor('quick'), 'quick')} · ${minutesOf(setupFor('quick'))} min</p>
         <button type="button" class="btn btn--primary btn--block" data-run="quick">${icon('play')}Quick Start</button>
       </div>`;
   }
 
-  // From the hub or home: Quick Start shows the cone layout; the others open their setup.
+  // From the hub or home: Quick Start and Game Day show the cone layout; the others open their setup.
   function open(r) {
     run = r;
     setup = setupFor(r);
-    nav(r === 'quick' ? 'layout' : 'setup');
+    if (r === 'gameday' && !validate(setup).ok) { run = 'custom'; return nav('setup'); }
+    nav(r === 'quick' || r === 'gameday' ? 'layout' : 'setup');
   }
 
   hubEl.addEventListener('click', (e) => {

@@ -50,10 +50,27 @@ first 3 times a phone runs a drill, then just the rule. How-to cards start on th
 session never runs past its minutes.
 
 **MOVE: react, cut, compete.** The phone sits on a stand facing the athlete; no taps during a
-set. Quick Start (4 cones, colors, 5 yd out and back, Training pace, 3 sets), Custom setup
-(every Cone Drill option), and Signals Only (arrows, no cones). The time between cues comes
-from distance, rep style (Out and back, First step, Cone to cone) and pace; between sets the
-athlete answers "Too fast / Just right / Too slow".
+set. Quick Start (4 cones, colors, 5 yd out and back, Training pace, 3 sets), Game Day (the
+athlete's own cones, 3 × 20 s at Game Speed with full rest), Custom setup (every Cone Drill
+option), and Signals Only (arrows, no cones). The time between cues comes from distance, rep
+style (Out and back, First step, Cone to cone) and pace; between sets the athlete answers
+"Too fast / Just right / Too slow". Every set ends on a plain cue.
+
+- **Decision Layer** (optional, off by default; `js/cone/decide.js`): about 4 in 10 cues need a
+  decision first. Odd / even (a two-digit number: odd → left cone, even → right), Color word
+  (a full-screen color with another color's name on it: go to the color), Opposite (a cue in a
+  thick frame: go to the opposite cone; this replaces the old Reverse rule), Two cues (1 on top,
+  2 below, shown for 1.5 s: go to 1, then 2) and Go / no-go (a real cue under a big HOLD band).
+  Each one is carried by something big, so it reads from 10+ yards. Never the first or last cue.
+- **Sport** cue type (`js/cone/cues/sport.js`): calls from the sport picked in Focus (DRIVE /
+  PASS / SHOOT / BACK for basketball, PRESS / DROP / SWITCH / CHECK for soccer, …), one per
+  direction. Longer calls read from closer; the setup shows about how far.
+- **Planned vs Reactive** (`js/cone/patterns.js`): Planned runs a known pattern (5-10-5, Square,
+  T-drill): GO, then a walk-back countdown. Reactive (the default) is true agility.
+- **Partner mode** (behind the `partner` flag; `js/cone/partner.js`, `api/partner.js`): the
+  stand phone shows a 4-digit code; a coach's phone types it and taps cones to send cues. The
+  phones meet through the server (a room with the setup and the latest cue, gone after 2
+  hours); the stand phone checks about 3 times a second.
 
 A short summary follows each session. There are no accounts.
 
@@ -136,6 +153,7 @@ sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 - `newDrills: 'preview'`: 4-7-8 Breathing, Memory Sequence.
 - `leaderboard: true` (approved): name entry, the online board and coach tools.
 - `occlusion: 'preview'`: the opt-in Occlusion setting. Stays preview-only until Training Mode (Sub-phase E).
+- `partner: 'preview'`: MOVE Partner mode (a coach's phone sends the cues).
 
 ## Saved on the phone
 
@@ -204,6 +222,8 @@ Keep answers short (about 12 characters or fewer) so they fit on a button.
 | `js/content/sports.js`, `js/content/scripts.js` | Sports, positions, skill cue words, visualization scripts |
 | `js/content/vision.js` | Visual skills content: letters, rings, grids, tracking motion, occlusion timing, scoring |
 | `js/lib/adapt.js`, `js/lib/contrast.js` | Adaptive difficulty (and saved levels); Low contrast math |
+| `js/cone/decide.js`, `js/cone/patterns.js`, `js/cone/cues/sport.js` | MOVE Decision Layer, planned patterns, sport calls |
+| `js/cone/partner.js`, `api/partner.js` | Partner mode (preview): the stand phone and the coach's phone, and the room server |
 | `js/routine.js` | Maps each FOCUS drill to the code that runs it |
 | `js/engine.js` | Runs the steps; progress bar, pause/quit, wake lock |
 | `js/stages/*.js` | One file per FOCUS drill group, plus `summary.js` |

@@ -3,12 +3,27 @@
 // each cue full-screen, "Set 2 of 4 · Rep 7" in the top bar, and a big rest
 // countdown between sets with "Too fast / Just right / Too slow" for the next
 // set. No taps while cues are showing. Nothing from FOCUS runs here.
+// Two-cue decisions show both cues briefly, then clear (it's a memory task).
+// Planned drills show GO for the run, then a walk-back countdown.
 
 import { countdown } from '../stages/common.js';
 import { tone, say, buzz } from '../lib/audio.js';
 import { faceHtml, spotStyle } from './render.js';
 import { COUNTDOWN_MS } from './config.js';
-import { finalMs, TIMING } from './timing.js';
+import { finalMs, plannedMs, TIMING } from './timing.js';
+
+const PAIR_SHOW_MS = 1500;   // two cues stay up this long, then it's from memory
+
+// What the phone says (Spoken callouts). Decision cues say the decision, not the answer.
+function callout(face, cue) {
+  if (face.nogo || face.kind === 'hold') return 'hold';
+  if (face.kind === 'parity') return String(face.num);
+  if (face.kind === 'stroop') return '';
+  if (face.kind === 'pair') return 'two';
+  if (face.kind === 'planned') return 'go';
+  if (face.opposite) return 'opposite';
+  return cue.speak(face);
+}
 
 // The steps for one MOVE session: only the drill itself.
 // tuning = { factor, pick(choice), commit() } from js/cone/ui.js; each set's
@@ -61,18 +76,30 @@ async function runDrill(ctx, plan, setup, tuning, stats) {
     for (const e of set.events) {
       // Timed sets end on time, whatever the pace adjustments did to the reps.
       if (setup.setMode === 'timed' && now() - setStart >= setup.timedSec * 1000) break;
-      if (e.type === 'go') rep++;
+      if (e.type === 'go') rep += e.keys?.length ?? 1;
       else holds++;
-      const interval = finalMs(e, tuning.factor);   // this cone's time, with the athlete's pace adjustment
+      // This cone's time, with the athlete's pace adjustment.
+      const interval = e.face.kind === 'planned' ? plannedMs(e, tuning.factor) : finalMs(e, tuning.factor);
       hud.textContent = `Set ${s + 1} of ${total} · Rep ${rep}`;
       cueEl.innerHTML = faceHtml(e.face);
       cueEl.setAttribute('style', spotStyle(e.pos));
       cueEl.classList.toggle('is-placed', !!e.pos);
       tone(e.type === 'hold' ? 330 : 880, { dur: 0.12, gain: 0.14 });
       buzz(e.type === 'hold' ? [20, 40, 20] : 30);   // cue appears
-      if (setup.callouts) say(e.type === 'hold' ? 'hold' : plan.cue.speak(e.face));
-      if (setup.display === 'flash') {
-        const show = Math.min(setup.flashMs, interval);
+      const words = setup.callouts ? callout(e.face, plan.cue) : '';
+      if (words) say(words);
+      if (e.face.kind === 'planned') {
+        // Run, then walk back: the seconds count down, with a tick for the last 3.
+        await sleep(e.runMs);
+        const end = now() + interval - e.runMs;
+        while (now() < end) {
+          const secs = Math.ceil((end - now()) / 1000);
+          cueEl.innerHTML = faceHtml({ kind: 'recover', secs });
+          if (secs <= 3) tone(660, { dur: 0.06, gain: 0.1 });
+          await sleep(Math.min(1000, end - now()) || 1);
+        }
+      } else if (setup.display === 'flash' || e.keys) {
+        const show = Math.min(e.keys ? PAIR_SHOW_MS : setup.flashMs, interval);
         await sleep(show);
         blank();
         await sleep(interval - show);

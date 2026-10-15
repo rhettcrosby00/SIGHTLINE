@@ -68,7 +68,7 @@ test('Per-cone distances: the time after each cue matches the cone just called',
     const coneYards = Object.fromEntries([...dirs, 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'].map((k) => [k, rng.int(2, 20)]));
     const pace = rng.pick(PACES);
     const s = normalize(arrows
-      ? { cueType: 'arrows', directions: dirs, cones: dirs.length, distanceMode: 'each', coneYards, pace, fakes: 'medium', reverse: true }
+      ? { cueType: 'arrows', directions: dirs, cones: dirs.length, distanceMode: 'each', coneYards, pace, fakes: 'medium' }
       : { cueType: 'colors', cones: rng.int(2, 8), distanceMode: 'each', coneYards, pace, fakes: 'low' });
     const yardsOf = Object.fromEntries(coneSlots(s).map((sl) => [sl.key, sl.yards]));
     for (const set of planDrill(s, i).sets) {
