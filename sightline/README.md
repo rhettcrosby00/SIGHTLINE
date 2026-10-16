@@ -170,6 +170,8 @@ sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
 - `leaderboard: true` (approved): name entry, the online board and coach tools.
 - `occlusion: true` (approved with Training Mode): the opt-in Occlusion setting; Training only.
 - `partner: true` (approved): MOVE Partner mode (a coach's phone sends the cues).
+- `pregame: true` (approved): Full Pre-Game on the Game Day home screen: Focus Game Ready (Quick), then
+  "Set your phone down" and Move's Game Day sets, one summary and both scores (`js/pregame.js`). About 10 minutes.
 
 ## Saved on the phone
 
