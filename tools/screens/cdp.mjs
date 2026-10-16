@@ -30,7 +30,9 @@ const send = (method, params = {}, sessionId) => new Promise((res, rej) => {
 });
 
 async function connect() {
-  const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', `--remote-debugging-port=${PORT}`,
+  const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
+    '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',   // a test-pattern camera, no face (Eye Check)
+    `--remote-debugging-port=${PORT}`,
     `--user-data-dir=${mkdtempSync(join(HERE, 'prof.'))}`, 'about:blank'], { stdio: 'ignore' });
   for (let i = 0; i < 50; i++) {
     try {
@@ -54,7 +56,7 @@ async function connect() {
 const CHECK = `(() => {
   const W = innerWidth, out = { docW: document.documentElement.scrollWidth, problems: [] };
   if (out.docW > W) out.problems.push('page scrolls sideways: ' + out.docW + 'px');
-  const root = document.querySelector('.guide') || document.querySelector('.pause:not([hidden])') || document.querySelector('.screen.is-active');
+  const root = document.querySelector('.guide') || document.querySelector('.eyecal:not([hidden])') || document.querySelector('.pause:not([hidden])') || document.querySelector('.screen.is-active');
   const desc = (el) => (el.id ? '#' + el.id : el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '')) + (el.textContent.trim() ? ' "' + el.textContent.trim().slice(0, 30) + '"' : '');
   const seen = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && !el.closest('[hidden]'); };
   for (const el of root.querySelectorAll('*')) {
@@ -95,6 +97,7 @@ const STEP = (steps) => `(async () => {
     if (op === 'scrollEnd') { scrollTo(0, document.documentElement.scrollHeight); await wait(200); }
     if (op === 'scrollTo') { document.querySelector(a).scrollIntoView({ block: 'center' }); await wait(200); }
     if (op === 'eval') (0, eval)(a);
+    if (op === 'until') { const t = Date.now(); while (!(0, eval)(a)) { if (Date.now() - t > (b ?? 8000)) throw new Error('timeout until ' + a); await wait(50); } }
     if (op === 'hold') { await waitFor(a); const r = document.querySelector(a).getBoundingClientRect(); document.querySelector(a).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, isPrimary: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 })); await wait(b ?? 1300); }
     if (op === 'type') { await waitFor(a); const el = document.querySelector(a); el.value = b; el.dispatchEvent(new Event('input', { bubbles: true })); }
     if (op === 'select') { await waitFor(a); for (let i = 0; i < 40 && ![...document.querySelector(a).options].some((o) => o.value === b); i++) await wait(100); const el = document.querySelector(a); el.value = b; el.dispatchEvent(new Event('change', { bubbles: true })); await wait(400); }
@@ -130,7 +133,7 @@ async function shoot(shot, size, theme) {
     const c = await s('Runtime.evaluate', { expression: CHECK, returnByValue: true });
     const miss = [];
     for (const want of shot.expect ?? []) {
-      const ok = await s('Runtime.evaluate', { returnByValue: true, expression: /^[#.[]/.test(want)
+      const ok = await s('Runtime.evaluate', { returnByValue: true, expression: want.startsWith('js:') ? `!!(${want.slice(3)})` : /^[#.[]/.test(want)
         ? `!!document.querySelector(${JSON.stringify(want)})` : `document.body.innerText.toLowerCase().includes(${JSON.stringify(want.toLowerCase())})` });
       if (!ok.result.value) miss.push(want);
     }

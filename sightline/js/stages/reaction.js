@@ -14,7 +14,8 @@
 // Low contrast (Settings): cues that carry a color (trial.fg) fade toward the
 // background, fainter as the level rises, never below the visible floor.
 
-import { howTo, countdown, mini, practiceLeft, backdrop, tapGuard } from './common.js';
+import { howTo, countdown, mini, practiceLeft, backdrop, tapGuard, animate } from './common.js';
+import { settled, sideOf, ZONES } from '../eye/math.js';
 import { cueById } from '../lib/colors.js';
 import { cues } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
@@ -54,6 +55,7 @@ export function finishing(leftMs, windowMs, hard) {
 // Also used by the brain drills. Spec fields:
 //   kicker?, title, rule, strip, demo, practice (count)
 //   pad: 'colors' | 'oddeven' | 'plain' | 'anywhere'
+//   eye? { drill, title }: Eye Check (beta) can run during this drill (js/eye/)
 //   choices [{ id, html }] for 'plain' pads (neutral buttons)
 //   tapWindow (ms), fbMs?
 //   next({ hard, practice, easy, level }) -> trial   (easy: the simplest cue, for the finish)
@@ -67,7 +69,35 @@ export function finishing(leftMs, windowMs, hard) {
 
 export async function runDrill(ctx, spec) {
   await howTo(ctx, { kicker: spec.kicker ?? 'Challenge', title: spec.title, rule: spec.rule, demo: spec.demo });
-  return runTap(ctx, spec);
+  const eye = spec.eye ? ((await ctx.session.eye?.open(ctx, spec.eye)) ?? null) : null;
+  try {
+    return await runTap(ctx, spec, eye);
+  } finally {
+    eye?.close();   // camera off the moment the drill ends
+  }
+}
+
+// Eye Check during Peripheral Flash: when the eyes leave the center dot, the
+// dot turns red and pulses slowly, and the screen edge they glanced toward
+// glows softly. Both fade in and out, and change at most about 2.5 times a
+// second (never a flash). Feedback only: taps are scored exactly the same.
+function centerWatch(eye, root, cueBox, now) {
+  const edge = document.createElement('div');
+  edge.className = 'rx__edge';
+  edge.setAttribute('aria-hidden', 'true');
+  root.appendChild(edge);
+  const away = settled();
+  let center = null;
+  const stop = animate(now, (t) => {
+    if (!root.isConnected) return stop();
+    center ??= eye.at(cueBox);
+    eye.expect(center);
+    const side = sideOf(eye.gaze(), center, ZONES.center, innerHeight / innerWidth);
+    const off = away(t, !!side);
+    if (off && side && root.dataset.eyes !== 'away') edge.dataset.side = side;
+    root.dataset.eyes = off ? 'away' : '';
+  });
+  return stop;
 }
 
 function padButtons(spec) {
@@ -81,7 +111,7 @@ function padButtons(spec) {
   return '';
 }
 
-async function runTap(ctx, spec) {
+async function runTap(ctx, spec, eye = null) {
   const { el, settings, session, step, sleep, now, remaining, hold } = ctx;
   const hard = settings.difficulty === 'hard';
   const level = session.content.level(step.id);
@@ -105,6 +135,7 @@ async function runTap(ctx, spec) {
   const pad = root.querySelector('.pad');
   const low = session.content.lowContrast;
   const cueBg = low ? backdrop(cueBox) : null;
+  if (eye && spec.eye.drill === 'peripheral') centerWatch(eye, root, cueBox, now);
 
   // One listener; the current trial (if any) picks up the tap.
   let onTap = null;
@@ -129,6 +160,8 @@ async function runTap(ctx, spec) {
     cueBox.style.setProperty('--cue-strength', String(strength));
     cueBox.innerHTML = trial.html;
     root.dataset.cue = trial.kind ?? '';
+    const flash = eye && cueBox.querySelector('.flash:not(.flash--lure)');
+    if (flash) eye.mark(eye.at(flash));
     if (trial.flashMs) {
       const flashed = [...cueBox.querySelectorAll('.flash')];
       sleep(trial.flashMs).then(() => flashed.forEach((n) => n.remove()), () => {});
@@ -344,6 +377,7 @@ export const peripheral = {
       strip: 'EYES ON THE DOT · TAP THE FLASH COLOR',
       pad: 'colors',
       tapWindow: 1500,
+      eye: { drill: 'peripheral', title: 'Peripheral Flash' },
       demo: {
         pad: 'colors',
         frames: [

@@ -70,6 +70,40 @@ twice, and so is a tap in the first 150 ms after a cue appears (it was on its wa
 When a Game Day preset finishes, the summary offers **Next: Move** (Game Speed): set the phone
 down and the countdown gives time to get to the start.
 
+**Eye Check (beta)** (`js/eye/`; preview switch `eyeCheck`; Settings → Eye Check, off by
+default): the front camera estimates where the eyes look during Quiet Eye, Peripheral Flash,
+Saccade Jumps and Smooth Pursuit. Never in MOVE or Gaze Stabilization.
+
+- **How**: MediaPipe Face Landmarker (iris landmarks, eye blendshapes, head pose) runs on the
+  phone from `vendor/mediapipe/` (served by Sightline, saved on first use). A 10-second,
+  five-dot calibration (center and corners) fits a small model from those to the screen
+  (`js/eye/math.js`); live tips first (face in view, light, phone at arm's length,
+  sunglasses). The gaze is smoothed heavily (One Euro filter) and treated as a general
+  direction: left / center / right, a rough 3 × 3 grid at best. Nothing measures eye-jump
+  speed or eye reaction time (the camera runs about 30 frames a second, 15 on older phones).
+- **During drills, indirect feedback only** (no cursor): the Quiet Eye ring fills only while
+  the eyes are steady on the target and resets if they move, and the symbol waits for it (in
+  held time, so the number of targets and the score don't change); in Peripheral Flash the
+  center dot turns red and pulses slowly and the edge they glanced toward lights up; in
+  Smooth Pursuit the dot dims when the eyes fall behind; in Saccade Jumps a small check shows
+  when the eyes moved toward the number. Every change fades and happens at most about 2.5
+  times a second.
+- **Live view, calibration only**: "See your gaze" shows a large soft circle that follows the
+  estimate, with the estimated accuracy and "Looks off? Recalibrate". Recalibrate is also on
+  the pause screen during an eye drill, and it runs again on its own before the next eye
+  drill if the estimate drifted from where the drill says the eyes should be.
+- **After**: the summary shows, per drill, a 15-second replay (play / pause, 0.5×) with a soft
+  trail over where the targets were, a heat map, simple stats ("Eyes centered 91%",
+  "On track 78%", "Quiet Eye: 2.6 s average", "Moved toward the target 9 of 12") and one tip.
+- **Rules**: "estimated" everywhere, no medical or vision claims; eye data never reaches the
+  scorer or the leaderboard; if the picture gets unreliable, eye features pause quietly
+  ("Eye tracking paused") and the drill carries on; the camera is on only during an eye
+  drill, with an indicator, and off the moment it ends; nothing is recorded, saved or sent
+  (a 16 × 12 brightness reading is the only pixel access), and the summary's numbers are
+  dropped when it closes; tracking slows on older phones and stops if the phone runs slow.
+- Testing without a face: `?eyesim=1` (a pretend face that looks where it should), `low`
+  (it drops out every other 2.5 s) or `away` (it looks at the right edge).
+
 ## MOVE
 
 The MOVE screen shows the cones every preset uses (the Custom setup's cones and distances, as
@@ -250,7 +284,8 @@ exports, imports, styles, icons and screens). Vercel runs them before every depl
 (`vercel.json`), so a failing test stops the build and nothing goes live.
 
 Screen checks (every screen at iPhone SE and Pro Max sizes, light, dark and outdoor, with
-layout problems listed) live outside the app in `../tools/screens/`; see its README.
+layout problems listed) live outside the app in `../tools/screens/`; see its README. The `eye`
+set runs Eye Check with Chrome's fake camera, the real face tracker and `?eyesim`.
 
 ## Logo files
 
@@ -284,6 +319,8 @@ If the designer provides the original vector files, replace these and regenerate
 | `js/migrate.js` | Upgrades data saved by older versions |
 | `js/lib/colors.js` | The 4 FOCUS cue colors and their shapes |
 | `js/lib/audio.js` | Tones, speech and vibration; the silent switch and call interruptions |
+| `js/eye/` | Eye Check (beta): `math.js` (calibration, smoothing, feedback, stats), `index.js` (camera and tracking), `ui.js` (screens and summary), `sim.js` (`?eyesim`) |
+| `vendor/mediapipe/` | The face tracker for Eye Check (see its README) |
 
 ## Testing shortcuts (add to the URL)
 
