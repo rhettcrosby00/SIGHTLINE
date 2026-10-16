@@ -4,7 +4,7 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { test, assert } from './harness.js';
-import { BRAND } from '../js/brand.js';
+import { BRAND, logo, LOGO_DIR, LOGO_SIZE } from '../js/brand.js';
 import { renameSavedData, OLD_PREFIX, PREFIX } from '../js/migrate.js';
 
 const root = new URL('../', import.meta.url);
@@ -23,7 +23,7 @@ test('Name and tagline: one source (js/brand.js), and the page and home-screen a
   assert(meta('property', 'og:title') === BRAND.name && meta('property', 'og:site_name') === BRAND.name && meta('name', 'twitter:title') === BRAND.name, 'link previews');
   assert(new RegExp(`id="brand-tagline"[^>]*>${BRAND.tagline.replace('.', '\\.')}<`).test(html), 'the tagline is on the home screen even before the app starts');
   assert(/\$\('brand-tagline'\)\.textContent = BRAND\.tagline/.test(read('js/main.js')), 'and the home screen reads it from js/brand.js');
-  assert(/aria-label="Sightrep">Sight<span>rep<\/span>/.test(html), 'the wordmark says Sightrep');
+  assert(/<h1 id="app-title" class="home__logo" data-logo="horizontal" aria-label="Sightrep">/.test(html), 'home: the full logo, named Sightrep');
 });
 
 // Everything Vercel serves from the app folder, except the face tracker's binaries.
@@ -111,4 +111,101 @@ test('Saved phone data survives the rename: settings, routines, levels, setups a
     const keys = [...read(f).matchAll(/'(sight\w+)\.[\w.]+'/g)].map((m) => m[1]);
     assert(keys.every((k) => k === 'sightrep'), `${f} saves under ${keys}`);
   }
+});
+
+// ---- Part 2: the logo --------------------------------------------------------
+const png = (p) => { const b = readFileSync(new URL(p, root)); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+const exists = (p) => { try { statSync(new URL(p, root)); return true; } catch { return false; } };
+
+test('Logo files: every lockup in dark, light (Light B), one-color white and black, plus the tab reticle', () => {
+  assert(LOGO_DIR === 'assets/logo', 'one folder');
+  for (const kind of ['icon', 'wordmark', 'horizontal', 'stacked']) {
+    for (const suffix of ['', '-light', '-white', '-black']) {
+      const f = `${LOGO_DIR}/logo-${kind}${suffix}.svg`;
+      assert(exists(f), `${f} missing`);
+      const src = read(f);
+      const colors = new Set([...src.matchAll(/fill="(#[0-9A-F]{6})"/gi)].map((m) => m[1].toUpperCase()));
+      const want = { '': ['#B7FF00', '#FFFFFF'], '-light': ['#3F5C00', '#050505'], '-white': ['#FFFFFF'], '-black': ['#050505'] }[suffix];
+      assert([...colors].sort().join() === want.sort().join(), `${f}: colors ${[...colors]}`);
+      assert(/<title>Sightrep logo<\/title>/.test(src) && /aria-label="Sightrep logo"/.test(src), `${f} label`);
+      if (LOGO_SIZE[kind]) {
+        const [w, h] = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(src).slice(1).map(Number);
+        assert(Math.round(w) === LOGO_SIZE[kind][0] && Math.round(h) === LOGO_SIZE[kind][1], `${f}: ${w}×${h} vs LOGO_SIZE`);
+      }
+    }
+  }
+  for (const f of ['logo-reticle.svg', 'logo-reticle-light.svg']) assert(exists(`${LOGO_DIR}/${f}`), f);
+  assert(read(`${LOGO_DIR}/logo-reticle.svg`).length < read(`${LOGO_DIR}/logo-icon.svg`).length, 'the reticle leaves out the SR');
+  assert(!readdirSync(new URL(LOGO_DIR + '/', root)).some((f) => /logo-mark|sightline|brand-sheet/i.test(f)), 'old Sightline logo files are gone');
+  assert(!/logo-mark/.test(html + read('sw.js') + read('js/stages/summary.js')), 'and nothing points at them');
+});
+
+test('One logo component: dark and light versions, alt "Sightrep logo", used on every screen', () => {
+  const h = logo('horizontal', { cls: 'x' });
+  assert(h.includes(`src="${LOGO_DIR}/logo-horizontal.svg"`) && h.includes(`src="${LOGO_DIR}/logo-horizontal-light.svg"`), 'both versions');
+  assert(/class="logo logo--horizontal on-dark x"/.test(h) && /class="logo logo--horizontal on-light x"/.test(h), 'the theme picks one');
+  assert((h.match(/alt="Sightrep logo"/g) ?? []).length === 2, 'alt text');
+  assert(/data-logo="horizontal"/.test(html) && /data-logo="stacked"/.test(html), 'home (full logo) and About (stacked, smaller)');
+  assert(/logo\('icon', \{ cls: 'sum__logo' \}\)/.test(read('js/stages/summary.js')), 'summary: small icon');
+  assert(/logo\('icon', \{ cls: 'lb-title__logo' \}\)/.test(read('js/score/ui.js')), 'leaderboard header: small icon');
+  assert(/<img class="splash__logo on-dark" src="assets\/logo\/logo-stacked\.svg" alt="Sightrep logo"/.test(html)
+    && /<img class="splash__logo on-light" src="assets\/logo\/logo-stacked-light\.svg" alt="Sightrep logo"/.test(html), 'splash: the stacked logo');
+  for (const m of html.matchAll(/<img [^>]*src="assets\/logo\/[^"]+"[^>]*>/g)) assert(/alt="Sightrep logo"/.test(m[0]), `alt text: ${m[0]}`);
+});
+
+test('App icons, favicon, share picture and iPhone launch pictures show Sightrep at the right sizes', () => {
+  const icons = Object.fromEntries(manifest.icons.map((i) => [i.src, i]));
+  assert(icons['icons/icon-192.png'] && icons['icons/icon-512.png'] && icons['icons/icon-maskable-512.png']?.purpose === 'maskable', 'manifest icons');
+  for (const [f, size] of [['icons/icon-192.png', 192], ['icons/icon-512.png', 512], ['icons/icon-maskable-512.png', 512],
+    ['icons/apple-touch-icon.png', 180], ['icons/favicon-32.png', 32], ['icons/favicon-16.png', 16]]) {
+    assert(png(f).join() === `${size},${size}`, `${f} is ${png(f)}`);
+  }
+  assert(/<link rel="icon" href="icons\/icon\.svg" type="image\/svg\+xml">/.test(html) && /favicon-32\.png" sizes="32x32"/.test(html)
+    && /favicon-16\.png" sizes="16x16"/.test(html) && /rel="apple-touch-icon" href="icons\/apple-touch-icon\.png"/.test(html), 'favicon and Apple icon links');
+  assert(/<title>Sightrep logo<\/title>/.test(read('icons/icon.svg')), 'the tab icon is labeled');
+  assert(png('assets/share.png').join() === '1200,630' && meta('property', 'og:image') === 'assets/share.png'
+    && meta('name', 'twitter:card') === 'summary_large_image', 'share picture');
+  const sizes = JSON.parse(read('splash/sizes.json'));
+  assert(sizes.length >= 8, 'iPhone screen sizes');
+  for (const s of sizes) {
+    assert(png(s.file).join() === `${s.width * s.ratio},${s.height * s.ratio}`, `${s.file} size`);
+    assert(html.includes(`href="${s.file}" media="(device-width: ${s.width}px) and (device-height: ${s.height}px) and (-webkit-device-pixel-ratio: ${s.ratio}) and (orientation: portrait)"`), `${s.file} link`);
+  }
+});
+
+// The maskable icon must keep everything inside the middle 80% circle (phones crop the rest).
+test('The maskable app icon isn’t clipped on rounded phone icons', async () => {
+  const { inflateSync } = await import('node:zlib');
+  const b = readFileSync(new URL('icons/icon-maskable-512.png', root));
+  // Decode the PNG (8-bit RGB, no interlace), enough to find the logo's farthest pixel from the center.
+  let off = 8; const idat = [];
+  let w = 0, h = 0, type = 0;
+  while (off < b.length) {
+    const len = b.readUInt32BE(off); const kind = b.toString('ascii', off + 4, off + 8);
+    if (kind === 'IHDR') { w = b.readUInt32BE(off + 8); h = b.readUInt32BE(off + 12); type = b[off + 17]; }
+    if (kind === 'IDAT') idat.push(b.subarray(off + 8, off + 8 + len));
+    off += 12 + len;
+  }
+  const bpp = type === 6 ? 4 : 3;
+  const raw = inflateSync(Buffer.concat(idat));
+  const stride = w * bpp;
+  const px = Buffer.alloc(h * stride);
+  for (let y = 0; y < h; y++) {
+    const f = raw[y * (stride + 1)];
+    for (let x = 0; x < stride; x++) {
+      const cur = raw[y * (stride + 1) + 1 + x];
+      const a = x >= bpp ? px[y * stride + x - bpp] : 0;
+      const up = y ? px[(y - 1) * stride + x] : 0;
+      const ul = y && x >= bpp ? px[(y - 1) * stride + x - bpp] : 0;
+      const p = a + up - ul; const pa = Math.abs(p - a), pb = Math.abs(p - up), pc = Math.abs(p - ul);
+      const pred = [0, a, up, (a + up) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? up : ul][f];
+      px[y * stride + x] = (cur + pred) & 255;
+    }
+  }
+  let far = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * stride + x * bpp;
+    if (Math.max(px[i], px[i + 1], px[i + 2]) > 60) far = Math.max(far, Math.hypot(x - w / 2, y - h / 2));
+  }
+  assert(far > w * 0.2 && far <= w * 0.4, `the logo reaches ${(far / w * 100).toFixed(0)}% from the center (safe: 40%)`);
 });

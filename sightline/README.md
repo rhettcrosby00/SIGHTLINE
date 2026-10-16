@@ -296,16 +296,29 @@ set runs Eye Check with Chrome's fake camera, the real face tracker and `?eyesim
 
 The name and tagline live in `js/brand.js` (`BRAND`); `index.html` and `manifest.webmanifest`
 repeat them for link previews and the home-screen icon, and `tests/brand.js` checks they agree.
-Until the Sightrep logo files arrive, the wordmark is text (`.wordmark`), and `assets/logo/`
-holds only the old mark (`logo-mark`, `-mono-dark` for light backgrounds), still used in About,
-the summary and the app icons. Saved data moved from `sightline.*` to `sightrep.*` keys in v5.0
-(`renameSavedData` in `js/migrate.js`).
+
+The logo (traced from the brand board, approved 2026-10-16) is one component, `logo()` in
+`js/brand.js`, used on Home (full logo), About (stacked), the summary and the leaderboard
+(icon); the splash in `index.html` uses the same files. Every logo shows the dark version on dark
+screens and the light one (black + deep lime #3F5C00) on light and outdoor. All files are made
+from two masters by `tools/brand/make.py` (run `python3 tools/brand/make.py` from the repo root),
+so swapping the logo is one change: replace the masters and run it.
+
+- `assets/logo/logo-icon.svg`, `logo-wordmark.svg`: the masters (lime #B7FF00 and white)
+- `logo-{icon,wordmark,horizontal,stacked}{,-light,-white,-black}.svg`: every version
+- `logo-reticle(-light).svg`: the browser tab icon (no SR: it's unreadable at 16–32 px)
+- `icons/`: app icons 192 / 512 / maskable 512 (inside the safe circle), Apple 180, favicon SVG + 32 / 16
+- `assets/share.png`: link previews (1200 × 630, logo + tagline)
+- `splash/`: iPhone launch pictures, one per screen size (linked in `index.html`)
+
+Saved data moved from `sightline.*` to `sightrep.*` keys in v5.0 (`renameSavedData` in `js/migrate.js`).
 
 ## Where things live
 
 | File | What it does |
 |---|---|
 | `js/main.js` | Home (two sides, Run last), Settings, About, offline support |
+| `js/brand.js` | The name, the tagline and the logo component |
 | `js/presets.js` | Quick / Standard / Game Speed, Run last keys, the Game Day / Training switch |
 | `js/guide.js`, `js/install.js` | First-run setup and How it works; the Add to Home Screen card |
 | `js/focus.js` | The FOCUS screen (readiness, presets, Advanced) and session flow |

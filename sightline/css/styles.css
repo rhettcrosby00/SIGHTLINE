@@ -86,10 +86,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 /* ---------- Home ---------- */
 .home__top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
 /* The wordmark, as text until the Sightrep logo files arrive: "rep" in the accent. */
-.wordmark { font-family: var(--font-display); font-variation-settings: var(--wdth-wide); font-weight: 900; text-transform: uppercase; letter-spacing: 0.01em; line-height: 1; color: var(--text); }
-.wordmark span { color: var(--accent-text); }
-.home__brand { display: grid; gap: 4px; padding-top: var(--space-1); }
-.home__word { font-size: 1.625rem; }
+.home__brand { display: grid; gap: 6px; padding-top: var(--space-1); }
+.home__logo .logo { height: 34px; width: auto; }
 .home__tagline { color: var(--muted); font-size: 0.9375rem; font-weight: 600; }
 .home__nav { display: flex; margin-right: calc(-1 * var(--space-2)); }
 .banner__btn {
@@ -194,7 +192,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .list__row--button .icon { color: var(--muted); }
 
 .about { display: grid; gap: var(--space-5); }
-.about__logo { width: 64px; height: auto; }
+.about__logo .logo { width: 150px; height: auto; }
 .about__lead { font-size: var(--text-title); line-height: 1.3; font-weight: 600; max-width: 30ch; }
 .about__text { color: var(--muted); max-width: 60ch; }
 .about__text b { color: var(--text); font-weight: 600; }
@@ -256,7 +254,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .head__value { margin-top: var(--space-1); font-weight: 700; font-size: var(--text-title); line-height: 1.15; }
 .head__value small { color: var(--muted); font-size: var(--text-caption); font-weight: 600; text-transform: uppercase; }
 .sum__top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.sum__logo { width: 32px; height: auto; }
+.sum__logo { width: 34px; height: auto; }
+.lb-nav { position: relative; }
+.lb-title__logo { position: absolute; right: 0; top: 6px; width: 34px; height: auto; }
 
 /* ---------- First-run guide (bottom sheet) ---------- */
 .guide { position: fixed; inset: 0; z-index: 10; display: grid; align-items: end; background: var(--scrim); }

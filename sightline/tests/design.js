@@ -102,7 +102,9 @@ function walk(dir) {
 const assets = [...swJs.matchAll(/^\s+'\.\/([^']*)',$/gm)].map((m) => m[1]);
 
 test('offline list has every app file, and every listed file exists', () => {
-  const needed = [...walk('js'), ...walk('css'), ...walk('icons'), ...walk('assets/logo').filter((f) => f.endsWith('.svg'))];
+  // Logo files: the ones the app shows (the rest of assets/logo/ is the brand kit, not needed offline).
+  const shown = walk('assets/logo').filter((f) => f.endsWith('.svg') && (indexHtml.includes(f) || /logo-(icon|horizontal|stacked)(-light)?\.svg$/.test(f)));
+  const needed = [...walk('js'), ...walk('css'), ...walk('icons'), ...shown];
   const missing = needed.filter((f) => !assets.includes(f));
   const gone = assets.filter((f) => f && !existsSync(new URL(f, root)));
   assert(missing.length === 0, `not in sw.js ASSETS: ${missing.join(', ')}`);

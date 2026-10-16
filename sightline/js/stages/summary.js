@@ -7,11 +7,11 @@
 // and time, plus a row per drill.
 
 import { esc } from '../lib/text.js';
+import { logo } from '../brand.js';
 import { STATE_LABELS } from './readiness.js';
 
-// Small logo mark for result screens (white+lime on dark, black on light/outdoor).
-export const SUM_LOGO = `<img class="sum__logo on-dark" src="assets/logo/logo-mark.svg" alt="Sightrep logo" width="272" height="242">
-  <img class="sum__logo on-light" src="assets/logo/logo-mark-mono-dark.svg" alt="Sightrep logo" width="272" height="242">`;
+// The small logo for result screens (js/brand.js: the dark version on dark, the light one on light and outdoor).
+export const SUM_LOGO = logo('icon', { cls: 'sum__logo' });
 
 const DONE = '<span class="row__val--done">Done</span>';
 const REACTION_DRILLS = new Set(['colorcall', 'gonogo', 'stroop', 'peripheral', 'capture']);

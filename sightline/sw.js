@@ -99,13 +99,18 @@ const ASSETS = [
   './js/cone/cues/number.js',
   './js/cone/cues/sport.js',
   './icons/apple-touch-icon.png',
+  './icons/favicon-16.png',
   './icons/favicon-32.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
   './icons/icon.svg',
-  './assets/logo/logo-mark-mono-dark.svg',
-  './assets/logo/logo-mark.svg',
+  './assets/logo/logo-horizontal.svg',
+  './assets/logo/logo-horizontal-light.svg',
+  './assets/logo/logo-icon.svg',
+  './assets/logo/logo-icon-light.svg',
+  './assets/logo/logo-stacked.svg',
+  './assets/logo/logo-stacked-light.svg',
 ];
 
 self.addEventListener('install', (e) => {

@@ -18,7 +18,7 @@ import { initLeaderboard } from './score/ui.js';
 import { initRoutineBuilder } from './myroutine-ui.js';
 import { initInstall } from './install.js';
 import { parseRunKey } from './presets.js';
-import { BRAND } from './brand.js';
+import { BRAND, hydrateLogos } from './brand.js';
 
 // Sightline is now Sightrep: move this phone's saved data to the new keys
 // before anything below reads it.
@@ -48,6 +48,7 @@ function show(name, { back = false } = {}) {
 }
 
 hydrateIcons();
+hydrateLogos();   // home and About (js/brand.js)
 $('brand-tagline').textContent = BRAND.tagline;   // one place to change it: js/brand.js
 
 // Dev aids: ?speed=20 fast-forwards; ?autostart=1 starts Game Ready (or

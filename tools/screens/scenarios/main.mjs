@@ -21,7 +21,7 @@ export const SHOTS = [
     expect: ['Run last', 'Standard · 8 min', 'js:document.documentElement.dataset.appearance === JSON.parse(localStorage.getItem("sightrep.settings.v1")).appearance', 'js:JSON.parse(localStorage.getItem("sightrep.name.v1")) === "Jordan"',
       'js:JSON.parse(localStorage.getItem("sightrep.settings.v1")).cue === "EYES UP"', 'js:!Object.keys(localStorage).some((k) => k.startsWith("sightline."))'], combos: 'few' },
   // The splash (put back from index.html after the app has started, to see it).
-  { name: 'splash', steps: [['eval', "fetch('index.html').then((r) => r.text()).then((t) => document.body.insertAdjacentHTML('afterbegin', /<div id=\"splash\"[\\s\\S]*?<\\/div>/.exec(t)[0]))"], ['wait', 600]], expect: ['#splash .wordmark'], combos: 'few' },
+  { name: 'splash', steps: [['eval', "fetch('index.html').then((r) => r.text()).then((t) => document.body.insertAdjacentHTML('afterbegin', /<div id=\"splash\"[\\s\\S]*?<\\/div>/.exec(t)[0]))"], ['wait', 600]], expect: ['#splash .splash__logo'] },
   { name: 'home-last', last: LAST, expect: ['Run last', 'Standard · 8 min', 'Game Speed · 5 min', '#btn-focus-open[hidden]'] },
   { name: 'home-last-long', last: { focus: 'training:speed', move: 'training:speed' }, expect: ['Game Speed · Training · 15 min'], combos: 'few' },
   // Each side: Game Day / Training, presets, Advanced.

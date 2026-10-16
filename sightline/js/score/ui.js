@@ -10,6 +10,7 @@ import { cleanName, nameKey, nameProblem, similarNames } from './names.js';
 import { icon } from '../lib/icons.js';
 import { buzz } from '../lib/audio.js';
 import { esc } from '../lib/text.js';
+import { logo } from '../brand.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Number(n).toLocaleString('en-US');
@@ -246,8 +247,9 @@ export function initLeaderboard({ show, getSettings }) {
     const backTo = { start: 'Home', name: 'Back', done: 'Back', 'cone-done': 'Back' }[view.from] ?? 'Back';
     $('screen-board').dataset.side = side;
     boardEl.innerHTML = `
-      <header class="nav">
+      <header class="nav lb-nav">
         <button type="button" class="nav__back" data-act="back">${icon('chevron-left', { size: 22 })}${backTo}</button>
+        ${logo('icon', { cls: 'lb-title__logo' })}
         <h2 class="nav__title">Leaderboard</h2>
       </header>
       <div class="seg seg--fill" role="radiogroup" aria-label="Side">
