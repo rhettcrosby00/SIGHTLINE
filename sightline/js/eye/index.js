@@ -1,7 +1,7 @@
 // Eye Check (beta): estimates where the athlete's eyes are looking, with the
 // front camera, during four FOCUS drills (Quiet Eye, Peripheral Flash, Saccade
 // Jumps, Smooth Pursuit). Never MOVE, never Gaze Stabilization. Opt-in
-// (Settings), behind the `eyeCheck` preview switch.
+// (Settings → Eye Check, off by default).
 //
 // Privacy: frames go straight from the camera into MediaPipe Face Landmarker
 // (vendor/mediapipe/, served by Sightline itself) on the phone. No video or

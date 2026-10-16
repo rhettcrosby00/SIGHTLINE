@@ -24,7 +24,6 @@ import { createRoutineStore, routineSeconds } from './myroutine.js';
 import { createRng } from './lib/rng.js';
 import { checkPlan, createCheckLog } from './lib/check.js';
 import { runFocusCheck, showCheckResult } from './stages/focuscheck.js';
-import { isOn } from './features.js';
 import { createEyeCheck } from './eye/index.js';
 import { simulatedEye } from './eye/sim.js';
 import { renderEyeSummary } from './eye/ui.js';
@@ -207,7 +206,7 @@ export function initFocus({
     const steps = buildRoutine(session).filter((s) => !dev.only || dev.only.includes(s.id));
     session.scorer = createFocusScorer();   // leaderboard points, cue by cue
     // Eye Check (beta): opt-in. Its estimates stay in memory for this summary only, and never reach the scorer.
-    session.eye = isOn('eyeCheck') && settings.eyeCheck === 'on' ? createEyeCheck(dev.eyeSim ? simulatedEye(dev.eyeSim) : {}) : null;
+    session.eye = settings.eyeCheck === 'on' ? createEyeCheck(dev.eyeSim ? simulatedEye(dev.eyeSim) : {}) : null;
 
     $('screen-session').dataset.side = 'focus';
     show('session');

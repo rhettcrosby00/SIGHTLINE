@@ -14,6 +14,7 @@ import {
 import { createEyeCheck, EYE_DRILLS } from '../js/eye/index.js';
 import { DOTS, DOT_MS } from '../js/eye/ui.js';
 import { FEATURES } from '../js/features.js';
+import { DEFAULTS, GROUPS } from '../js/settings.js';
 import { createRng } from '../js/lib/rng.js';
 
 const root = new URL('../', import.meta.url);
@@ -30,8 +31,8 @@ const look = ([x, y], n = 0.02) => ({
 });
 const calSamples = (n = 0.02) => DOTS.flatMap((t) => Array.from({ length: 30 }, () => ({ f: look(t, n), t })));
 
-test('Eye Check: off live until approved; four FOCUS drills only (never MOVE or Gaze Stabilization)', () => {
-  assert(FEATURES.eyeCheck === 'preview', 'a preview switch');
+test('Eye Check: opt-in (off by default); four FOCUS drills only (never MOVE or Gaze Stabilization)', () => {
+  assert(!('eyeCheck' in FEATURES) && DEFAULTS.eyeCheck === 'off' && GROUPS.flatMap((g) => g.fields).some((f) => f.key === 'eyeCheck' && !f.flag), 'approved: an opt-in setting, no switch');
   assert(EYE_DRILLS.join() === 'quieteye,peripheral,saccades,pursuit', EYE_DRILLS.join());
   for (const f of [...readdirSync(new URL('js/cone/', root)).map((x) => `js/cone/${x}`).filter((x) => x.endsWith('.js'))]) {
     assert(!/eye\/|session\.eye/.test(read(f)), `${f} uses Eye Check`);

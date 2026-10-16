@@ -70,8 +70,7 @@ twice, and so is a tap in the first 150 ms after a cue appears (it was on its wa
 When a Game Day preset finishes, the summary offers **Next: Move** (Game Speed): set the phone
 down and the countdown gives time to get to the start.
 
-**Eye Check (beta)** (`js/eye/`; preview switch `eyeCheck`; Settings → Eye Check, off by
-default): the front camera estimates where the eyes look during Quiet Eye, Peripheral Flash,
+**Eye Check (beta)** (`js/eye/`; Settings → Eye Check, opt-in and off by default): the front camera estimates where the eyes look during Quiet Eye, Peripheral Flash,
 Saccade Jumps and Smooth Pursuit. Never in MOVE or Gaze Stabilization.
 
 - **How**: MediaPipe Face Landmarker (iris landmarks, eye blendshapes, head pose) runs on the
