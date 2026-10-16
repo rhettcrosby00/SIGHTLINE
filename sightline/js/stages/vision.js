@@ -51,7 +51,7 @@ export const nearFar = {
     await howTo(ctx, {
       kicker: KICKER,
       title: 'Near-Far Focus',
-      rule: 'Hold the phone at arm’s length and pick a spot 10+ feet away, like a sign or a door. On FAR, look at your spot. At the beep, look back: a small letter shows for a moment. Tap the one you saw. Stop if you feel dizzy.',
+      rule: 'Hold the phone at arm’s length and pick a spot 10+ feet away, like a sign or a door. On FAR, look at your spot. At the beep, look back: a small letter shows for a moment. Tap the one you saw.',
       demo: { html: `<div class="mini"><div class="mini__phone mini__phone--eyes mini__phone--nf"><b class="mini__far">FAR</b><b class="mini__near">K</b></div>
         <p class="mini__cap">Look far → back → tap the letter</p></div>` },
     });
@@ -62,7 +62,6 @@ export const nearFar = {
         <div class="rx__cue">
           <p class="nf__far" hidden>${icon('arrow-up', { size: 36 })}<b>FAR</b><span>Look at your spot</span></p>
           <b class="nf__letter" hidden></b>
-          <p class="nf__note">Stop if you feel dizzy.</p>
         </div>
         <div class="rx__fb" aria-live="polite"></div>
         <div class="pad pad--plain" role="group" aria-label="Which letter?"></div>

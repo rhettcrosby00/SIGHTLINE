@@ -21,6 +21,7 @@ import { unlock as unlockAudio, buzz } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
 import { SUM_LOGO } from '../stages/summary.js';
 import { initPartner } from './partner.js';
+import { SAFETY } from '../content/safety.js';
 import { moveScore, moveMultiplier, SCORING } from '../score/scoring.js';
 
 const $ = (id) => document.getElementById(id);
@@ -129,7 +130,10 @@ export function initMove({
       </header>
       ${dayToggle(day)}
       <p class="side-note">${dayNote(day, week())}</p>
-      <p class="notice notice--sun">${icon('sun')}<span>Turn brightness all the way up. After you tap, you have ${getSet} s to set the phone down and get to your start.</span></p>
+      <div class="notice notice--sun notice--pair">
+        <p>${icon('sun')}<span>Turn brightness all the way up. After you tap, you have ${getSet} s to set the phone down and get to your start.</span></p>
+        <p>${icon('triangle-alert')}<span>${SAFETY.move}</span></p>
+      </div>
       <section class="presets" aria-label="Start">
         ${PRESETS.map(preset).join('')}
       </section>

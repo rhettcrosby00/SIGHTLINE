@@ -56,7 +56,7 @@ async function connect() {
 const CHECK = `(() => {
   const W = innerWidth, out = { docW: document.documentElement.scrollWidth, problems: [] };
   if (out.docW > W) out.problems.push('page scrolls sideways: ' + out.docW + 'px');
-  const root = document.querySelector('.guide') || document.querySelector('.eyecal:not([hidden])') || document.querySelector('.pause:not([hidden])') || document.querySelector('.screen.is-active');
+  const root = document.querySelector('.waiver-full') || document.querySelector('.guide') || document.querySelector('.eyecal:not([hidden])') || document.querySelector('.pause:not([hidden])') || document.querySelector('.screen.is-active');
   const desc = (el) => (el.id ? '#' + el.id : el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '')) + (el.textContent.trim() ? ' "' + el.textContent.trim().slice(0, 30) + '"' : '');
   const seen = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && !el.closest('[hidden]'); };
   for (const el of root.querySelectorAll('*')) {
@@ -66,7 +66,7 @@ const CHECK = `(() => {
     if (/^(BUTTON|P|SPAN|H2|H3|STRONG|LABEL|OUTPUT|B)$/.test(el.tagName) && !el.matches('.switch') && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).display !== 'inline')
       out.problems.push('text spills ' + el.scrollWidth + '>' + el.clientWidth + ': ' + desc(el));
   }
-  const taps = [...root.querySelectorAll('button, a, input, select, [role=radio], [role=switch]')].filter(seen).filter((el) => !el.matches('.switch'));   // switches have a 48px ::before hit area
+  const taps = [...root.querySelectorAll('button, a, input, select, [role=radio], [role=switch]')].filter(seen).filter((el) => !el.matches('.switch, .waiver__check input'));   // switches and waiver boxes have a 48px ::before hit area
   for (const el of taps) {
     const r = el.getBoundingClientRect();
     if (r.height < 47.5 || r.width < 47.5) out.problems.push('small target ' + Math.round(r.width) + 'x' + Math.round(r.height) + ': ' + desc(el));
@@ -128,7 +128,21 @@ async function shoot(shot, size, theme) {
       if (st.result.value.startsWith('http://localhost:5175') && st.result.value.endsWith('complete')) break;
       await new Promise((res) => setTimeout(res, 100));
     }
-    const r = await s('Runtime.evaluate', { expression: STEP(shot.steps || []), awaitPromise: true, returnByValue: true });
+    const loaded = async () => {
+      for (let i = 0; i < 100; i++) {
+        const st = await s('Runtime.evaluate', { expression: 'document.readyState', returnByValue: true });
+        if (st.result.value === 'complete') return;
+        await new Promise((res) => setTimeout(res, 100));
+      }
+    };
+    let r = await s('Runtime.evaluate', { expression: STEP(shot.steps || []), awaitPromise: true, returnByValue: true });
+    // reopen: close the app and open it again (same phone, saved data kept), then run `after`.
+    if (shot.reopen != null && !r.exceptionDetails) {
+      await s('Page.navigate', { url: `http://localhost:5175/?${shot.reopen}` });
+      await new Promise((res) => setTimeout(res, 300));
+      await loaded();
+      r = await s('Runtime.evaluate', { expression: STEP(shot.after || []), awaitPromise: true, returnByValue: true });
+    }
     const err = r.exceptionDetails?.exception?.description;
     const c = await s('Runtime.evaluate', { expression: CHECK, returnByValue: true });
     const miss = [];

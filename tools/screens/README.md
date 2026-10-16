@@ -20,3 +20,8 @@ Run the servers in their own terminals from the repo root. Shots go to `shots/`,
 to `report-<set>.json` (both git-ignored). Add a scenario set by copying
 `scenarios/main.mjs`; the steps a shot can take are listed at the top of it.
 `LANES=3` runs fewer shots at once on a slower Mac.
+
+Every shot starts with the safety waiver already accepted, so it opens where the app
+normally would. `params: 'waiver=0'` starts on a brand-new phone (the waiver first);
+`waiver=old` pretends only the previous version was accepted (the new one shows).
+`nostorage=1` blocks saved data altogether (the waiver shows every visit).

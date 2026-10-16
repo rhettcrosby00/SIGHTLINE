@@ -4,6 +4,8 @@
 import { cues } from '../lib/audio.js';
 import { cueById } from '../lib/colors.js';
 import { toHex } from '../lib/contrast.js';
+import { icon } from '../lib/icons.js';
+import { drillSafety } from '../content/safety.js';
 
 const BRIEF_MS = 3500;        // Brief: just the rule, briefly
 const CARD_MS = 10000;        // Full: the card starts on its own after this (Ready starts sooner)
@@ -16,8 +18,10 @@ const COUNTDOWN_LEFT_MS = 2600;   // time kept back for the 3-2-1 after the card
 //   Full: rule + looping example; tap Ready, or it starts after ~10 s.
 //   Brief: the rule for 3.5 s.
 // Sets ctx.introEnd: when the instructions (card, practice, 3-2-1) should be done.
+// The drill's safety notes (js/content/safety.js) show under the rule.
 export async function howTo(ctx, { kicker, title, rule, demo }) {
   const { el, sleep, hold, ready, now, step } = ctx;
+  const notes = drillSafety(step?.id, { occlusion: !!ctx.session?.content?.occlusion });
   const full = (step?.guide ?? (ctx.settings.guide === 'brief' ? 'brief' : 'full')) !== 'brief';
   const budget = step?.introMs ?? (full ? 22000 : 6000);
   const cardMs = Math.max(3000, Math.min(full ? CARD_MS : BRIEF_MS, budget - COUNTDOWN_LEFT_MS));
@@ -29,6 +33,7 @@ export async function howTo(ctx, { kicker, title, rule, demo }) {
         <p class="howto__kicker">${kicker}</p>
         <h2 class="howto__title">${title}</h2>
         <p class="howto__rule">${rule}</p>
+        ${notes.map((n) => `<p class="safety-note">${icon('triangle-alert', { size: 16 })}${n}</p>`).join('')}
         ${full && demo ? '<div class="howto__demo" aria-hidden="true"></div>' : ''}
         ${full
           ? `<button type="button" class="btn btn--primary btn--block btn--big btn-ready">Ready</button>

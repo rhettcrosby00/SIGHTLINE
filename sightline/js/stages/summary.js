@@ -9,6 +9,7 @@
 import { esc } from '../lib/text.js';
 import { logo } from '../brand.js';
 import { STATE_LABELS } from './readiness.js';
+import { DISCLAIMER } from '../content/safety.js';
 
 // The small logo for result screens (js/brand.js: the dark version on dark, the light one on light and outdoor).
 export const SUM_LOGO = logo('icon', { cls: 'sum__logo' });
@@ -93,7 +94,7 @@ export function renderSummary(el, { title, results, settings, totalMs, readiness
       <div class="tiles">${tiles}</div>
       ${note ? `<p class="sum__note">${note}</p>` : ''}
       <ul class="sum__rows">${rows}</ul>
-      <p class="sum__foot">Results aren’t saved — each session stands alone. Sightrep is a warm-up, not a medical or diagnostic tool.</p>
+      <p class="sum__foot">Results aren’t saved — each session stands alone. ${DISCLAIMER}</p>
       ${seed != null ? `<p class="sum__seed">Session code ${seed}</p>` : ''}
     </div>`;
 }

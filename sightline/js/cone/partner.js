@@ -15,6 +15,7 @@ import { tone, buzz, unlock } from '../lib/audio.js';
 import { keepAwake, allowSleep } from '../lib/wakelock.js';
 import { icon, DIR_ICON } from '../lib/icons.js';
 import { esc } from '../lib/text.js';
+import { SAFETY } from '../content/safety.js';
 
 const API = 'api/partner';
 export const POLL = { fastMs: 300, slowMs: 800, quietMs: 30_000 };
@@ -79,7 +80,7 @@ export function initPartner(el, { getSetup, onBack }) {
           <span class="hub-row__text"><strong>Send cues from this phone</strong><small>For the coach: tap a cone and it shows on the other phone.</small></span>${icon('chevron-right')}
         </button>
       </div></section>
-      <p class="notice">${icon('triangle-alert')}Use a clear, flat area. Warm up before high-speed cuts.</p>
+      <p class="notice">${icon('triangle-alert')}${SAFETY.move}</p>
       <p class="setting__hint">Both phones need a signal. A cue takes up to about half a second to arrive.</p>`;
   }
 

@@ -18,6 +18,7 @@ import { totalMinutes } from '../js/plan.js';
 import { windowAt } from '../js/stages/reaction.js';
 import { GAP_MS, HARD_GAP } from '../js/content/reaction.js';
 import { PACING } from '../js/plan.js';
+import { drillSafety, SAFETY } from '../js/content/safety.js';
 import { CUES } from '../js/lib/colors.js';
 import { GROUPS, OCCLUSION_WARNING } from '../js/settings.js';
 
@@ -278,6 +279,5 @@ test('Visual skills: exact minutes, never in Game Ready, and safety wording on s
       assert(!game.steps.some((x) => ['nearfar', 'capture', 'span', 'mot'].includes(x.id)), 'Game Ready stays as approved');
     }
   }
-  const vision = read('js/stages/vision.js');
-  assert((vision.match(/Stop if you feel dizzy/g) ?? []).length >= 2, 'Near-Far says "Stop if you feel dizzy." on the how-to and on screen');
+  assert(drillSafety('nearfar').includes(SAFETY.dizzy), 'Near-Far says "Stop if you feel dizzy." (how-to card and drill bar: tests/waiver.js)');
 });
