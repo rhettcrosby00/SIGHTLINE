@@ -18,7 +18,7 @@ import { isOn } from './features.js';
 import { initPreGame, preGameMinutes } from './pregame.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '3.0';
+export const APP_VERSION = '3.1';
 
 const $ = (id) => document.getElementById(id);
 

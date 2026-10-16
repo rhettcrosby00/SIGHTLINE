@@ -2,7 +2,7 @@
 // off on the live site until approved. Set to true to turn on everywhere.
 
 export const FEATURES = {
-  newDrills: 'preview',   // FOCUS: 4-7-8 Breathing, Memory Sequence (Physiological Sigh is approved and on)
+  newDrills: true,        // approved: 4-7-8 Breathing, Memory Sequence (Physiological Sigh was approved earlier)
   leaderboard: true,      // approved: name entry, one shared online board, coach tools
   occlusion: true,        // approved with Training Mode: opt-in Occlusion (the target hides and comes back), Training only
   partner: true,          // approved: MOVE Partner mode (a coach's phone sends the cues; api/partner.js)

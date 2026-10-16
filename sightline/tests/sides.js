@@ -153,9 +153,8 @@ test('Old links and home-screen shortcuts still open the app', () => {
   for (const p of ['autostart', 'only', 'speed', 'autoready', 'seed', 'noguide']) assert(main.includes(`'${p}'`), `?${p} no longer handled`);
 });
 
-test('Feature flag: new FOCUS drills are on in previews, off on the live site', () => {
-  assert(!isOn('newDrills', { host: 'sightline-psi.vercel.app', search: '' }), 'should be off live');
-  assert(isOn('newDrills', { host: 'sightline-git-feature-two-sides-x.vercel.app', search: '' }), 'should be on in previews');
-  assert(isOn('newDrills', { host: 'localhost', search: '' }), 'should be on locally');
-  assert(isOn('newDrills', { host: 'sightline-psi.vercel.app', search: '?newDrills' }), 'live override for testing');
+test('Feature flag: new FOCUS drills are on everywhere (approved)', () => {
+  for (const host of ['sightline-psi.vercel.app', 'sightline-git-feature-x.vercel.app', 'localhost']) {
+    assert(isOn('newDrills', { host, search: '' }), `new drills should be on everywhere (approved), but not on ${host}`);
+  }
 });

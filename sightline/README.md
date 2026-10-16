@@ -6,7 +6,7 @@ A pre-game visual reaction and cognitive warm-up for athletes, in two sides:
 "Game Ready" runs four pillars in 5, 8 or 10 minutes (instructions included, never more):
 
 1. **Regulate**: breathing, matched to the check-in (below). Ready: one rotating pattern (Box
-   Breathing, Cyclic Sigh, Resonance; 4-7-8 behind the `newDrills` flag). Wired: 2–3 cyclic
+   Breathing, Cyclic Sigh, Resonance, 4-7-8). Wired: 2–3 cyclic
    sighs, then 60–90 s of resonance breathing (in 4, out 6). Flat: a short sigh, then
    energizing breaths.
 2. **Activate**: Smooth Pursuit, Saccade Jumps (not in Quick), Peripheral Flash.
@@ -166,7 +166,7 @@ a session). The version number shows at the bottom of the start screen.
 
 `js/features.js`. `'preview'` means on for Vercel preview links and locally, off on
 sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
-- `newDrills: 'preview'`: 4-7-8 Breathing, Memory Sequence.
+- `newDrills: true` (approved): 4-7-8 Breathing, Memory Sequence.
 - `leaderboard: true` (approved): name entry, the online board and coach tools.
 - `occlusion: true` (approved with Training Mode): the opt-in Occlusion setting; Training only.
 - `partner: true` (approved): MOVE Partner mode (a coach's phone sends the cues).
