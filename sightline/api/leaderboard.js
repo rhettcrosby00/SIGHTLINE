@@ -9,22 +9,24 @@
 // The database address (DATABASE_URL) and COACH_PIN live in Cloudflare's
 // project settings (env). LB_MEMORY=1 runs it without a database (local testing only).
 
-import { createService, HttpError } from './_lib/service.js';
+import { createService, HttpError, databaseUrl, databaseProblem } from './_lib/service.js';
 
 let ready = null;
 let readyFor = null;
+let problem = null;   // why the database isn't connected (shown by the health check)
 function service(env) {
-  const url = env.DATABASE_URL || env.POSTGRES_URL;
+  const url = databaseUrl(env);
   const key = [url, env.LB_MEMORY, env.COACH_PIN].join('|');
   if (key !== readyFor) { readyFor = key; ready = null; }
   ready ??= (async () => {
     let store;
-    if (url) store = (await import('./_lib/sql-store.js')).sqlStore(url);
-    else if (env.LB_MEMORY === '1') store = (await import('./_lib/memory-store.js')).memoryStore();
-    else return null;
+    if (!url && env.LB_MEMORY === '1') store = (await import('./_lib/memory-store.js')).memoryStore();
+    else if ((problem = databaseProblem(url))) return null;
+    else store = (await import('./_lib/sql-store.js')).sqlStore(url);
     await store.init();
+    problem = null;
     return createService(store, { pin: env.COACH_PIN || '', secret: url || 'local' });
-  })().catch((err) => { ready = null; throw err; });
+  })().catch((err) => { problem = databaseProblem(url, err); ready = null; throw err; });
   return ready;
 }
 
@@ -33,7 +35,7 @@ export async function handle({ method, query = {}, body = {}, ip = 'unknown' }, 
   try {
     const svc = await service(env).catch(() => null);
     if (method === 'GET' && query.action === 'health') {
-      return { status: 200, body: { db: !!svc, coach: !!env.COACH_PIN } };
+      return { status: 200, body: { db: !!svc, coach: !!env.COACH_PIN, ...(svc ? {} : { problem }) } };
     }
     if (!svc) return { status: 503, body: { error: 'The leaderboard isn’t connected yet.' } };
 

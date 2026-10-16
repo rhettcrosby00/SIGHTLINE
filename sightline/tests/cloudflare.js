@@ -66,3 +66,21 @@ test('The build serves exactly the app: everything it needs, nothing private', (
     assert(SERVED.some((s) => p === s || p.startsWith(`${s}/`)), `${p} is loaded by the app but not served`);
   }
 });
+
+test('Database setup: forgiving about paste slips, and the health check says what is wrong (never the address)', async () => {
+  const { databaseUrl, databaseProblem } = await import('../api/_lib/service.js');
+  const real = 'postgresql://user:secret-pass@ep-example-123.us-east-2.aws.neon.tech/neondb?sslmode=require';
+  for (const pasted of [real, ` ${real} `, `"${real}"`, `'${real}'`, `DATABASE_URL=${real}`, `DATABASE_URL="${real}"`]) {
+    assert(databaseUrl({ DATABASE_URL: pasted }) === real, `not cleaned: ${pasted.slice(0, 20)}`);
+  }
+  assert(databaseUrl({ POSTGRES_URL: real }) === real && databaseUrl({}) === '', 'POSTGRES_URL works too; empty when unset');
+  assert(databaseProblem('') === 'DATABASE_URL isn’t set', 'not set');
+  assert(databaseProblem('ep-example.neon.tech') === 'DATABASE_URL doesn’t look like a database address', 'not an address');
+  assert(databaseProblem(real) === null, 'a good address is fine');
+  assert(databaseProblem(real, new Error('password authentication failed for user "user"')) === 'the database refused the password', 'password');
+  const wrong = await call('leaderboard', { query: '?action=health', env: { DATABASE_URL: 'https://example.com' } });
+  assert(wrong.body.db === false && wrong.body.problem === 'DATABASE_URL doesn’t look like a database address', JSON.stringify(wrong.body));
+  assert(!JSON.stringify(wrong.body).includes('example.com'), 'the health check never repeats the address');
+  const fine = await call('leaderboard', { query: '?action=health' });
+  assert(!('problem' in fine.body), 'no problem line when connected');
+});

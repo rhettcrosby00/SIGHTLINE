@@ -24,6 +24,23 @@ const SIDES = { focus: ['focus'], move: ['move'], all: ['focus', 'move'] };
 const FOCUS_IDS = FOCUS_SESSIONS.map((s) => s.id);
 const LENGTHS = ['quick', 'standard', 'full'];
 
+// The database address from the hosting settings, forgiving common paste slips
+// (spaces, quotes, a leading "DATABASE_URL="). Empty when it isn't set.
+export function databaseUrl(env = {}) {
+  return String(env.DATABASE_URL || env.POSTGRES_URL || '').trim()
+    .replace(/^(DATABASE_URL|POSTGRES_URL)\s*=\s*/, '').replace(/^["']|["']$/g, '').trim();
+}
+
+// Why the database isn't connected, in words safe to show (never the address).
+export function databaseProblem(url, err) {
+  if (!url) return 'DATABASE_URL isn’t set';
+  if (!/^postgres(ql)?:\/\/[^/\s]+@[^/\s]+\/\S+/.test(url)) return 'DATABASE_URL doesn’t look like a database address';
+  if (!err) return null;
+  if (/password|auth/i.test(err.message ?? '')) return 'the database refused the password';
+  if (/ENOTFOUND|fetch failed|getaddrinfo|network/i.test(err.message ?? '')) return 'couldn’t reach the database';
+  return `the database didn’t answer (${err.name || 'error'})`;
+}
+
 export class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }

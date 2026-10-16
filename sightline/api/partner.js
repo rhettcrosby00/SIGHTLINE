@@ -8,12 +8,12 @@
 
 import { createPartner } from './_lib/partner.js';
 import { partnerMemory, partnerSql } from './_lib/partner-store.js';
-import { HttpError } from './_lib/service.js';
+import { HttpError, databaseUrl } from './_lib/service.js';
 
 let ready = null;
 let readyFor = null;
 function service(env) {
-  const url = env.DATABASE_URL || env.POSTGRES_URL;
+  const url = databaseUrl(env);
   const key = [url, env.LB_MEMORY].join('|');
   if (key !== readyFor) { readyFor = key; ready = null; }
   ready ??= (async () => {
