@@ -1,7 +1,9 @@
-// Leaderboard screens: name entry after a session (score counting up), the
-// reveal (new all-time total and rank change), the board itself, and the
-// coach tools. Arcade spirit through motion and ranking, in the app's own
-// design system.
+// Leaderboard screens: name entry the first time (score counting up), then
+// the reveal (new all-time total and rank change); after that, scores save on
+// their own under the remembered name and the result shows on the summary
+// ("Not you?" changes the name). The board itself (Focus or Move, All-time or
+// This week) and the coach tools. Arcade spirit through motion and ranking,
+// in the app's own design system.
 
 import { submitScore, getLeaderboard, getNames, lastName, flushQueue, coach } from './board.js';
 import { cleanName, nameKey, nameProblem, similarNames } from './names.js';
@@ -11,7 +13,10 @@ import { esc } from '../lib/text.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Number(n).toLocaleString('en-US');
-const SIDE = { focus: ['eye', 'Focus'], move: ['move', 'Move'], all: ['trophy', 'Combined'] };
+const SIDE = { focus: ['eye', 'Focus'], move: ['move', 'Move'] };
+const TABS = [['total', 'All-time'], ['week', 'This week']];
+const offline = () => globalThis.navigator?.onLine === false;
+const RETRY_MS = 2 * 60 * 1000;   // a busy board: post the saved score again after this
 const sideTag = (side) => `<p class="side-tag">${icon(SIDE[side][0], { size: 18 })}${SIDE[side][1]}</p>`;
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -42,15 +47,71 @@ export function initLeaderboard({ show, getSettings }) {
   flushQueue();
   window.addEventListener('online', () => flushQueue());
 
-  // ---- After a session: name entry, then the reveal -------------------------
-  // Resolves when the athlete taps Continue (or Skip).
-  // Several entries (Full Pre-Game: Focus and Move) run one after another; the
-  // name is filled in after the first, so each next one is a single tap.
-  async function afterSession({ entries, ...one }) {
-    for (const entry of entries ?? [one]) await afterOne(entry);
+  // ---- After a session --------------------------------------------------------
+  // Name known: save straight away and show the result in `slot` on the
+  // summary (no extra taps). First time: the name screen, which resolves when
+  // the athlete taps Continue (or Skip).
+  function afterSession(entry, { slot = null } = {}) {
+    const name = lastName.get();
+    if (slot) slot.innerHTML = '';
+    if (!name || !slot) return nameScreen(entry);
+    inline(slot, entry, name);
+    return Promise.resolve();
   }
 
-  function afterOne({ side, score, detail, settings }) {
+  async function inline(slot, { side, score, settings }, name) {
+    slot.innerHTML = `<p class="lb-inline__line">${icon('trophy')}<span>Saving <b>+${fmt(score)}</b> as <b>${esc(name)}</b></span></p>`;
+    const res = await submitScore({ name, side, score, settings });
+    const change = `<button type="button" class="link-btn" data-act="rename">Not you?</button>`;
+    if (res.queued || res.error) {
+      slot.innerHTML = `<p class="lb-inline__line">${icon(res.busy ? 'trophy' : res.queued ? 'wifi-off' : 'triangle-alert')}<span>${
+        res.busy ? `The board is busy: <b>+${fmt(score)}</b> is saved on this phone and posts in a couple of minutes.`
+          : res.queued ? `Offline: <b>+${fmt(score)}</b> is saved on this phone and posts when you’re back online.` : esc(res.error)}</span></p>`;
+      if (res.busy) setTimeout(() => flushQueue(), RETRY_MS);
+      return;
+    }
+    const moved = res.prevRank != null && res.prevRank > res.rank ? ` · up ${res.prevRank - res.rank}` : '';
+    slot.innerHTML = `<p class="lb-inline__line">${icon('trophy')}<span><b>+${fmt(score)}</b> for <b>${esc(res.name)}</b> · #${res.rank} on the ${SIDE[side][1]} board${moved}${res.newBest ? ' · <b>New best</b>' : ''}</span>${change}</p>`;
+    buzz(res.newBest ? [80, 60, 160] : 40);   // shown on screen too
+    slot.onclick = (e) => { if (e.target.closest('[data-act="rename"]')) rename(); };
+  }
+
+  // "Not you?": a new name for next time (this score stays where it was saved).
+  function rename() {
+    const style = getSettings().nameStyle === 'initials' ? 'initials' : 'name';
+    const back = document.querySelector('.screen.is-active')?.id.replace('screen-', '') ?? 'start';
+    $('screen-name').dataset.side = 'focus';
+    nameEl.innerHTML = `
+      <div class="lbn">
+        <h2 class="nav__title">Change your name</h2>
+        <p class="setting__hint">Scores from now on go to this name.</p>
+        <label class="setting__label" for="lb-rename">${style === 'initials' ? 'Your initials' : 'Your name'}</label>
+        <input id="lb-rename" class="lbn__input" type="text" maxlength="${style === 'initials' ? 3 : 12}" autocomplete="off" autocorrect="off"
+          spellcheck="false" enterkeyhint="done" autocapitalize="${style === 'initials' ? 'characters' : 'words'}" value="">
+        <p class="lbn__hint" aria-live="polite"></p>
+      </div>
+      <div class="screen__foot">
+        <button type="button" class="btn btn--primary btn--block" data-act="save">Save</button>
+        <button type="button" class="btn btn--secondary btn--block" data-act="cancel">Cancel</button>
+      </div>`;
+    const input = nameEl.querySelector('input');
+    const hint = nameEl.querySelector('.lbn__hint');
+    show('name');
+    nameEl.onclick = (e) => {
+      const act = e.target.closest('[data-act]')?.dataset.act;
+      if (act === 'cancel') { nameEl.onclick = null; show(back, { back: true }); }
+      if (act !== 'save') return;
+      const problem = nameProblem(input.value, style);
+      if (problem) { hint.className = 'lbn__hint is-bad'; hint.textContent = problem; input.focus(); return; }
+      lastName.set(cleanName(input.value, style));
+      nameEl.onclick = null;
+      document.querySelectorAll('[data-act="rename"]').forEach((b) => b.remove());
+      show(back, { back: true });
+    };
+  }
+
+  // First time on this phone: name entry, then the reveal.
+  function nameScreen({ side, score, detail, settings }) {
     return new Promise((finish) => {
       const style = getSettings().nameStyle === 'initials' ? 'initials' : 'name';
       let names = [];
@@ -125,9 +186,11 @@ export function initLeaderboard({ show, getSettings }) {
             <div class="lbn">
               ${sideTag(side)}
               <p class="lbn__score">${fmt(score)}</p>
-              <p class="notice">${icon(res.queued ? 'download' : 'triangle-alert')}${res.queued
-                ? 'Saved on this phone. It’ll post to the leaderboard when you’re back online.' : esc(res.error)}</p>
+              <p class="notice">${icon(res.queued ? 'download' : 'triangle-alert')}${res.busy
+                ? 'The board is busy. Saved on this phone; it posts in a couple of minutes.'
+                : res.queued ? 'Saved on this phone. It’ll post to the leaderboard when you’re back online.' : esc(res.error)}</p>
             </div>${foot}`;
+          if (res.busy) setTimeout(() => flushQueue(), RETRY_MS);
           return;
         }
         const moved = res.prevRank == null ? 'New on the board'
@@ -146,7 +209,7 @@ export function initLeaderboard({ show, getSettings }) {
           </div>${foot}`;
         await countUp(nameEl.querySelector('.lbr__total'), res.prevTotal, res.total, 1100);
         nameEl.querySelectorAll('[hidden]').forEach((n) => { n.hidden = false; });
-        buzz(res.newBest ? [80, 60, 160] : 40);   // a new best gets the long buzz
+        buzz(res.newBest ? [80, 60, 160] : 40);   // a new best gets the long buzz (shown on screen too)
       }
 
       nameEl.onclick = (e) => {
@@ -176,25 +239,27 @@ export function initLeaderboard({ show, getSettings }) {
   }
 
   async function renderBoard() {
+    if (!SIDE[view.side]) view.side = 'focus';
+    if (!TABS.some(([v]) => v === view.tab)) view.tab = 'total';
     const { side, tab } = view;
     const key = `${side}:${tab}`;
     const backTo = { start: 'Home', name: 'Back', done: 'Back', 'cone-done': 'Back' }[view.from] ?? 'Back';
-    $('screen-board').dataset.side = side === 'all' ? 'focus' : side;
+    $('screen-board').dataset.side = side;
     boardEl.innerHTML = `
       <header class="nav">
         <button type="button" class="nav__back" data-act="back">${icon('chevron-left', { size: 22 })}${backTo}</button>
         <h2 class="nav__title">Leaderboard</h2>
       </header>
       <div class="seg seg--fill" role="radiogroup" aria-label="Side">
-        ${[['focus', 'Focus'], ['move', 'Move'], ['all', 'Combined']].map(([v, t]) =>
+        ${Object.entries(SIDE).map(([v, [, t]]) =>
           `<button type="button" role="radio" data-side="${v}" aria-checked="${v === side}">${t}</button>`).join('')}
       </div>
       <div class="seg seg--fill" role="radiogroup" aria-label="Board">
-        ${[['total', 'All-time'], ['best', 'Best session'], ['week', 'This week']].map(([v, t]) =>
-          `<button type="button" role="radio" data-tab="${v}" aria-checked="${v === tab}">${t}</button>`).join('')}
+        ${TABS.map(([v, t]) => `<button type="button" role="radio" data-tab="${v}" aria-checked="${v === tab}">${t}</button>`).join('')}
       </div>
-      <p class="caption lb-note">${{ total: 'Total of every session.', best: 'Highest single session.', week: 'Since Monday. Resets every week; all-time never does.' }[tab]}
-        ${side === 'move' || side === 'all' ? ' Move scores are honor system.' : ''}</p>
+      <p class="lb-offline" ${offline() ? '' : 'hidden'}>${icon('wifi-off')}Offline. Showing the last board this phone saw; new scores post when you’re back online.</p>
+      <p class="caption lb-note">${{ total: 'Total of every session.', week: 'Since Monday. Resets every week; all-time never does.' }[tab]}
+        ${side === 'move' ? ' Move scores are honor system.' : ''}</p>
       <div class="lb-body" aria-live="polite">${cache.has(key) ? listHtml(cache.get(key)) : '<p class="lb-empty">Loading the board</p>'}</div>
       <button type="button" class="link-btn lb-coach" data-act="coach">${icon('settings-2')}Coach tools</button>`;
     try {
@@ -202,6 +267,7 @@ export function initLeaderboard({ show, getSettings }) {
       cache.set(key, data);
       if (view.side === side && view.tab === tab) boardEl.querySelector('.lb-body').innerHTML = listHtml(data);
     } catch (err) {
+      if (err.offline) boardEl.querySelector('.lb-offline').hidden = false;
       if (!cache.has(key)) {
         boardEl.querySelector('.lb-body').innerHTML = `<p class="lb-empty">${err.offline
           ? 'Can’t reach the leaderboard. Check your connection.' : esc(err.message)}</p>`;

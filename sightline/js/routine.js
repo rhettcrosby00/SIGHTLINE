@@ -6,7 +6,7 @@ import { pursuit, saccades, gaze } from './stages/eyes.js';
 import { colorCall, goNoGo, stroop, peripheral, capture } from './stages/reaction.js';
 import { nearFar, span } from './stages/vision.js';
 import { tracking } from './stages/tracking.js';
-import { quickMath, quickQuestions } from './stages/brain.js';
+import { quickMath } from './stages/brain.js';
 import { memory } from './stages/memory.js';
 import { quietEye } from './stages/quieteye.js';
 import { myRoutine } from './stages/myroutine.js';
@@ -16,7 +16,7 @@ export const MODULES = {
   settle, sigh, resonance, breath478, energize, lockin: lockIn,
   pursuit, saccades, gaze, peripheral, quieteye: quietEye,
   nearfar: nearFar, capture, span, mot: tracking,
-  colorcall: colorCall, gonogo: goNoGo, stroop, math: quickMath, questions: quickQuestions, memory,
+  colorcall: colorCall, gonogo: goNoGo, stroop, math: quickMath, memory,
   visualize, myroutine: myRoutine,
 };
 

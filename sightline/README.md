@@ -1,111 +1,143 @@
 # Sightline
 
-A pre-game visual reaction and cognitive warm-up for athletes, in two sides:
+A pre-game visual reaction and cognitive warm-up for athletes. Two sides, each opening with
+three presets, so starting anything takes two taps from home (the side, then the preset) and
+"Run last" takes one.
 
-**FOCUS: eyes, mind, breath.** The athlete holds the phone; every answer is a tap.
-"Game Ready" runs four pillars in 5, 8 or 10 minutes (instructions included, never more):
+| | FOCUS: eyes, mind, breath | MOVE: react, cut, compete |
+|---|---|---|
+| Phone | In hand; every answer is a tap | On a stand facing the athlete; no taps during a set |
+| Where | Locker room, bus, sideline | The field, during warm-up |
+| Presets (Game Day) | Quick 5 min · Standard 8 min · Game Speed 8 min on Hard | Quick 2 × 20 s · Standard 3 × 20 s · Game Speed 3 × 20 s at game pace, full rest |
+| Presets (Training) | Quick 10 · Standard 15 · Game Speed 15 min on Hard | Quick 2 × 20 s · Standard 5 × 30 s · Game Speed 4 × 30 s at game pace, all with decisions |
+| Advanced | My Routine, one part on its own, Extras, Focus Check (Training), options | Countdown length, Custom setup, Signals Only |
 
-1. **Regulate**: breathing, matched to the check-in (below). Ready: one rotating pattern (Box
-   Breathing, Cyclic Sigh, Resonance, 4-7-8). Wired: 2–3 cyclic
-   sighs, then 60–90 s of resonance breathing (in 4, out 6). Flat: a short sigh, then
-   energizing breaths.
+Presets live in `js/presets.js` (FOCUS) and `MOVE_PRESETS` in `js/cone/config.js`.
+**Game Day or Training** is a switch at the top of each side (one setting, remembered on the
+phone). Game Day stays short and calm and ends easy; Training (non-game days) is longer and
+harder, and each side shows this week's training days against 2–4 and a weekly streak
+(`js/lib/streak.js`, this phone only). Sightline is a warm-up tool, not a medical, diagnostic or
+treatment tool. There are no accounts.
+
+## FOCUS
+
+**How do you feel?** One tap on the FOCUS screen, above the presets: Flat · Ready · Wired
+(Ready unless changed). It shapes the session and shows on the summary; nothing is saved.
+
+Game Ready runs four pillars, instructions included, and never runs past 10 minutes:
+
+1. **Regulate**: breathing, matched to how they feel. Ready: one rotating pattern (Box
+   Breathing, Cyclic Sigh, Resonance, 4-7-8). Wired: 2–3 cyclic sighs, then 60–90 s of
+   resonance breathing (in 4, out 6) and calmer cue pacing. Flat: a short sigh, then energizing
+   breaths and quicker pacing.
 2. **Activate**: Smooth Pursuit, Saccade Jumps (not in Quick), Peripheral Flash.
-3. **Challenge**: Color Call, Go/No-Go. Cue timing is a little slower when Wired and quicker
-   when Flat.
+3. **Challenge**: Color Call, Go/No-Go.
 4. **Rehearse**: Visualization (scripts for the athlete's sport and position), then
    **My Routine**. It always ends on something that can't be failed, and every scored drill
    ends on a few easy cues.
 
-**Game Day or Training** (the switch at the top of home, remembered on the phone). Game Day:
-Game Ready (5 / 8 / 10 min, calm, ends easy) and MOVE Game Day. Training (non-game days):
-the Training session (10 / 15 / 20 min: every pillar plus the Visual skills, at a harder
-adaptive level, Occlusion allowed if turned on) and MOVE Training (the athlete's cones with
-the Decision Layer, 5 × 30 s). Parts run from the FOCUS screen in Training mode are harder
-too; Game Ready never is. Home shows this week's training days against 2–4 and a weekly
-streak (weeks in a row with 2+ training days; `js/lib/streak.js`, this phone only).
+Training runs every pillar plus the **Visual skills** (Near-Far Focus, Target Capture,
+Perception Span) at a harder adaptive level. Under **Advanced**:
 
-**Full Pre-Game** (Game Day home; `js/pregame.js`): FOCUS Game Ready (Quick), then "Set your
-phone down" and MOVE's Game Day sets, one check-out, one summary and both scores. About 10
-minutes.
-
-**Focus Check** (optional, Settings; `js/lib/check.js`, `js/stages/focuscheck.js`): about 30
-seconds at the start and end of Game Ready and Training, or on its own from the FOCUS screen.
-Two warm-up taps, 6 reaction taps (tap when the circle turns green), then 8 go / no-go cues.
-Timed from pointer-down events against the frame the cue was drawn in; guesses (< 0.1 s),
-lapses (> 1 s) and outliers are dropped and the median is used. Compared only with the last
-10 checks on the same phone; noticeably slower (10%+, with 3+ earlier checks) offers the
-Quick version. Never medical or diagnostic wording.
-
-**Check-in.** Before Game Ready: "How do you feel right now?" Flat · Ready · Wired, one tap,
-plus the cue word (skill words for their sport, energy words, or their own). The first time it
-also asks their sport and position. It asks again at the end; the before → after shows on the
-summary only and is never saved.
-
-**My Routine.** The athlete's own 20–40 s pre-performance routine: stand still, one breath,
-an optional imagery line, their cue word, quiet eye (eyes still on one dot for 2–3 s), then
-GO. Built on the FOCUS screen, saved on the phone only, and run as the last step of Game
-Ready or on its own with one tap from home.
-
-Each pillar can also run on its own (Breathing only, Eyes only with a standalone **Quiet Eye**
-drill, Reaction only, Rehearse only).
-
-**Visual skills** (its own session, 3 / 4 / 5 min, not in Game Ready): Near-Far Focus (look at a
-spot 10+ ft away, then back: tap the small letter that showed), Target Capture (a tiny ring with a
-gap flashes near an edge: match the gap) and Perception Span (dots flash on a 3×3 to 5×5 grid:
-tap the same squares). Object Tracking (follow a few dots among identical moving ones) is in Extras.
+- **My Routine**: the athlete's own 20–40 s pre-performance routine (stand still, one breath,
+  an optional imagery line, their cue word, quiet eye for 2–3 s, then GO). Built and saved on
+  the phone; also the last step of Game Ready.
+- **One part on its own**: Breathing only, Eyes only (with a standalone Quiet Eye), Visual
+  skills, Reaction only, Rehearse only. In Training mode they run harder too.
+- **Extras** (optional): Gaze Stabilization, Stroop, Quick Math, Memory Sequence, Object
+  Tracking. Lab-style drills with weaker evidence for sport, so they stay out of Game Ready.
+- **Focus Check** (Training mode only; `js/lib/check.js`, `js/stages/focuscheck.js`): about
+  30 seconds of taps, on its own or (Settings → Focus Check) at the start and end of a Training
+  session. Guesses (< 0.1 s), lapses (> 1 s) and outliers are dropped and the median is used.
+  Compared only with the last 10 checks on the same phone; noticeably slower (10%+, with 3+
+  earlier checks) offers the Quick version. Never medical or diagnostic wording.
+- **Options** (Settings): instructions (Auto by default: the full how-to the first 3 times a
+  phone runs a drill, then just the rule), Low contrast, Occlusion, Focus Check.
 
 **Adaptive difficulty** (`js/lib/adapt.js`): every scored drill gets harder after right answers
-and eases off after misses (a weighted staircase that settles at about 80% right), inside a band
-set by Normal (levels 0–0.6) or Hard (0.4–1). Each drill's level is remembered on the phone.
-**Low contrast** (Settings → Contrast) fades Color Call, Saccade Jumps, Peripheral Flash and Target
-Capture toward the background, never below 2.5:1 (`js/lib/contrast.js`).
+and eases off after misses (settling at about 80% right), inside a band set by Normal
+(0–0.6) or Hard (0.4–1). Each drill's level is remembered on the phone. **Low contrast** fades
+Color Call, Saccade Jumps, Peripheral Flash and Target Capture, never below 2.5:1
+(`js/lib/contrast.js`). **Occlusion** (opt-in; Training only, never Game Ready): in Smooth
+Pursuit, Saccade Jumps and Object Tracking the moving target disappears and comes back, never
+faster than 3 changes a second, and never the whole screen. A photosensitivity warning shows the
+first time it's turned on.
 
-**Occlusion** (Settings, opt-in; Training only, never Game Ready): in Smooth Pursuit,
-Saccade Jumps and Object Tracking the moving target disappears and comes back, never faster than
-3 changes a second. Only the target, never the screen. A photosensitivity warning shows the
-first time it's turned on. **Extras** (optional): Gaze Stabilization, Stroop, Quick
-Math, Quick Questions, Memory Sequence. These are lab-style drills with weaker evidence for sport,
-so they're kept out of Game Ready. Instructions are **Auto** by default: the full how-to the
-first 3 times a phone runs a drill, then just the rule. How-to cards start on their own, so a
-session never runs past its minutes.
+**Taps that can't be fooled** (`tapGuard` in `js/stages/common.js`, used by every drill that
+takes taps): a second tap within 100 ms of the last one is ignored, so a double tap never counts
+twice, and so is a tap in the first 150 ms after a cue appears (it was on its way before the cue).
 
-**MOVE: react, cut, compete.** The phone sits on a stand facing the athlete; no taps during a
-set. Quick Start (4 cones, colors, 5 yd out and back, Training pace, 3 sets), Game Day (the
-athlete's own cones, 3 × 20 s at Game Speed with full rest), Custom setup (every Cone Drill
-option), and Signals Only (arrows, no cones). The time between cues comes from distance, rep
-style (Out and back, First step, Cone to cone) and pace; between sets the athlete answers
-"Too fast / Just right / Too slow". Every set ends on a plain cue.
+When a Game Day preset finishes, the summary offers **Next: Move** (Game Speed): set the phone
+down and the countdown gives time to get to the start.
 
-- **Decision Layer** (optional, off by default; `js/cone/decide.js`): about 4 in 10 cues need a
-  decision first. Odd / even (a two-digit number: odd → left cone, even → right), Color word
-  (a full-screen color with another color's name on it: go to the color), Opposite (a cue in a
-  thick frame: go to the opposite cone; this replaces the old Reverse rule), Two cues (1 on top,
-  2 below, shown for 1.5 s: go to 1, then 2) and Go / no-go (a real cue under a big HOLD band).
-  Each one is carried by something big, so it reads from 10+ yards. Never the first or last cue.
-- **Sport** cue type (`js/cone/cues/sport.js`): calls from the sport picked in Focus (DRIVE /
-  PASS / SHOOT / BACK for basketball, PRESS / DROP / SWITCH / CHECK for soccer, …), one per
-  direction. Longer calls read from closer; the setup shows about how far.
+## MOVE
+
+The MOVE screen shows the cones every preset uses (the Custom setup's cones and distances, as
+colors, arrows or numbers; 4 cones at 5 yards if those can't run), a reminder to turn the
+brightness all the way up, and the presets. Tap one and:
+
+- **Get-set countdown**: 5–10 s before the first set (Settings → Countdown, 7 by default), one
+  big number a second, spoken when Sounds are on, with "Set your phone down facing you.
+  Brightness all the way up." Later sets get 3 s.
+- **Touch lock**: taps do nothing during the drill (no pause button to bump). Holding a finger
+  anywhere for 1 second pauses (a ring fills under the finger). After Resume the phone counts
+  3-2-1 so there's time to get back to the start spot.
+- **Cues fill the screen**: colors full-screen, arrows at 84% of the width, one digit as big as
+  the screen allows (about 22 yards to read at a glance on an iPhone SE; two digits about 16).
+  Words are small from far away, so presets never use them; Sport calls (Custom setup) show how
+  close to stand.
+- **Rest between sets** counts down on its own with "Too fast / Just right / Too slow" for the
+  next set; it never waits for a tap.
+
+Under **Advanced**: the countdown length, **Custom setup** (every option: cue types, Decision
+Layer, Planned patterns, distances per cone, pace, sets, rest, cue position, flash, fake-outs,
+spoken callouts) and **Signals Only** (arrows, no cones). The time between cues comes from
+distance, rep style (Out and back, First step, Cone to cone) and pace.
+
+- **Decision Layer** (`js/cone/decide.js`, on in Training presets): about 4 in 10 cues need a
+  decision first: Odd / even, Color word, Opposite, Two cues, Go / no-go. Each is carried by
+  something big, so it reads from 10+ yards. Never the first or last cue.
+- **Sport** cue type (`js/cone/cues/sport.js`): calls from the sport picked in Settings, one per
+  direction.
 - **Planned vs Reactive** (`js/cone/patterns.js`): Planned runs a known pattern (5-10-5, Square,
-  T-drill): GO, then a walk-back countdown. Reactive (the default) is true agility.
-- **Partner mode** (`js/cone/partner.js`, `api/partner.js`): the stand phone shows a 4-digit
-  code; a coach's phone types it and taps cones to send cues. The phones meet through the
-  server (a room with the setup and the latest cue, gone after 2 hours). The stand phone checks
-  about 3 times a second while cues are coming and eases off after 30 s without one; it never
-  changes the whole screen more than about 3 times a second. Limits per network: 10 new rooms an
-  hour, and 30 wrong codes per 10 minutes (then "wait a few minutes").
+  T-drill): GO, then a walk-back countdown. Reactive is true agility.
+- **Partner mode** is parked (`partner: false` in `js/features.js`): the code stays
+  (`js/cone/partner.js`, `api/partner.js`, with its limits of 10 rooms an hour and 30 wrong codes
+  per 10 minutes per network), but it's off everywhere.
 
-A short summary follows each session. There are no accounts.
+## Built for real phones
 
-**Keep my music playing** (Settings → Sound): the app plays no sound at all, so the athlete's
-own music never pauses. Cues come as vibration where the phone allows it, and on screen.
-iPhone doesn't let web apps vibrate.
+- **Sound starts in the Start tap.** Every preset, Run last and Next: Move unlocks sound (and
+  speech, for MOVE's countdown) before anything else, so cues are never silent because the
+  phone hadn't allowed sound yet. With Sounds on, cues play even with the iPhone's silent
+  switch on (Audio Session API, where the phone has it); other music pauses while a session
+  runs. **Keep my music playing** (Settings → Sound) makes the app silent instead: cues come as
+  vibration where the phone allows it, and on screen.
+- **iPhone can't vibrate from a web app**, so every buzz comes with a tone or a change on
+  screen (a test checks every one).
+- **Auto-pause with a big Resume** (`js/engine.js`): when the screen locks, the athlete switches
+  apps, a call or alarm takes over the sound, or something covers the app. The pause says why.
+  A web app can't see a notification banner on its own.
+- **Screen awake** (`js/lib/wakelock.js`): if the phone won't keep the screen on (no support,
+  Low Power Mode or Battery Saver refusing it, or the lock dropped), a tip says to turn those off
+  or set Auto-Lock to Never. A web app can't see Low Power Mode itself.
+- **Install** (`js/install.js`): after the first finished session, the summary shows how to add
+  Sightline to the home screen (iPhone: Share → Add to Home Screen; Android: ⋮ → Install app, or
+  Chrome's own Install button). Safari can clear a website's saved data after about 7 days
+  without a visit; home-screen apps keep it. "Not now" hides it for a week.
+- **Offline**: every file is precached (`sw.js`); scores wait on the phone and post later, and
+  the leaderboard shows an Offline note when it can't sync.
 
-**Leaderboard**: after a session the athlete enters a name (or 3-letter
-initials) and the score joins one online board for everyone: All-time, Best session and This
-week, for Focus, Move or both combined. It saves only name, score, side, session settings and
-date.
+**First-run setup** (`js/guide.js`, about 30 seconds, Skip on every step): the two sides, then
+sport and cue word, then a leaderboard name (optional). Shown once per phone (`setupDone`);
+everything can be changed in Settings. About → How it works shows three short panels.
 
-Sightline is a warm-up tool. It is not a medical, diagnostic, or treatment tool.
+**Leaderboard**: one board per side (Focus, Move), All-time and This week. The first time, the
+athlete enters a name (or 3-letter initials); after that every score saves on its own and the
+result shows on the summary ("Not you?" changes the name for next time). It saves only name,
+score, side, session settings and date. Up to 60 scores per network per 10 minutes (a whole team
+on one school Wi-Fi); when the board is busy or offline, the score waits on the phone and posts
+later.
 
 ## Run it locally
 
@@ -149,7 +181,7 @@ a session). The version number shows at the bottom of the start screen.
   `pace × (reaction + yards out × pace per yard + turn + yards back × pace per yard + reset)`,
   First step times, ±10% variation, the 1–12 s limits, the 10% "Too fast / Too slow" step,
   and the suggested work-to-rest ratios.
-- `config.js`: options, validation, the Quick Start and Signals Only presets
+- `config.js`: options, validation, the presets (`MOVE_PRESETS`, `presetCones`, `movePreset`), Signals Only, the countdown
 - `cues/`: one file per cue type
 - `plan.js`: balanced, no-repeat cue planning
 - `setup.js`, `layout.js`, `run.js`, `ui.js`: the screens
@@ -159,9 +191,10 @@ a session). The version number shows at the bottom of the start screen.
 - `js/score/scoring.js`: every scoring number (`SCORING`): Focus cue points, speed bonus,
   streaks and penalties; Move points per rep and multipliers; difficulty and finish bonuses.
 - `js/score/names.js`: name matching (case and spacing), initials, the offensive-name filter.
-- `js/score/board.js`: `submitScore`, `getLeaderboard`, `getPlayerRank`; offline scores wait on
-  the phone and post when the connection returns.
-- `js/score/ui.js`: name entry, the reveal, the board, coach tools.
+- `js/score/board.js`: `submitScore`, `getLeaderboard`, `getPlayerRank`; offline or busy scores
+  wait on the phone and post later.
+- `js/score/ui.js`: name entry (first time), the result on the summary, the board, coach tools.
+  The server still answers `side=all` and `tab=best`; the app no longer asks.
 - `api/leaderboard.js`: the one Vercel serverless function. It checks every score against the
   most its session could earn, rate-limits, and guards coach tools with `COACH_PIN`.
 - Setup (Vercel): Storage → Create Database → Neon (free) → connect to Production and Preview;
@@ -174,12 +207,12 @@ a session). The version number shows at the bottom of the start screen.
 `name: 'preview'`: on for Vercel preview links and locally, off on sightline-psi.vercel.app
 (add `?name` to the live address to see it anyway), and check it with `isOn('name')`. Once
 it's approved, remove the switch and its "off" path; the tests fail if an approved switch lingers
-or a switch is never checked. None are open right now: 4-7-8 Breathing, Memory Sequence, the
-leaderboard, Occlusion, Partner mode and Full Pre-Game are all simply part of the app.
+or a switch is never checked. `false` parks a feature: its code stays, off everywhere. Today:
+`partner: false` (Partner mode).
 
 ## Saved on the phone
 
-- `sightline.settings.v1`: FOCUS options, theme, cue word, sport and position, music mode, contrast, occlusion, Focus Check, Game Day or Training
+- `sightline.settings.v1`: the last preset's length and difficulty, instructions, theme, cue word, sport and position, Sounds, music mode, contrast, occlusion, Focus Check, Game Day or Training, the MOVE countdown, whether the first-run setup is done
 - `sightline.routine.v1`: My Routine (breath, imagery line, quiet-eye seconds)
 - `sightline.levels.v1`: each drill's adaptive difficulty level
 - `sightline.check.v1`: the last 10 Focus Check times
@@ -187,15 +220,16 @@ leaderboard, Occlusion, Partner mode and Full Pre-Game are all simply part of th
 - `sightline.cone.v1` / `sightline.signals.v1`: MOVE custom setup / Signals Only setup
 - `sightline.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
 - `sightline.name.v1`, `sightline.lbqueue.v1`: last leaderboard name; scores waiting to post
-- `sightline.last.v2`: "Run last" for each side (upgraded from `last.v1` by `js/migrate.js`)
-- `sightline.variety.v1`, `sightline.guideSeen.v2`, `sightline.seen.v1` (drills run, for Auto instructions)
+- `sightline.last.v2`: "Run last" for each side: a preset (`game:speed`), a FOCUS part or a MOVE setup (older saves upgraded by `js/migrate.js`)
+- `sightline.install.v1`: finished sessions and "Not now" for the install card
+- `sightline.variety.v1`, `sightline.seen.v1` (drills run, for Auto instructions)
 
 ## Randomness and variety
 
 - All randomness comes from one seeded generator, `js/lib/rng.js`. `js/session.js` builds each
   session's drill order and content from it.
-- Nothing repeats within a session: math problems, Stroop word/ink pairs, questions, scripts,
-  and cue-word suggestions.
+- Nothing repeats within a session: math problems, Stroop word/ink pairs, scripts, and
+  cue-word suggestions.
 - Colors, sides, numbers and letters are never shown back-to-back, and never more than 2 of the
   same in any 5.
 - The phone keeps a small "recently used" list (`js/lib/variety.js`, localStorage) of the last
@@ -227,53 +261,43 @@ from it:
 
 If the designer provides the original vector files, replace these and regenerate the icons.
 
-## Adding questions
-
-Edit `js/data/questions.js`. Each entry has the question, the right answer, and one to three
-wrong answers:
-
-```js
-{ q: 'Players per side in water polo, goalie included?', a: '7', w: ['5', '6', '8'] },
-```
-
-Keep answers short (about 12 characters or fewer) so they fit on a button.
-
 ## Where things live
 
 | File | What it does |
 |---|---|
-| `js/main.js` | Home, Settings, About, offline support |
-| `js/focus.js` | The FOCUS screen and session flow |
-| `js/plan.js` | FOCUS pillars, sessions, minutes for each length, and the check-in's changes |
+| `js/main.js` | Home (two sides, Run last), Settings, About, offline support |
+| `js/presets.js` | Quick / Standard / Game Speed, Run last keys, the Game Day / Training switch |
+| `js/guide.js`, `js/install.js` | First-run setup and How it works; the Add to Home Screen card |
+| `js/focus.js` | The FOCUS screen (readiness, presets, Advanced) and session flow |
+| `js/plan.js` | FOCUS pillars, sessions, minutes for each length, and how readiness changes them |
 | `js/myroutine.js`, `js/myroutine-ui.js` | My Routine: its parts and timing, the saved copy, the builder screen |
 | `js/content/sports.js`, `js/content/scripts.js` | Sports, positions, skill cue words, visualization scripts |
 | `js/content/vision.js` | Visual skills content: letters, rings, grids, tracking motion, occlusion timing, scoring |
 | `js/lib/adapt.js`, `js/lib/contrast.js` | Adaptive difficulty (and saved levels); Low contrast math |
 | `js/cone/decide.js`, `js/cone/patterns.js`, `js/cone/cues/sport.js` | MOVE Decision Layer, planned patterns, sport calls |
 | `js/lib/check.js`, `js/stages/focuscheck.js`, `js/lib/streak.js` | Focus Check (plan, timing math, screens) and the weekly training streak |
-| `js/cone/partner.js`, `api/partner.js` | Partner mode: the stand phone and the coach's phone, and the room server |
+| `js/cone/partner.js`, `api/partner.js` | Partner mode (parked): the stand phone and the coach's phone, and the room server |
 | `js/routine.js` | Maps each FOCUS drill to the code that runs it |
-| `js/engine.js` | Runs the steps; progress bar, pause/quit, wake lock |
+| `js/engine.js` | Runs the steps; progress bar, pause/quit, auto-pause, touch lock, wake lock and its tip |
 | `js/stages/*.js` | One file per FOCUS drill group, plus `summary.js` |
-| `js/cone/ui.js` | The MOVE screen and drill flow |
+| `js/cone/ui.js` | The MOVE screen (presets, your cones, Advanced) and drill flow |
 | `js/migrate.js` | Upgrades data saved by older versions |
 | `js/lib/colors.js` | The 4 FOCUS cue colors and their shapes |
-| `js/lib/audio.js` | Tones and vibration (tones off when Sound is off or music mode is on) |
+| `js/lib/audio.js` | Tones, speech and vibration; the silent switch and call interruptions |
 
 ## Testing shortcuts (add to the URL)
 
 - `?only=stroop,lockin` runs just those drills. IDs: `settle`, `sigh`, `resonance`, `breath478`,
   `energize`, `pursuit`, `saccades`, `gaze`, `peripheral`, `quieteye`, `colorcall`, `gonogo`,
-  `nearfar`, `capture`, `span`, `stroop`, `math`, `questions`, `memory`, `mot`, `visualize`, `lockin`,
+  `nearfar`, `capture`, `span`, `stroop`, `math`, `memory`, `mot`, `visualize`, `lockin`,
   `myroutine`.
-- `?state=wired` (or `flat`, `ready`) builds the session as if that check-in was picked; use it
-  with `?autoready=1`, which skips the check-in.
+- `?state=wired` (or `flat`, `ready`) builds the session as if that readiness was picked.
 - `?speed=20` fast-forwards time.
 - `?autostart=1` starts Game Ready; add `&session=regulate` (or `activate`, `challenge`,
-  `vision`, `rehearse`, `extras`, `myroutine`, `training`) for one part; `?autostart=gameday` or
-  `training` starts those MOVE drills. `?autostart=quick` (or `custom`, `signals`) starts a MOVE drill.
+  `vision`, `rehearse`, `extras`, `myroutine`, `training`) for one part; `?autostart=game:speed`
+  (any MOVE preset key, or `custom`, `signals`) starts a MOVE drill.
 - `?autoready=1` skips the I'M READY taps on the how-to cards.
-- `?noguide=1` skips the first-run "How it works" guide.
+- `?noguide=1` skips the first-run setup.
 - `?sw=1` turns on offline caching on localhost. It is off there by default so edits show
   up right away.
 

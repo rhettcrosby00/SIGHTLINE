@@ -6,7 +6,7 @@
 // Occlusion (Training only, opt-in): the dots disappear and come back while
 // they move, never faster than 3 changes a second.
 
-import { howTo, countdown, animate } from './common.js';
+import { howTo, countdown, animate, tapGuard } from './common.js';
 import { cues } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
 import { motAt, scoreMot } from '../content/vision.js';
@@ -43,8 +43,9 @@ export const tracking = {
     const occ = session.content.occlusion?.('mot');
 
     let onTap = null;
+    const guard = tapGuard();
     box.addEventListener('pointerdown', (e) => {
-      if (!onTap) return;
+      if (!onTap || !guard.ok()) return;
       const r = box.getBoundingClientRect();
       onTap(e.clientX - r.left, e.clientY - r.top);
       e.preventDefault();
@@ -80,6 +81,7 @@ export const tracking = {
       await new Promise((resolve, reject) => {
         let over = false;
         const end = () => { if (!over) { over = true; onTap = null; resolve(); } };
+        guard.cue();
         onTap = (x, y) => {
           let best = -1;
           let bestD = HIT;

@@ -65,14 +65,6 @@
       <button id="btn-update" class="banner__btn" type="button"><i data-icon="download"></i>Update ready · Tap to refresh</button>
     </div>
 
-    <div class="home__day">
-      <div class="seg seg--fill" role="radiogroup" aria-label="Today">
-        <button type="button" role="radio" data-day="game" aria-checked="true">Game Day</button>
-        <button type="button" role="radio" data-day="training" aria-checked="false">Training</button>
-      </div>
-      <p id="day-note" class="home__note"></p>
-    </div>
-
     <div class="home__sides">
       <article class="side" data-side="focus" aria-labelledby="focus-name">
         <button id="btn-focus" class="side__head" type="button">
@@ -81,13 +73,10 @@
           <i data-icon="chevron-right"></i>
         </button>
         <p class="side__desc"><b>Hold your phone.</b> Breathing, eye and brain drills. Every answer is a tap.</p>
-        <button id="btn-game" class="btn btn--primary btn--block" type="button">Game Ready</button>
-        <button id="btn-routine" class="side__last" type="button">
-          <i data-icon="play"></i><span>My Routine · <span id="routine-len"></span></span>
+        <button id="btn-focus-last" class="btn btn--primary btn--block btn--last" type="button" hidden>
+          <i data-icon="rotate-ccw"></i><span><small>Run last</small><span id="focus-last-desc"></span></span>
         </button>
-        <button id="btn-focus-last" class="side__last" type="button" hidden>
-          <i data-icon="rotate-ccw"></i><span>Run last · <span id="focus-last-desc"></span></span>
-        </button>
+        <button id="btn-focus-open" class="btn btn--primary btn--block" type="button">Choose a preset<i data-icon="chevron-right"></i></button>
       </article>
 
       <article class="side" data-side="move" aria-labelledby="move-name">
@@ -97,26 +86,21 @@
           <i data-icon="chevron-right"></i>
         </button>
         <p class="side__desc"><b>Set your phone down.</b> React to the signal and cut to the right spot.</p>
-        <button id="btn-quick" class="btn btn--primary btn--block" type="button">Quick Start</button>
-        <button id="btn-move-last" class="side__last" type="button" hidden>
-          <i data-icon="rotate-ccw"></i><span>Run last · <span id="move-last-desc"></span></span>
+        <button id="btn-move-last" class="btn btn--primary btn--block btn--last" type="button" hidden>
+          <i data-icon="rotate-ccw"></i><span><small>Run last</small><span id="move-last-desc"></span></span>
         </button>
+        <button id="btn-move-open" class="btn btn--primary btn--block" type="button">Choose a preset<i data-icon="chevron-right"></i></button>
       </article>
     </div>
 
-    <button id="btn-pregame" class="side__last pregame" type="button" hidden>
-      <i data-icon="play"></i><span><b>Full Pre-Game</b> · <span id="pregame-desc">Focus, then Move</span></span>
-    </button>
-
-    <div id="install" class="install" hidden></div>
     <p class="home__foot">Visual reaction and cognitive warm-up. Not a medical or diagnostic tool. <span id="version"></span></p>
   </section>
 
-  <!-- FOCUS: Game Ready + one-part sessions (rendered by js/focus.js) -->
+  <!-- FOCUS: Game Day / Training, readiness, presets, Advanced (rendered by js/focus.js) -->
   <section id="screen-focus" class="screen" data-side="focus"><div id="focus-hub"></div></section>
   <section id="screen-routine" class="screen" data-side="focus"><div id="mr-builder"></div></section>
 
-  <!-- MOVE: Quick Start, Custom setup, Signals Only (rendered by js/cone/ui.js) -->
+  <!-- MOVE: Game Day / Training, your cones, presets, Advanced (rendered by js/cone/ui.js) -->
   <section id="screen-move" class="screen" data-side="move"><div id="move-hub"></div></section>
   <section id="screen-cone-setup" class="screen" data-side="move"><div id="cd-setup"></div></section>
   <section id="screen-signals" class="screen" data-side="move"><div id="cd-signals"></div></section>
@@ -129,7 +113,7 @@
   <section id="screen-board" class="screen"><div id="lb-board"></div></section>
   <section id="screen-coach" class="screen"><div id="lb-coach"></div></section>
 
-  <!-- Settings: FOCUS options + theme -->
+  <!-- Settings: you, Focus and Move options, sound, theme -->
   <section id="screen-settings" class="screen" aria-labelledby="settings-title">
     <header class="nav">
       <button id="btn-settings-back" class="nav__back" type="button"><i data-icon="chevron-left" data-size="22"></i><span id="settings-back-label">Home</span></button>
@@ -154,7 +138,7 @@
 
       <section class="about__side" data-side="focus">
         <p class="side-tag"><i data-icon="eye" data-size="18"></i>Focus · Eyes, mind, breath</p>
-        <p class="about__text"><b>Hold your phone.</b> Every answer is a tap, so reaction time and accuracy are measured. Use it in the locker room, on the bus, or anywhere you can't run. Game Ready runs all four parts in 5, 8 or 10 minutes; you can also run one part on its own.</p>
+        <p class="about__text"><b>Hold your phone.</b> Every answer is a tap, so reaction time and accuracy are measured. Use it in the locker room, on the bus, or anywhere you can't run. Tap how you feel (Flat, Ready or Wired), then a preset: Quick and Standard run Game Ready in 5 or 8 minutes, Game Speed runs it on Hard. Single parts, Extras and My Routine are under Advanced.</p>
         <dl class="about__why">
           <dt>Regulate</dt>
           <dd>Slow breathing (about 6 breaths a minute) and cyclic sighs settle your body quickly. Calm first makes the rest easier to focus on.</dd>
@@ -167,20 +151,20 @@
           <dt>Rehearse</dt>
           <dd>Picturing your best play and a cue word you say to yourself are two of the best-supported mental skills in sport. You finish calm and locked in.</dd>
         </dl>
-        <p class="about__text"><b>Game Day or Training.</b> On game days, Game Ready is short and calm and ends easy (5–10 minutes). On other days, Training runs 10–20 minutes, harder, with the visual skills and more decision work in Move. Real gains come from Training 2–4 days a week for 4+ weeks; the home screen keeps a simple weekly streak on this phone.</p>
-        <p class="about__text"><b>Focus Check</b> (optional, Settings): about 30 seconds of taps at the start and end of a session. It compares today only with your own earlier checks on this phone, because touch timing differs between phones. If you're slower than usual, it offers the lighter version. It's a readiness check, not a medical test.</p>
-        <p class="about__text"><b>Extras</b> (Stroop, math, trivia, memory, head turns, object tracking) are optional. They're fun, but generic brain games carry over to sport only weakly, and object tracking on its own hasn't carried over to game play in studies, so they're not part of Game Ready.</p>
+        <p class="about__text"><b>Game Day or Training</b> (the switch at the top of each side). On game days, Game Ready is short and calm and ends easy (5–8 minutes). On other days, Training runs 10–15 minutes, harder, with the visual skills and more decision work in Move. Real gains come from Training 2–4 days a week for 4+ weeks; each side shows a simple weekly streak on this phone.</p>
+        <p class="about__text"><b>Focus Check</b> (optional, Settings; Training mode only): about 30 seconds of taps at the start and end of a Training session. It compares today only with your own earlier checks on this phone, because touch timing differs between phones. If you're slower than usual, it offers the lighter version. It's a readiness check, not a medical test.</p>
+        <p class="about__text"><b>Extras</b> (Stroop, math, memory, head turns, object tracking) are optional. They're fun, but generic brain games carry over to sport only weakly, and object tracking on its own hasn't carried over to game play in studies, so they're not part of Game Ready.</p>
         <p class="about__text">Drills get harder as you get them right and ease off after misses, aiming at about 8 in 10 right: challenged, not crushed. This phone remembers each drill's level. <b>Low contrast</b> (Settings) fades the cues, like poor light or glare.</p>
       </section>
 
       <section class="about__side" data-side="move">
         <p class="side-tag"><i data-icon="move" data-size="18"></i>Move · React, cut, compete</p>
-        <p class="about__text"><b>Set your phone down</b> on a stand or the ground, facing you. Big signals tell you where to go; cut to the right cone, fast. You never touch the phone during a set. Use it on the field during warm-up.</p>
+        <p class="about__text"><b>Set your phone down</b> on a stand or the ground, facing you. Big signals tell you where to go; cut to the right cone, fast. You never touch the phone during a set: taps are ignored, and holding a finger on the screen for a second pauses. Use it on the field during warm-up, with the brightness all the way up.</p>
         <dl class="about__why">
           <dt>Why it works</dt>
           <dd>Reacting to a signal you can't predict, then moving, is closer to the game than running a pattern you already know. Thinking while moving carries over better than screen-only drills.</dd>
         </dl>
-        <p class="about__text">Quick Start is ready to go with 4 cones. <b>Game Day</b> is 3 short sets at game speed with full rest, on your own cones. Custom setup has every option. Signals Only needs no cones at all. Use a clear, flat space and warm up before high-speed cuts.</p>
+        <p class="about__text">Three presets on the same cones: <b>Quick</b> (2 short sets), <b>Standard</b> and <b>Game Speed</b> (game pace, full rest). Tap one and a countdown gives you time to set the phone down. Under Advanced, Custom setup has every option and Signals Only needs no cones at all. Use a clear, flat space and warm up before high-speed cuts.</p>
         <p class="about__text"><b>Decision Layer</b> (optional): some cues need a quick decision before you cut, like odd or even, a color word, or the opposite cone. Thinking while moving carries over best, so it's worth turning on once plain cues feel easy. <b>Planned</b> drills (5-10-5, square, T-drill) train change-of-direction speed on a route you know; <b>Reactive</b> drills train agility, which is closer to what games demand.</p>
       </section>
 
@@ -213,7 +197,7 @@
         </ol>
       </section>
 
-      <p class="about__text">Every FOCUS session is shuffled. This phone remembers which questions, scripts and problems you saw in your last few sessions and rests them for a while. No results or personal info are kept.</p>
+      <p class="about__text">Every FOCUS session is shuffled. This phone remembers which scripts, problems and cue words you saw in your last few sessions and rests them for a while. No results or personal info are kept.</p>
       <div class="list">
         <button id="btn-about-guide" class="list__row list__row--button" type="button"><span class="list__label">How it works</span><i data-icon="chevron-right"></i></button>
         <button id="btn-reset-variety" class="list__row list__row--button" type="button"><span class="list__label">Reset variety</span><i data-icon="rotate-ccw"></i></button>
@@ -239,13 +223,17 @@
         <span id="hud-block" class="hud__block"></span>
         <span id="hud-time" class="hud__time"></span>
         <button id="btn-pause" class="hud__pause" type="button" aria-label="Pause"><i data-icon="pause" data-size="18"></i></button>
+        <span class="hud__hold" aria-hidden="true">Hold to pause</span>
       </div>
     </div>
     <div id="stage" class="stage"></div>
+    <p id="awake-tip" class="awake-tip" role="status" hidden></p>
+    <span id="hold-ring" class="hold-ring" aria-hidden="true" hidden></span>
 
     <div id="pause-overlay" class="pause" hidden>
       <p class="pause__title">Paused</p>
-      <button id="btn-resume" class="btn btn--primary btn--block" type="button">Resume</button>
+      <p id="pause-why" class="pause__why" aria-live="polite"></p>
+      <button id="btn-resume" class="btn btn--primary btn--block pause__resume" type="button"><i data-icon="play" data-size="28"></i>Resume</button>
       <button id="btn-quit" class="btn btn--secondary btn--block" type="button">End session</button>
     </div>
   </section>
@@ -253,7 +241,12 @@
   <!-- FOCUS session summary -->
   <section id="screen-done" class="screen" data-side="focus">
     <div id="summary"></div>
+    <div id="summary-board" class="lb-inline"></div>
+    <div id="done-install"></div>
     <div class="screen__foot">
+      <button id="btn-next-move" class="btn btn--primary btn--block btn--last" type="button" data-side="move" hidden>
+        <i data-icon="move"></i><span><small>Next: Move</small><span id="next-move-desc"></span></span>
+      </button>
       <button id="btn-done" class="btn btn--primary btn--block" type="button">Done</button>
       <button id="btn-done-board" class="link-btn lb-link" type="button"><i data-icon="trophy"></i>Leaderboard</button>
     </div>

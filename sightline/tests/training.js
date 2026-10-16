@@ -10,7 +10,7 @@ import { WEEK_GOAL, dayKey, weekKey, streakOf, createTrainingLog } from '../js/l
 import { LEVEL_RANGE, TRAINING_RANGE, createLevel } from '../js/lib/adapt.js';
 import { createSession } from '../js/session.js';
 import { totalMinutes, sessionById, GAME_DAY_MAX_MIN } from '../js/plan.js';
-import { normalize, training, gameDay, TRAINING } from '../js/cone/config.js';
+import { normalize, movePreset, MOVE_PRESETS } from '../js/cone/config.js';
 import { decisionsFor } from '../js/cone/decide.js';
 import { drillMs } from '../js/cone/timing.js';
 import { parseSettings } from '../js/settings.js';
@@ -87,7 +87,7 @@ test('Training: 10 / 15 / 20 minutes exactly, every pillar plus visual skills, e
           const pillars = [...new Set(s.steps.map((x) => x.pillarId))];
           assert(pillars.join() === 'regulate,activate,vision,challenge,rehearse', `pillars ${pillars}`);
           assert(s.steps.at(-1).id === 'myroutine', 'ends on My Routine');
-          assert(!s.steps.some((x) => ['gaze', 'stroop', 'math', 'questions', 'memory', 'mot'].includes(x.id)), 'no limited-evidence drills');
+          assert(!s.steps.some((x) => ['gaze', 'stroop', 'math', 'memory', 'mot'].includes(x.id)), 'no limited-evidence drills');
           assert(s.steps.every((x) => x.durationMs >= 15000), 'every drill gets at least 15 s');
         }
       }
@@ -116,10 +116,11 @@ test('Training is harder, and the only place Occlusion can run', () => {
 
 test('MOVE Training: more decision work, 5 × 30 s; Game Day stays short', () => {
   for (const custom of [{ cueType: 'colors', cones: 4 }, { cueType: 'arrows', directions: ['L', 'R', 'F', 'B'], cones: 4 }, { cueType: 'numbers', cones: 7 }, { mode: 'planned' }, { cueType: 'sport' }]) {
-    const t = training(normalize(custom));
+    const t = movePreset('standard', 'training', normalize(custom));
+    const want = MOVE_PRESETS.training.standard;
     assert(t.mode === 'reactive' && t.decision && decisionsFor(t).length >= 2, `decisions on for ${custom.cueType ?? custom.mode}`);
-    assert(t.setMode === 'timed' && t.sets === TRAINING.sets && t.timedSec === TRAINING.timedSec && t.pace === TRAINING.pace, 'preset');
-    assert(drillMs(t) <= 12 * 60000 && drillMs(t) > drillMs(gameDay(normalize(custom))), 'longer than Game Day, still short');
+    assert(t.setMode === 'timed' && t.sets === want.sets && t.timedSec === want.timedSec && t.pace === want.pace, 'preset');
+    assert(drillMs(t) <= 12 * 60000 && drillMs(t) > drillMs(movePreset('speed', 'game', normalize(custom))), 'longer than Game Day, still short');
   }
 });
 

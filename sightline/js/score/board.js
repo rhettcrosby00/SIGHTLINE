@@ -43,16 +43,17 @@ async function call(method, params) {
 const newId = () => (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 // Save a session score. Resolves to the new standing, or { queued: true }
-// when offline (it posts later), or { error } when the server refuses it.
+// when offline or the server is busy (it posts later: busy says which), or
+// { error } when the server refuses it.
 export async function submitScore({ name, side, score, settings }) {
   const entry = { action: 'submit', name, side, score, settings, clientId: newId() };
   try {
     return await call('POST', entry);
   } catch (err) {
-    // Offline, or the server is having a moment: keep it and try again later.
-    if (err.offline || err.status >= 500) {
+    // Offline, busy (a whole team posting at once) or having a moment: keep it and try again later.
+    if (err.offline || err.status >= 500 || err.status === 429) {
       store.set(QUEUE_KEY, [...store.get(QUEUE_KEY, []), entry]);
-      return { queued: true };
+      return { queued: true, busy: !err.offline };
     }
     return { error: err.message };
   }

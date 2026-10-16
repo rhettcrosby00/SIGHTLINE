@@ -14,6 +14,7 @@ import './partner.js';
 import './training.js';
 import './design.js';
 import './sides.js';
+import './foolproof.js';
 import './deadcode.js';
 
 process.exit((await report()) ? 1 : 0);

@@ -12,11 +12,11 @@ import { createSeen } from '../js/lib/seen.js';
 import { parseSettings } from '../js/settings.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const LIMITED = ['gaze', 'stroop', 'math', 'questions', 'memory', 'mot'];
+const LIMITED = ['gaze', 'stroop', 'math', 'memory', 'mot'];
 // Drills nobody can fail (no right or wrong answer)…
 const UNFAILABLE = ['settle', 'sigh', 'resonance', 'breath478', 'energize', 'lockin', 'pursuit', 'saccades', 'gaze', 'visualize', 'myroutine'];
 // …and scored drills that finish on easy cues (js/stages/reaction.js, memory.js).
-const EASY_FINISH = ['colorcall', 'gonogo', 'peripheral', 'quieteye', 'nearfar', 'capture', 'span', 'stroop', 'math', 'questions', 'memory', 'mot'];
+const EASY_FINISH = ['colorcall', 'gonogo', 'peripheral', 'quieteye', 'nearfar', 'capture', 'span', 'stroop', 'math', 'memory', 'mot'];
 
 test('Game Ready has no limited-evidence drills; Extras holds exactly those', () => {
   const extras = PILLARS.find((p) => p.id === 'extras').drills.map((d) => d.id).sort();

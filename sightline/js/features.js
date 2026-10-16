@@ -4,6 +4,8 @@
 export const FEATURES = {
   // Every approved feature is simply part of the app now. Add new ones here as
   // 'preview' while they're being built; set them to true once approved.
+  // false = parked: the code stays, but it's off everywhere.
+  partner: false,   // MOVE Partner mode (a coach's phone sends the cues), parked in v4.0
 };
 
 // The live site's address(es). Anything else (preview links, localhost) is a preview.

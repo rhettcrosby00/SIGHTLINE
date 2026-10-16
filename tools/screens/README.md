@@ -11,7 +11,7 @@ Needs Google Chrome, Node 22+ and Python 3 (Pillow for contact sheets).
 python3 tools/screens/testserver.py      # the app on :5175, with /__set to seed settings
 node tools/screens/apiserver.mjs         # leaderboard + Partner API on :5176, in memory
 node tools/screens/cdp.mjs main          # every shot in scenarios/main.mjs
-node tools/screens/cdp.mjs pregame pg-   # one set, filtered by shot name
+node tools/screens/cdp.mjs main move-     # only shots whose name matches
 python3 tools/screens/sheet.py home      # sheets/home.png: all sizes and themes side by side
 ```
 

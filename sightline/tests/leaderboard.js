@@ -191,6 +191,12 @@ test('Rate limit: too many scores from one place in 10 minutes are refused', asy
   await svc.submit({ name: 'Spam', side: 'focus', score: 100, settings: FOCUS }, 'same-ip');
 });
 
+test('A whole team on one school Wi-Fi can post at the same time', async () => {
+  const { svc } = setup();
+  for (let i = 0; i < 40; i++) await svc.submit({ name: `Player ${i}`, side: 'focus', score: 100, settings: FOCUS }, 'school-wifi');
+  assert(LIMITS.submitPerWindow >= 40, 'room for a full roster');
+});
+
 test('Coach tools need the PIN; wrong PINs lock out; rename, merge and remove work', async () => {
   const { svc } = setup();
   await svc.submit({ name: 'Jordan', side: 'focus', score: 500, settings: FOCUS }, 'a');

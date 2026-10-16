@@ -198,7 +198,7 @@ export function initPartner(el, { getSetup, onBack }) {
     try {
       const { seq } = await call('POST', { action: 'cue', code: send.code, cue });
       status.textContent = `Sent ${label} · #${seq}`;
-      buzz(15);
+      buzz(15);   // the status line says so on screen too
     } catch (e) {
       status.textContent = e.message;
     }

@@ -87,7 +87,7 @@ const STEP = (steps) => `(async () => {
   const waitFor = async (sel, ms = 8000) => { const t = Date.now(); while (!document.querySelector(sel)) { if (Date.now() - t > ms) throw new Error('timeout ' + sel); await wait(50); } };
   await wait(1100);
   // Wait until the app has booted (home rendered) and the splash is gone.
-  for (let i = 0; i < 200 && !(document.getElementById('btn-game')?.textContent.includes('·') && !document.getElementById('splash')); i++) await wait(100);
+  for (let i = 0; i < 200 && !(document.getElementById('btn-focus') && !document.getElementById('splash')); i++) await wait(100);
   for (const [op, a, b] of ${JSON.stringify(steps)}) {
     if (op === 'click') { await waitFor(a); document.querySelector(a).click(); await wait(320); }
     if (op === 'wait') await wait(a);
@@ -95,6 +95,7 @@ const STEP = (steps) => `(async () => {
     if (op === 'scrollEnd') { scrollTo(0, document.documentElement.scrollHeight); await wait(200); }
     if (op === 'scrollTo') { document.querySelector(a).scrollIntoView({ block: 'center' }); await wait(200); }
     if (op === 'eval') (0, eval)(a);
+    if (op === 'hold') { await waitFor(a); const r = document.querySelector(a).getBoundingClientRect(); document.querySelector(a).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, isPrimary: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 })); await wait(b ?? 1300); }
     if (op === 'type') { await waitFor(a); const el = document.querySelector(a); el.value = b; el.dispatchEvent(new Event('input', { bubbles: true })); }
     if (op === 'select') { await waitFor(a); for (let i = 0; i < 40 && ![...document.querySelector(a).options].some((o) => o.value === b); i++) await wait(100); const el = document.querySelector(a); el.value = b; el.dispatchEvent(new Event('change', { bubbles: true })); await wait(400); }
   }
@@ -114,8 +115,9 @@ async function shoot(shot, size, theme) {
     const set = { ...BASE, ...shot.set, appearance: auto ? 'auto' : theme };
     const q = new URLSearchParams(set);
     if (shot.cone) q.set('cone', JSON.stringify(shot.cone));
-    if (shot.last) q.set('last', shot.last);
-    const url = `http://localhost:5175/__set?${q}&noguide=1${shot.params ? `&${shot.params}` : ''}`;
+    if (shot.last) q.set('last', JSON.stringify(shot.last));
+    if (shot.player) q.set('name', shot.player);
+    const url = `http://localhost:5175/__set?${q}${shot.firstRun ? '' : '&noguide=1'}${shot.params ? `&${shot.params}` : ''}`;
     await s('Page.enable');
     await s('Page.navigate', { url });
     for (let i = 0; i < 100; i++) {   // wait for the app page to finish loading
@@ -128,7 +130,7 @@ async function shoot(shot, size, theme) {
     const c = await s('Runtime.evaluate', { expression: CHECK, returnByValue: true });
     const miss = [];
     for (const want of shot.expect ?? []) {
-      const ok = await s('Runtime.evaluate', { returnByValue: true, expression: want.startsWith('#')
+      const ok = await s('Runtime.evaluate', { returnByValue: true, expression: /^[#.[]/.test(want)
         ? `!!document.querySelector(${JSON.stringify(want)})` : `document.body.innerText.toLowerCase().includes(${JSON.stringify(want.toLowerCase())})` });
       if (!ok.result.value) miss.push(want);
     }

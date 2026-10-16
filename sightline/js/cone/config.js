@@ -58,7 +58,8 @@ export const SETS = [1, 10];
 export const REST_SEC = [15, 300];   // custom rest, in 15 s steps
 export const FLASH_MS = [300, 1000];
 export const FAKE_RATES = { off: 0, low: 0.1, medium: 0.2 };
-export const COUNTDOWN_MS = 3000;
+export const COUNTDOWN_MS = 3000;   // 3-2-1 before every set after the first
+export const GET_SET_S = [5, 10];    // the first set's countdown: time to set the phone down and get to the start
 
 const DEFAULT_SETUP = {
   mode: 'reactive',       // reactive (cues you can't predict) | planned (a known pattern)
@@ -88,27 +89,35 @@ const DEFAULT_SETUP = {
   fakes: 'off',           // off | low | medium
   decision: false,        // Decision Layer (js/cone/decide.js); off for beginners
   decisions: DECISIONS.slice(),
-  sound: 'on',
+  sound: 'on',            // set from Settings → Sounds when a drill starts (one switch for both sides)
   callouts: false,
+  getSetS: 7,             // seconds of countdown before the first set (Settings → Countdown)
 };
 
-// MOVE presets.
-//   Quick Start: 4 cones, colors, 5 yd out and back, Training pace, 3 sets of
-//   10, suggested rest. Fixed, so it's always one tap away; sound follows the
-//   athlete's custom setup.
-//   Signals Only: arrows with no cones. Cut or shuffle the way it points
-//   (First step by default; Out and back to a spot you pick).
-const QUICK_START = {
-  mode: 'reactive', cueType: 'colors', cones: 4, coloredCones: false, style: 'outback', pace: 'training', distance: 5, distanceMode: 'same',
-  manual: false, setMode: 'reps', reps: 10, sets: 3, restMode: 'auto',
-  position: 'center', display: 'hold', fakes: 'off', decision: false,
+// MOVE presets (v4.0): Quick, Standard and Game Speed, for Game Day or
+// Training. All three run on the same cones, so one diagram covers them:
+// the Custom setup's cones and distances, as colors, arrows or numbers (they
+// fill the screen and read from far away; sport-call words don't). If those
+// cones can't run as a preset, 4 cones at 5 yards. Training adds the
+// Decision Layer. Rest is the suggested rest for the pace (Game Speed: 1:5,
+// so Training's Game Speed has 4 sets and stays near 10 minutes).
+export const MOVE_PRESETS = {
+  game: {
+    quick: { sets: 2, timedSec: 20, pace: 'training' },
+    standard: { sets: 3, timedSec: 20, pace: 'training' },
+    speed: { sets: 3, timedSec: 20, pace: 'game' },
+  },
+  training: {
+    quick: { sets: 2, timedSec: 20, pace: 'training', decision: true },
+    standard: { sets: 5, timedSec: 30, pace: 'training', decision: true },
+    speed: { sets: 4, timedSec: 30, pace: 'game', decision: true },
+  },
 };
-// Game Day: short and sharp on the athlete's own cones. 3 sets of 20 s at
-// Game Speed with full rest (the suggested 1:5 work to rest), reactive.
-export const GAME_DAY = { sets: 3, timedSec: 20, pace: 'game' };
-// Training (non-game days): more decision work. The athlete's cones with the
-// Decision Layer on, 5 sets of 30 s at Training pace, suggested rest.
-export const TRAINING = { sets: 5, timedSec: 30, pace: 'training' };
+export const PRESET_CUES = ['colors', 'arrows', 'numbers'];
+const PRESET_CONES = { cueType: 'colors', cones: 4, coloredCones: false, style: 'outback', distance: 5, distanceMode: 'same' };
+const PRESET_FIXED = { mode: 'reactive', setMode: 'timed', restMode: 'auto', manual: false, position: 'center', display: 'hold', fakes: 'off' };
+// Signals Only: arrows with no cones. Cut or shuffle the way it points
+// (First step by default; Out and back to a spot you pick).
 const SIGNALS_DEFAULT = { cueType: 'arrows', directions: ['L', 'R', 'F', 'B'], style: 'firststep' };
 
 // Setups saved before distance-based timing (v2.0 and earlier) had a fixed
@@ -177,6 +186,7 @@ export function normalize(raw = {}) {
   if (!s.decisions.length) s.decisions = DECISIONS.slice();
   s.sound = s.sound === 'off' ? 'off' : 'on';
   s.callouts = !!s.callouts;
+  s.getSetS = clamp(Math.round(Number(s.getSetS) || DEFAULT_SETUP.getSetS), GET_SET_S);
   // Cone to cone needs cones on the ground in a layout.
   if (s.style === 'conetocone' && s.cones < 2) s.style = 'outback';
   // Sport calls sit in the four main directions, one cone each.
@@ -186,17 +196,24 @@ export function normalize(raw = {}) {
   return s;
 }
 
-export function quickStart(custom = {}) {
-  return normalize({ ...QUICK_START, sound: custom.sound, callouts: custom.callouts });
+// The cones every preset uses (see MOVE_PRESETS).
+export function presetCones(custom = {}) {
+  const c = normalize(custom);
+  const mine = normalize({
+    ...PRESET_FIXED, cueType: PRESET_CUES.includes(c.cueType) ? c.cueType : 'colors', cones: c.cones, coloredCones: c.coloredCones,
+    colors: c.colors, directions: c.directions, style: c.style, distance: c.distance, distanceMode: c.distanceMode, coneYards: c.coneYards,
+  });
+  return validate(mine).ok && validate(mine).warnings.length === 0 ? mine : normalize({ ...PRESET_FIXED, ...PRESET_CONES });
 }
 
-export function gameDay(custom = {}) {
-  return normalize({ ...custom, mode: 'reactive', setMode: 'timed', timedSec: GAME_DAY.timedSec, sets: GAME_DAY.sets, pace: GAME_DAY.pace, restMode: 'auto', manual: false });
+// One preset: id 'quick' | 'standard' | 'speed', day 'game' | 'training'.
+export function movePreset(id, day, custom = {}) {
+  const p = MOVE_PRESETS[day === 'training' ? 'training' : 'game'][id] ?? MOVE_PRESETS.game.standard;
+  return normalize({ ...presetCones(custom), decision: !!p.decision, sets: p.sets, timedSec: p.timedSec, pace: p.pace, callouts: !!custom.callouts });
 }
 
-export function training(custom = {}) {
-  return normalize({ ...custom, mode: 'reactive', decision: true, setMode: 'timed', timedSec: TRAINING.timedSec, sets: TRAINING.sets, pace: TRAINING.pace, restMode: 'auto', manual: false });
-}
+// Countdown before set `i` (0 = the first set).
+export const countdownMs = (setup, i) => (i === 0 ? setup.getSetS * 1000 : COUNTDOWN_MS);
 
 // Signals Only: always arrows, one "cone" per direction (there are no cones),
 // one distance for every direction, and no Cone to cone.

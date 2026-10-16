@@ -17,10 +17,10 @@ const walk = (dir) => readdirSync(new URL(`${dir}/`, root), { withFileTypes: tru
 const jsFiles = walk('js');
 const html = read('index.html');
 
-// FOCUS code: everything outside js/cone/ except the app shell, shared helpers (js/lib/)
-// and the leaderboard (js/score/, shared by both sides).
-const FOCUS_FILES = jsFiles.filter((f) => !f.startsWith('js/cone/') && !f.startsWith('js/lib/') && !f.startsWith('js/score/')
-  && !['js/main.js', 'js/guide.js', 'js/migrate.js', 'js/features.js'].includes(f));
+// FOCUS code: everything outside js/cone/ except the app shell, shared helpers (js/lib/),
+// the leaderboard (js/score/) and what both sides share (settings, presets, install).
+const SHARED = ['js/main.js', 'js/guide.js', 'js/migrate.js', 'js/features.js', 'js/settings.js', 'js/presets.js', 'js/install.js'];
+const FOCUS_FILES = jsFiles.filter((f) => !f.startsWith('js/cone/') && !f.startsWith('js/lib/') && !f.startsWith('js/score/') && !SHARED.includes(f));
 // Code without comments: what can actually reach a screen.
 const codeOf = (f) => read(f).replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');
 const MOVE_FILES = jsFiles.filter((f) => f.startsWith('js/cone/'));
@@ -59,10 +59,13 @@ test('MOVE has no breathing, eye warm-ups, math or questions', () => {
   }
 });
 
-test('Home offers the two sides, each with a preset and a Run last shortcut', () => {
-  for (const id of ['btn-focus', 'btn-move', 'btn-game', 'btn-quick', 'btn-focus-last', 'btn-move-last', 'btn-settings', 'btn-about']) {
+test('Home offers two choices only (FOCUS, MOVE), each with a Run last shortcut', () => {
+  for (const id of ['btn-focus', 'btn-move', 'btn-focus-last', 'btn-move-last', 'btn-focus-open', 'btn-move-open', 'btn-settings', 'btn-about', 'btn-board']) {
     assert(html.includes(`id="${id}"`), `home is missing #${id}`);
   }
+  const home = html.slice(html.indexOf('id="screen-start"'), html.indexOf('</section>', html.indexOf('id="screen-start"')));
+  assert((home.match(/<article class="side"/g) ?? []).length === 2, 'two sides on home');
+  assert(!/data-day=|btn-game|btn-quick|btn-pregame|btn-routine/.test(home), 'nothing else to start from home (Game Day / Training lives on each side)');
   assert(/data-side="focus"[\s\S]*Eyes · Mind · Breath[\s\S]*Hold your phone/.test(html), 'FOCUS card copy');
   assert(/data-side="move"[\s\S]*React · Cut · Compete[\s\S]*Set your phone down/.test(html), 'MOVE card copy');
 });
@@ -122,7 +125,7 @@ test('Setups saved before distance timing (v2.0) keep their feel', () => {
 });
 
 test('"Run last" moves to the right side; old saves upgrade once and nothing is lost', () => {
-  assert(JSON.stringify(migrateLast(null, { type: 'game' })) === '{"focus":"game"}', 'Game Ready → FOCUS');
+  assert(JSON.stringify(migrateLast(null, { type: 'game' })) === '{"focus":"game:standard"}', 'Game Ready → FOCUS, Standard');
   assert(JSON.stringify(migrateLast(null, { type: 'cone' })) === '{"move":"custom"}', 'Cone Drill → MOVE custom setup');
   assert(JSON.stringify(migrateLast(null, null)) === '{}', 'nothing saved');
   assert(JSON.stringify(migrateLast({ focus: 'nope', move: 'signals' }, null)) === '{"move":"signals"}', 'bad values are dropped');
@@ -131,6 +134,11 @@ test('"Run last" moves to the right side; old saves upgrade once and nothing is 
   const last = createLastRuns(store);
   assert(last.get().move === 'custom', 'old Cone Drill run lost');
   assert(!store.has(OLD_LAST_KEY) && JSON.parse(store.getItem(LAST_KEY)).move === 'custom', 'upgrade not saved');
+  // Before the presets (v4.0): main sessions become Standard; Quick Start → Quick, Game Day → Game Speed.
+  const v2 = migrateLast({ focus: 'training', move: 'gameday' });
+  assert(v2.focus === 'training:standard' && v2.move === 'game:speed', JSON.stringify(v2));
+  assert(migrateLast({ move: 'quick' }).move === 'game:quick' && migrateLast({ move: 'training' }).move === 'training:standard', 'old MOVE runs');
+  assert(migrateLast({ focus: 'game:speed', move: 'training:quick' }).focus === 'game:speed', 'presets are kept');
   last.set('focus', 'activate');
   const again = createLastRuns(store).get();
   assert(again.focus === 'activate' && again.move === 'custom', 'each side keeps its own last run');
@@ -138,9 +146,9 @@ test('"Run last" moves to the right side; old saves upgrade once and nothing is 
   // Storage blocked (private mode): still works for the visit, no errors.
   const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() {} };
   const b = createLastRuns(blocked);
-  b.set('move', 'quick');
-  assert(b.get().move === 'quick', 'should remember for this visit');
-  for (const id of FOCUS_SESSIONS.map((s) => s.id)) assert(migrateLast({ focus: id }).focus === id, `${id} rejected`);
+  b.set('move', 'game:quick');
+  assert(b.get().move === 'game:quick', 'should remember for this visit');
+  for (const id of FOCUS_SESSIONS.map((s) => s.id).filter((x) => x !== 'game' && x !== 'training')) assert(migrateLast({ focus: id }).focus === id, `${id} rejected`);
   for (const id of MOVE_RUN_IDS) assert(migrateLast({ move: id }).move === id, `${id} rejected`);
 });
 
@@ -153,9 +161,10 @@ test('Old links and home-screen shortcuts still open the app', () => {
   for (const p of ['autostart', 'only', 'speed', 'autoready', 'seed', 'noguide']) assert(main.includes(`'${p}'`), `?${p} no longer handled`);
 });
 
-test('Feature flags: approved features don’t linger as switches; previews stay off live', () => {
-  const stale = Object.entries(FEATURES).filter(([, v]) => v !== 'preview').map(([k]) => k);
+test('Feature flags: approved features don’t linger as switches; previews stay off live; parked ones are off', () => {
+  const stale = Object.entries(FEATURES).filter(([, v]) => v !== 'preview' && v !== false).map(([k]) => k);
   assert(stale.length === 0, `approved flags to remove: ${stale}`);
+  for (const host of ['sightline-psi.vercel.app', 'sightline-git-x.vercel.app', 'localhost']) assert(!isOn('partner', { host, search: '' }), `Partner mode is parked, but on at ${host}`);
   // The mechanism still works for the next preview feature.
   FEATURES.__test = 'preview';
   try {

@@ -18,7 +18,6 @@
 // session.record() lists what this session actually used, for the variety list.
 
 import { createRng, deck } from './lib/rng.js';
-import { questionStream } from './content/questions.js';
 import { planSteps, guideChooser, PACING, STATES } from './plan.js';
 import { DEFAULT_ROUTINE, cleanRoutine, routineSeconds } from './myroutine.js';
 import { colorCallStream, goNoGoStream, stroopStream, peripheralStream, memoryStream, gaps } from './content/reaction.js';
@@ -47,7 +46,6 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
     routineS: routineSeconds(myRoutine),
   });
 
-  const questions = questionStream(rng.fork('questions'), { recent: setsOf(recent, 'questions') });
   // Visualization scripts for this athlete's sport and position.
   const scripts = deck(rng.fork('scripts'), scriptsFor(sport, position), { key: (s) => s.id, recent: setsOf(recent, 'scripts') });
   // Cue words: motivational ones rotate across sessions; skill ones match the sport.
@@ -73,7 +71,6 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
     peripheral: peripheralStream(rng.fork('peripheral')),
     memory: memoryStream(rng.fork('memory')),
     math: (opts) => { const p = math(opts); mathUsed.push(p.text); return p; },
-    questions: () => questions.next(),
     pursuit: pursuitPlan(rng.fork('pursuit')),
     saccades: saccadeStream(rng.fork('saccades')),
     gaze: gazeStream(rng.fork('gaze')),
@@ -108,7 +105,6 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
     content,
     levels: () => Object.fromEntries(Object.entries(levelOf).map(([id, l]) => [id, l.value])),
     record: () => ({
-      questions: questions.used(),
       scripts: script ? [script.id] : [],
       math: mathUsed.slice(),
       cues: cueSuggestions.slice(),

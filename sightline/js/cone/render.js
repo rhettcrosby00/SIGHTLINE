@@ -24,10 +24,16 @@ const wordSize = (text) => `font-size:min(${Math.round(WORD_VW / Math.max(2, tex
 // About how far away a word reads at a glance (capital letters at 8 arcmin,
 // a bit over 1.5× the 20/20 letter) on a small phone held upright: 375 × 667
 // CSS px, about 0.16 mm each. Short calls read farther.
+const yardsAt = (fontPx) => (fontPx * 0.72 * 0.16) / 1000 / Math.tan(((8 / 60) * Math.PI) / 180) / 0.9144;
 export function readableYards(text, { width = 375, height = 667 } = {}) {
-  const fontPx = Math.min((Math.round(WORD_VW / Math.max(2, text.length)) * width) / 100, (WORD_DVH * height) / 100);
-  const capM = (fontPx * 0.72 * 0.16) / 1000;
-  return capM / Math.tan(((8 / 60) * Math.PI) / 180) / 0.9144;
+  return yardsAt(Math.min((Math.round(WORD_VW / Math.max(2, text.length)) * width) / 100, (WORD_DVH * height) / 100));
+}
+// Numbers (styles.css .cdf--number): one digit as big as the screen allows,
+// two digits as wide as fits. Keep in step with the CSS.
+export const NUMBER_SIZE = { one: [150, 62], two: [80, 52] };   // [vw, dvh]
+export function numberYards(num, { width = 375, height = 667 } = {}) {
+  const [vw, dvh] = String(num).length === 1 ? NUMBER_SIZE.one : NUMBER_SIZE.two;
+  return yardsAt(Math.min((vw * width) / 100, (dvh * height) / 100));
 }
 
 function base(face) {
@@ -43,7 +49,7 @@ function base(face) {
         body: `<svg class="cdf__arrow" viewBox="0 0 100 100" style="transform:rotate(${d.angle}deg)" aria-hidden="true"><path d="${ARROW_PATH}"/></svg>` };
     }
     case 'number':
-      return { cls: 'cdf--number', label: String(face.num), body: `<span>${face.num}</span>` };
+      return { cls: `cdf--number${String(face.num).length === 1 ? ' cdf--one' : ''}`, label: String(face.num), body: `<span>${face.num}</span>` };
     case 'word':
       return { cls: 'cdf--word', label: face.word, body: `<span style="${wordSize(face.word)}">${face.word}</span>` };
     case 'parity':

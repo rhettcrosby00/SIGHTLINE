@@ -11,7 +11,6 @@ import { ALL_SCRIPTS, scriptSeconds } from '../js/content/scripts.js';
 import { DEFAULT_ROUTINE, routineSeconds } from '../js/myroutine.js';
 import { SPORTS, SKILL_WORDS } from '../js/content/sports.js';
 import { CUE_WORDS } from '../js/content/cues.js';
-import { QUESTIONS } from '../js/data/questions.js';
 import { CUES } from '../js/lib/colors.js';
 import { dist } from '../js/lib/rng.js';
 
@@ -24,7 +23,7 @@ const settingsFor = (i) => ({ length: LENGTHS[i % 3], difficulty: DIFFS[Math.flo
 
 // Draw every stream as hard as a real session could (plus practice), in a
 // fixed order, and return everything that was shown.
-const DRAWS = { colorCall: 80, goNoGo: 80, peripheral: 80, math: 60, questions: 25, saccades: 120, gaze: 80, memory: 12 };
+const DRAWS = { colorCall: 80, goNoGo: 80, peripheral: 80, math: 60, saccades: 120, gaze: 80, memory: 12 };
 function drawSession(session, settings) {
   const c = session.content;
   const hard = settings.difficulty === 'hard';
@@ -35,7 +34,6 @@ function drawSession(session, settings) {
   for (let t; (t = c.stroop()); ) out.stroop.push(t);
   out.peripheral = Array.from({ length: DRAWS.peripheral }, (_, i) => c.peripheral({ lure: hard && i % 2 === 0 }));
   out.math = Array.from({ length: DRAWS.math }, (_, i) => c.math({ hard: hard && i > 2 }));
-  out.questions = Array.from({ length: DRAWS.questions }, () => c.questions()).filter(Boolean);
   out.saccades = Array.from({ length: DRAWS.saccades }, () => c.saccades());
   out.gaze = Array.from({ length: DRAWS.gaze }, () => c.gaze());
   out.memory = Array.from({ length: DRAWS.memory }, (_, i) => c.memory(3 + (i % 7)));
@@ -78,7 +76,6 @@ test(`${SESSIONS} sessions: no repeated content within a session`, () => {
   for (const { d } of runs) {
     unique(d.math.map((p) => p.text), 'math problem');
     unique(d.stroop.map((p) => `${p.word}/${p.ink}`), 'Stroop pair');
-    unique(d.questions.map((q) => q.q), 'question');
     unique(d.cues, 'cue suggestion');
     unique(d.pursuit.map((p) => p.id), 'pursuit path');
     assert(d.script && d.script.id, 'no visualization script');
@@ -94,7 +91,6 @@ test('No back-to-back colors, sides, numbers or letters; max 2 of the same in an
     spacedOk(d.peripheral.map((t) => t.color), 'Peripheral color');
     spacedOk(d.peripheral.map((t) => t.side), 'Peripheral side');
     for (const seq of d.memory) spacedOk(seq, 'Memory sequence color');
-    spacedOk(d.questions.map((q) => q.answer), 'Question answer color');
     spacedOk(d.saccades.map((t) => t.num), 'Saccade number');
     spacedOk(d.gaze, 'Gaze letter');
   }
@@ -184,7 +180,7 @@ test('One-part sessions run only their part (Breathing, Eyes, Visual skills, Rea
     vision: () => ['nearfar', 'capture', 'span'],
     challenge: () => ['colorcall', 'gonogo'],
     rehearse: () => ['visualize', 'myroutine'],
-    extras: () => ['gaze', 'stroop', 'math', 'questions', 'memory', 'mot'],
+    extras: () => ['gaze', 'stroop', 'math', 'memory', 'mot'],
   };
   for (let i = 0; i < 400; i++) {
     for (const [id, ids] of Object.entries(want)) {
@@ -244,12 +240,11 @@ function memoryStorage() {
   const m = new Map();
   return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
 }
-// A realistic Full session: ~12 questions, ~20 math problems, 1 script, 5 cue words.
-function playSession(variety, i, { questions = 12, math = 20 } = {}) {
+// A realistic Full session: ~20 math problems, 1 script, 5 cue words.
+function playSession(variety, i, { math = 20 } = {}) {
   const settings = { length: 'full', difficulty: 'normal' };
   const s = createSession({ settings, seed: 5000 + i, recent: variety.recent() });
   const shown = {
-    questions: Array.from({ length: questions }, () => s.content.questions()).filter(Boolean).map((q) => q.q),
     math: Array.from({ length: math }, () => s.content.math()).map((p) => p.text),
     script: s.content.script().id,
     cues: s.content.cueSuggestions.slice(),
@@ -265,7 +260,6 @@ test('Content from the last 3 sessions doesn’t come back (device storage on)',
   for (let i = 0; i < 40; i++) {
     const now = playSession(variety, i);
     for (const past of history.slice(-3)) {
-      for (const q of now.questions) assert(!past.questions.includes(q), `session ${i}: question came back: ${q}`);
       for (const m of now.math) assert(!past.math.includes(m), `session ${i}: math problem came back: ${m}`);
       for (const c of now.cues) assert(!past.cues.includes(c), `session ${i}: cue suggestion came back: ${c}`);
     }
@@ -278,16 +272,10 @@ test('Content from the last 3 sessions doesn’t come back (device storage on)',
 test('When a pool runs low it resets on its own (no errors, still no repeats in a session)', () => {
   const variety = createVariety(memoryStorage());
   for (let i = 0; i < 8; i++) {
-    const now = playSession(variety, i, { questions: 40 });
-    unique(now.questions, 'question');
-    assert(now.questions.length === 40, 'ran out of questions');
+    const now = playSession(variety, i, { math: 60 });
+    unique(now.math, 'math problem');
+    assert(now.math.length === 60, 'ran out of math problems');
   }
-  // A session can use the whole question bank without a repeat; then it stops.
-  const s = createSession({ settings: settingsFor(0), seed: 77 });
-  const all = [];
-  for (let q; (q = s.content.questions()); ) all.push(q.q);
-  assert(all.length === QUESTIONS.length, `drew ${all.length} of ${QUESTIONS.length}`);
-  unique(all, 'question');
 });
 
 test('Reset variety clears the recently-used list', () => {
@@ -303,12 +291,11 @@ test('Works with device storage disabled (still random, still no repeats)', () =
   const broken = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() { throw new Error('blocked'); } };
   for (const variety of [createVariety(broken), createVariety(null), createVariety()]) {
     assert(variety.recent().length === 0, 'recent() should be empty');
-    variety.add({ questions: ['x'] });   // must not throw
+    variety.add({ math: ['x'] });   // must not throw
     variety.reset();
     const settings = settingsFor(3);
     const d = drawSession(createSession({ settings, recent: variety.recent() }), settings);
     unique(d.math.map((p) => p.text), 'math problem');
-    unique(d.questions.map((q) => q.q), 'question');
     spacedOk(d.colorCall.map((t) => t.color), 'Color Call color');
   }
 });
@@ -316,7 +303,7 @@ test('Works with device storage disabled (still random, still no repeats)', () =
 // 8 ---------------------------------------------------------------------------------
 test('The same seed replays the same session; different seeds differ', () => {
   const settings = { length: 'standard', difficulty: 'hard' };
-  const recent = [{ questions: [QUESTIONS[0].q], scripts: ['gen-first'], math: ['3 + 4'], cues: ['CALM'] }];
+  const recent = [{ scripts: ['gen-first'], math: ['3 + 4'], cues: ['CALM'] }];
   const a = JSON.stringify(drawSession(createSession({ settings, seed: 424242, recent }), settings));
   const b = JSON.stringify(drawSession(createSession({ settings, seed: 424242, recent }), settings));
   const c = JSON.stringify(drawSession(createSession({ settings, seed: 424243, recent }), settings));
@@ -349,8 +336,6 @@ test('Content pools are big enough and well-formed', () => {
   assert(CUE_WORDS.length >= 20, 'need 20+ cue words');
   unique(CUE_WORDS, 'cue word');
   for (const bad of ['O', 'Q', 'I', 'L']) assert(!GAZE_LETTERS.includes(bad), `${bad} is easy to confuse`);
-  unique(QUESTIONS.map((q) => q.q), 'question');
-  for (const q of QUESTIONS) assert(!q.w.includes(q.a), `answer listed as wrong: ${q.q}`);
 });
 
 test('Breathing wording rotates without repeating back-to-back', () => {

@@ -64,7 +64,6 @@ export const PILLARS = [
     { id: 'gaze', title: 'Gaze Stabilization', ...EYES },
     { id: 'stroop', title: 'Stroop', ...SCORED },
     { id: 'math', title: 'Quick Math', ...SCORED },
-    { id: 'questions', title: 'Quick Questions', ...SCORED },
     { id: 'memory', title: 'Memory Sequence', ...SCORED, intro: { full: 25, brief: 6 } },
     { id: 'mot', title: 'Object Tracking', ...SCORED, intro: { full: 14, brief: 6 }, min: 30 },
   ] },
@@ -84,7 +83,7 @@ export const FOCUS_SESSIONS = [
   { id: 'vision', title: 'Visual skills', short: 'Near-far focus, target capture, perception span', minutes: [3, 4, 5] },
   { id: 'challenge', title: 'Reaction only', short: 'Color Call and Go / No-Go', minutes: [2, 3, 4] },
   { id: 'rehearse', title: 'Rehearse only', short: 'Cue word, visualization, My Routine', check: 'before', minutes: [1.5, 1.5, 2] },
-  { id: 'extras', title: 'Extras', short: 'Optional: Stroop, math, trivia, memory, head turns, object tracking', minutes: [4, 6, 8], extra: true },
+  { id: 'extras', title: 'Extras', short: 'Optional: Stroop, math, memory, head turns, object tracking', minutes: [4, 6, 8], extra: true },
   { id: 'myroutine', title: 'My Routine', short: 'Your 20–40 second pre-performance routine', minutes: [0.5, 0.5, 0.5], unscored: true, timedByRoutine: true },
 ];
 export const sessionById = Object.fromEntries(FOCUS_SESSIONS.map((s) => [s.id, s]));

@@ -14,7 +14,7 @@
 // Low contrast (Settings): cues that carry a color (trial.fg) fade toward the
 // background, fainter as the level rises, never below the visible floor.
 
-import { howTo, countdown, mini, practiceLeft, backdrop } from './common.js';
+import { howTo, countdown, mini, practiceLeft, backdrop, tapGuard } from './common.js';
 import { cueById } from '../lib/colors.js';
 import { cues } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
@@ -53,13 +53,13 @@ export function finishing(leftMs, windowMs, hard) {
 // ---- Shared runner -------------------------------------------------------------
 // Also used by the brain drills. Spec fields:
 //   kicker?, title, rule, strip, demo, practice (count)
-//   pad: 'colors' | 'oddeven' | 'list' | 'plain' | 'anywhere'
+//   pad: 'colors' | 'oddeven' | 'plain' | 'anywhere'
 //   choices [{ id, html }] for 'plain' pads (neutral buttons)
 //   tapWindow (ms), fbMs?
 //   next({ hard, practice, easy, level }) -> trial   (easy: the simplest cue, for the finish)
 // Trial fields:
 //   html, answer (cue id, 'go', or null = hold), answerLabel (for "It was …"),
-//   kind?, flashMs?, buttons? [{ id, label }] for 'list' pads,
+//   kind?, flashMs?,
 //   fg? (the cue's color, or a CSS variable like '--cue-fg', for Low contrast)
 // next() returns null when the drill's content pool is used up; the drill then
 // ends early rather than repeat anything. All randomness comes from
@@ -70,14 +70,13 @@ export async function runDrill(ctx, spec) {
   return runTap(ctx, spec);
 }
 
-function padButtons(spec, trial) {
+function padButtons(spec) {
   const btn = (c, label) => `
     <button type="button" class="pad__btn" data-id="${c.id}" style="--c:${c.hex};--ink:${c.ink}">
       <span class="pad__shape" aria-hidden="true">${c.shape}</span><span class="pad__label">${label}</span>
     </button>`;
   if (spec.pad === 'colors') return GRID.map((id) => btn(cueById[id], cueById[id].label)).join('');
   if (spec.pad === 'oddeven') return btn(cueById.blue, 'ODD') + btn(cueById.red, 'EVEN');
-  if (spec.pad === 'list') return (trial?.buttons ?? []).map((b) => btn(cueById[b.id], b.label)).join('');
   if (spec.pad === 'plain') return spec.choices.map((b) => `<button type="button" class="pad__btn pad__btn--plain" data-id="${b.id}" aria-label="${b.label}">${b.html}</button>`).join('');
   return '';
 }
@@ -109,20 +108,21 @@ async function runTap(ctx, spec) {
 
   // One listener; the current trial (if any) picks up the tap.
   let onTap = null;
+  const guard = tapGuard();
   (anywhere ? root : pad).addEventListener('pointerdown', (e) => {
     const id = anywhere ? 'go' : e.target.closest('.pad__btn')?.dataset.id;
-    if (id && onTap) { e.preventDefault(); onTap(id); }
+    if (id && onTap) { e.preventDefault(); if (guard.ok()) onTap(id); }
   });
 
   const waitTap = (ms) => new Promise((resolve, reject) => {
     let done = false;
     const finish = (v) => { if (!done) { done = true; onTap = null; resolve(v); } };
+    guard.cue();
     onTap = finish;
     sleep(ms).then(() => finish(null), (err) => { if (!done) { done = true; onTap = null; reject(err); } });
   });
 
   const showTrial = (trial, faint = false) => {
-    if (spec.pad === 'list') pad.innerHTML = padButtons(spec, trial);
     // Low contrast: the cue fades to this level's contrast ratio (full strength on easy cues).
     const fg = trial.fg?.startsWith('--') ? toHex(getComputedStyle(cueBox).getPropertyValue(trial.fg)) : trial.fg;
     const strength = faint && low && fg ? opacityFor(fg, cueBg, lowContrastAt(level.value)) : 1;
