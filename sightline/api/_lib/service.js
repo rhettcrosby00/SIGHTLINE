@@ -37,6 +37,8 @@ export function databaseProblem(url, err) {
   if (!url) return 'DATABASE_URL isn’t set';
   if (!/^postgres(ql)?:\/\/[^/\s]+@[^/\s]+\/\S+/.test(url)) {
     if (/^[•*●·\s]+$/.test(url)) return 'DATABASE_URL is hidden dots: copy the real value';
+    if (/[•*●·]{4,}/.test(url)) return 'DATABASE_URL was copied while hidden: click Show secret, then copy';
+    if (/\n/.test(url.trim())) return 'DATABASE_URL is a block of settings without the database address in it';
     if (/^https?:/i.test(url)) return 'DATABASE_URL is a web address, not the database address';
     if (/neon\.tech/i.test(url)) return 'DATABASE_URL is only part of the database address';
     return 'DATABASE_URL doesn’t look like a database address';

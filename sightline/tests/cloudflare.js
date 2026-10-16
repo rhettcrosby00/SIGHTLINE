@@ -79,6 +79,9 @@ test('Database setup: forgiving about paste slips, and the health check says wha
   assert(databaseProblem('ep-example.neon.tech') === 'DATABASE_URL is only part of the database address', 'only the host');
   assert(databaseProblem('••••••••') === 'DATABASE_URL is hidden dots: copy the real value', 'masked');
   assert(databaseProblem('abc123') === 'DATABASE_URL doesn’t look like a database address', 'something else');
+  assert(databaseUrl({ DATABASE_URL: '# Recommended for most uses\nDATABASE_URL="************"\nPGHOST="************"' }) !== real
+    && databaseProblem(databaseUrl({ DATABASE_URL: '# Recommended for most uses\nDATABASE_URL="************"\nPGHOST="************"' })) === 'DATABASE_URL was copied while hidden: click Show secret, then copy', 'a hidden snippet');
+  assert(databaseProblem('# Recommended\nPGHOST=ep-x\nPGUSER=me') === 'DATABASE_URL is a block of settings without the database address in it', 'a block without the address');
   assert(databaseProblem(real) === null, 'a good address is fine');
   assert(databaseProblem(real, new Error('password authentication failed for user "user"')) === 'the database refused the password', 'password');
   const wrong = await call('leaderboard', { query: '?action=health', env: { DATABASE_URL: 'https://example.com' } });
