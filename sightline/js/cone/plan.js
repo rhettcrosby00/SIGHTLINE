@@ -21,7 +21,7 @@
 
 import { createRng, spaced } from '../lib/rng.js';
 import { CUES } from './cues/index.js';
-import { FAKE_RATES, COUNTDOWN_MS } from './config.js';
+import { FAKE_RATES, countdownMs } from './config.js';
 import { TIMING, coneSlots, repTiming, holdSeconds, averageRepSeconds, finalMs, restSec, plannedRep, plannedMs, decisionSeconds } from './timing.js';
 import { DECISION_RATE, decisionsFor, fitsTarget, leftRight, mirrors, stroopWord } from './decide.js';
 
@@ -207,6 +207,6 @@ export function planDrill(setup, seed, { tune = 1 } = {}) {
   const targets = cue.targets(setup);
   const sets = Array.from({ length: setup.sets }, (_, i) => planSet(rng.fork(`set:${i}`), setup, cue, targets, tune));
   const restMs = restSec(setup) * 1000;
-  const totalMs = sets.reduce((a, st) => a + COUNTDOWN_MS + st.durationMs, 0) + restMs * (setup.sets - 1);
+  const totalMs = sets.reduce((a, st, i) => a + countdownMs(setup, i) + st.durationMs, 0) + restMs * (setup.sets - 1);
   return { seed: rng.seed, cue, targets, sets, restMs, totalMs };
 }

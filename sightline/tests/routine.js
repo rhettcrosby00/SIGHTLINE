@@ -11,7 +11,6 @@ import { ALL_SCRIPTS, scriptSeconds } from '../js/content/scripts.js';
 import { DEFAULT_ROUTINE, routineSeconds } from '../js/myroutine.js';
 import { SPORTS, SKILL_WORDS } from '../js/content/sports.js';
 import { CUE_WORDS } from '../js/content/cues.js';
-import { QUESTIONS } from '../js/data/questions.js';
 import { CUES } from '../js/lib/colors.js';
 import { dist } from '../js/lib/rng.js';
 
@@ -21,11 +20,10 @@ const SESSIONS = 1000;
 const LENGTHS = ['quick', 'standard', 'full'];
 const DIFFS = ['normal', 'hard'];
 const settingsFor = (i) => ({ length: LENGTHS[i % 3], difficulty: DIFFS[Math.floor(i / 6) % 2] });
-const FLAGS = [{ newDrills: false }, { newDrills: true }];
 
 // Draw every stream as hard as a real session could (plus practice), in a
 // fixed order, and return everything that was shown.
-const DRAWS = { colorCall: 80, goNoGo: 80, peripheral: 80, math: 60, questions: 25, saccades: 120, gaze: 80, memory: 12 };
+const DRAWS = { colorCall: 80, goNoGo: 80, peripheral: 80, math: 60, saccades: 120, gaze: 80, memory: 12 };
 function drawSession(session, settings) {
   const c = session.content;
   const hard = settings.difficulty === 'hard';
@@ -36,7 +34,6 @@ function drawSession(session, settings) {
   for (let t; (t = c.stroop()); ) out.stroop.push(t);
   out.peripheral = Array.from({ length: DRAWS.peripheral }, (_, i) => c.peripheral({ lure: hard && i % 2 === 0 }));
   out.math = Array.from({ length: DRAWS.math }, (_, i) => c.math({ hard: hard && i > 2 }));
-  out.questions = Array.from({ length: DRAWS.questions }, () => c.questions()).filter(Boolean);
   out.saccades = Array.from({ length: DRAWS.saccades }, () => c.saccades());
   out.gaze = Array.from({ length: DRAWS.gaze }, () => c.gaze());
   out.memory = Array.from({ length: DRAWS.memory }, (_, i) => c.memory(3 + (i % 7)));
@@ -71,8 +68,7 @@ const maxRun = (arr, value) => {
 // tests. Half with the new drills on (preview), half off (live).
 const runs = Array.from({ length: SESSIONS }, (_, i) => {
   const settings = settingsFor(i);
-  const flags = FLAGS[i % 2];
-  return { settings, flags, d: drawSession(createSession({ settings, seed: 1000 + i, flags }), settings) };
+  return { settings, d: drawSession(createSession({ settings, seed: 1000 + i }), settings) };
 });
 
 // 1 ---------------------------------------------------------------------------------
@@ -80,7 +76,6 @@ test(`${SESSIONS} sessions: no repeated content within a session`, () => {
   for (const { d } of runs) {
     unique(d.math.map((p) => p.text), 'math problem');
     unique(d.stroop.map((p) => `${p.word}/${p.ink}`), 'Stroop pair');
-    unique(d.questions.map((q) => q.q), 'question');
     unique(d.cues, 'cue suggestion');
     unique(d.pursuit.map((p) => p.id), 'pursuit path');
     assert(d.script && d.script.id, 'no visualization script');
@@ -96,7 +91,6 @@ test('No back-to-back colors, sides, numbers or letters; max 2 of the same in an
     spacedOk(d.peripheral.map((t) => t.color), 'Peripheral color');
     spacedOk(d.peripheral.map((t) => t.side), 'Peripheral side');
     for (const seq of d.memory) spacedOk(seq, 'Memory sequence color');
-    spacedOk(d.questions.map((q) => q.answer), 'Question answer color');
     spacedOk(d.saccades.map((t) => t.num), 'Saccade number');
     spacedOk(d.gaze, 'Gaze letter');
   }
@@ -161,7 +155,7 @@ test('Game Ready (Ready): Regulate → Activate → Challenge → Rehearse; one 
   const challengeOrders = new Set();
   const activateOrders = new Set();
   const breaths = new Set();
-  for (const { d, flags, settings } of runs) {
+  for (const { d, settings } of runs) {
     const seq = d.steps.map((s) => s.pillar).filter((p, i, a) => p !== a[i - 1]);
     assert(seq.join() === pillarIds.join(), `pillar order ${seq.join()}`);
     assert(d.steps.at(-1).id === 'myroutine' && d.steps.at(-2).id === 'visualize', 'Rehearse order changed');
@@ -171,7 +165,6 @@ test('Game Ready (Ready): Regulate → Activate → Challenge → Rehearse; one 
     const eyes = settings.length === 'quick' ? ['peripheral', 'saccades'] : ['peripheral', 'pursuit', 'saccades'];
     assert(d.steps.filter((s) => s.pillar === 'activate').map((s) => s.id).sort().join() === eyes.join(), 'Activate drills wrong');
     assert(d.steps.filter((s) => s.pillar === 'challenge').map((s) => s.id).sort().join() === 'colorcall,gonogo', 'Challenge drills wrong');
-    if (!flags.newDrills) assert(!d.steps.some((s) => ['breath478', 'memory'].includes(s.id)), 'flagged drill shown with the flag off');
     challengeOrders.add(d.steps.filter((s) => s.pillar === 'challenge').map((s) => s.id).join());
     activateOrders.add(d.steps.filter((s) => s.pillar === 'activate').map((s) => s.id).join());
   }
@@ -182,25 +175,23 @@ test('Game Ready (Ready): Regulate → Activate → Challenge → Rehearse; one 
 
 test('One-part sessions run only their part (Breathing, Eyes, Visual skills, Reaction, Rehearse, Extras)', () => {
   const want = {
-    regulate: (f) => ['settle', 'sigh', 'resonance', ...(f.newDrills ? ['breath478'] : []), 'lockin'],
+    regulate: () => ['settle', 'sigh', 'resonance', 'breath478', 'lockin'],
     activate: () => ['pursuit', 'saccades', 'peripheral', 'quieteye'],
     vision: () => ['nearfar', 'capture', 'span'],
     challenge: () => ['colorcall', 'gonogo'],
     rehearse: () => ['visualize', 'myroutine'],
-    extras: (f) => ['gaze', 'stroop', 'math', 'questions', ...(f.newDrills ? ['memory'] : []), 'mot'],
+    extras: () => ['gaze', 'stroop', 'math', 'memory', 'mot'],
   };
-  for (let i = 0; i < 200; i++) {
-    for (const flags of FLAGS) {
-      for (const [id, ids] of Object.entries(want)) {
-        const s = createSession({ sessionId: id, settings: settingsFor(i), seed: i, flags });
-        const got = s.steps.map((x) => x.id);
-        // Extras has more drills than a Quick session with full instructions holds: one may sit out.
-        const all = ids(flags);
-        assert(got.every((x) => all.includes(x)) && new Set(got).size === got.length, `${id}: ${got}`);
-        assert(got.length >= all.length - (id === 'extras' ? 1 : 0), `${id}: ${got}`);
-        if (id === 'regulate') assert(got.at(-1) === 'lockin', 'Breathing only should finish with Lock In');
-        if (id === 'rehearse') assert(got.at(-1) === 'myroutine', 'Rehearse only should finish with My Routine');
-      }
+  for (let i = 0; i < 400; i++) {
+    for (const [id, ids] of Object.entries(want)) {
+      const s = createSession({ sessionId: id, settings: settingsFor(i), seed: i });
+      const got = s.steps.map((x) => x.id);
+      // Extras has more drills than a Quick session with full instructions holds: one may sit out.
+      const all = ids();
+      assert(got.every((x) => all.includes(x)) && new Set(got).size === got.length, `${id}: ${got}`);
+      assert(got.length >= all.length - (id === 'extras' ? 1 : 0), `${id}: ${got}`);
+      if (id === 'regulate') assert(got.at(-1) === 'lockin', 'Breathing only should finish with Lock In');
+      if (id === 'rehearse') assert(got.at(-1) === 'myroutine', 'Rehearse only should finish with My Routine');
     }
   }
 });
@@ -226,20 +217,18 @@ test('Breathing timelines fill their slot exactly', () => {
 test('Game Ready is 5, 8 or 10 minutes, instructions included, and never more than 10', () => {
   assert(['quick', 'standard', 'full'].map((l) => totalMinutes('game', l)).join() === '5,8,10', 'Game Ready lengths');
   // Every session's drills plus instructions add up to exactly what the menu shows,
-  // for every length, flag and instructions setting (Full, Brief, Auto at any stage).
+  // for every length and instructions setting (Full, Brief, Auto at any stage).
   const guides = [{ guide: 'full' }, { guide: 'brief' }, { guide: 'auto' }, { guide: 'auto', seen: { colorcall: 5, gonogo: 1, peripheral: 3 } }];
   for (const { id } of FOCUS_SESSIONS) {
     for (const length of LENGTHS) {
-      for (const flags of FLAGS) {
-        for (const { guide, seen } of guides) {
-          for (const seed of [7, 8, 9]) {
-            const s = createSession({ sessionId: id, settings: { length, difficulty: 'normal', guide }, seed, flags, seen });
-            const ms = s.steps.reduce((a, x) => a + x.durationMs + x.introMs, 0);
-            const want = totalMinutes(id, length, routineSeconds(DEFAULT_ROUTINE)) * 60000;
-            assert(Math.abs(ms - want) < 1, `${id} ${length} ${guide}: ${ms} ms vs ${want} ms`);
-            assert(s.steps.every((x) => x.durationMs >= 10000), `${id} ${length}: a drill under 10 s`);
-            if (id === 'game') assert(ms <= GAME_DAY_MAX_MIN * 60000, `Game Ready over ${GAME_DAY_MAX_MIN} min`);
-          }
+      for (const { guide, seen } of guides) {
+        for (const seed of [7, 8, 9, 10, 11, 12]) {
+          const s = createSession({ sessionId: id, settings: { length, difficulty: 'normal', guide }, seed, seen });
+          const ms = s.steps.reduce((a, x) => a + x.durationMs + x.introMs, 0);
+          const want = totalMinutes(id, length, routineSeconds(DEFAULT_ROUTINE)) * 60000;
+          assert(Math.abs(ms - want) < 1, `${id} ${length} ${guide}: ${ms} ms vs ${want} ms`);
+          assert(s.steps.every((x) => x.durationMs >= 10000), `${id} ${length}: a drill under 10 s`);
+          if (id === 'game') assert(ms <= GAME_DAY_MAX_MIN * 60000, `Game Ready over ${GAME_DAY_MAX_MIN} min`);
         }
       }
     }
@@ -251,12 +240,11 @@ function memoryStorage() {
   const m = new Map();
   return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
 }
-// A realistic Full session: ~12 questions, ~20 math problems, 1 script, 5 cue words.
-function playSession(variety, i, { questions = 12, math = 20 } = {}) {
+// A realistic Full session: ~20 math problems, 1 script, 5 cue words.
+function playSession(variety, i, { math = 20 } = {}) {
   const settings = { length: 'full', difficulty: 'normal' };
   const s = createSession({ settings, seed: 5000 + i, recent: variety.recent() });
   const shown = {
-    questions: Array.from({ length: questions }, () => s.content.questions()).filter(Boolean).map((q) => q.q),
     math: Array.from({ length: math }, () => s.content.math()).map((p) => p.text),
     script: s.content.script().id,
     cues: s.content.cueSuggestions.slice(),
@@ -272,7 +260,6 @@ test('Content from the last 3 sessions doesn’t come back (device storage on)',
   for (let i = 0; i < 40; i++) {
     const now = playSession(variety, i);
     for (const past of history.slice(-3)) {
-      for (const q of now.questions) assert(!past.questions.includes(q), `session ${i}: question came back: ${q}`);
       for (const m of now.math) assert(!past.math.includes(m), `session ${i}: math problem came back: ${m}`);
       for (const c of now.cues) assert(!past.cues.includes(c), `session ${i}: cue suggestion came back: ${c}`);
     }
@@ -285,16 +272,10 @@ test('Content from the last 3 sessions doesn’t come back (device storage on)',
 test('When a pool runs low it resets on its own (no errors, still no repeats in a session)', () => {
   const variety = createVariety(memoryStorage());
   for (let i = 0; i < 8; i++) {
-    const now = playSession(variety, i, { questions: 40 });
-    unique(now.questions, 'question');
-    assert(now.questions.length === 40, 'ran out of questions');
+    const now = playSession(variety, i, { math: 60 });
+    unique(now.math, 'math problem');
+    assert(now.math.length === 60, 'ran out of math problems');
   }
-  // A session can use the whole question bank without a repeat; then it stops.
-  const s = createSession({ settings: settingsFor(0), seed: 77 });
-  const all = [];
-  for (let q; (q = s.content.questions()); ) all.push(q.q);
-  assert(all.length === QUESTIONS.length, `drew ${all.length} of ${QUESTIONS.length}`);
-  unique(all, 'question');
 });
 
 test('Reset variety clears the recently-used list', () => {
@@ -310,12 +291,11 @@ test('Works with device storage disabled (still random, still no repeats)', () =
   const broken = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() { throw new Error('blocked'); } };
   for (const variety of [createVariety(broken), createVariety(null), createVariety()]) {
     assert(variety.recent().length === 0, 'recent() should be empty');
-    variety.add({ questions: ['x'] });   // must not throw
+    variety.add({ math: ['x'] });   // must not throw
     variety.reset();
     const settings = settingsFor(3);
     const d = drawSession(createSession({ settings, recent: variety.recent() }), settings);
     unique(d.math.map((p) => p.text), 'math problem');
-    unique(d.questions.map((q) => q.q), 'question');
     spacedOk(d.colorCall.map((t) => t.color), 'Color Call color');
   }
 });
@@ -323,7 +303,7 @@ test('Works with device storage disabled (still random, still no repeats)', () =
 // 8 ---------------------------------------------------------------------------------
 test('The same seed replays the same session; different seeds differ', () => {
   const settings = { length: 'standard', difficulty: 'hard' };
-  const recent = [{ questions: [QUESTIONS[0].q], scripts: ['gen-first'], math: ['3 + 4'], cues: ['CALM'] }];
+  const recent = [{ scripts: ['gen-first'], math: ['3 + 4'], cues: ['CALM'] }];
   const a = JSON.stringify(drawSession(createSession({ settings, seed: 424242, recent }), settings));
   const b = JSON.stringify(drawSession(createSession({ settings, seed: 424242, recent }), settings));
   const c = JSON.stringify(drawSession(createSession({ settings, seed: 424243, recent }), settings));
@@ -356,8 +336,6 @@ test('Content pools are big enough and well-formed', () => {
   assert(CUE_WORDS.length >= 20, 'need 20+ cue words');
   unique(CUE_WORDS, 'cue word');
   for (const bad of ['O', 'Q', 'I', 'L']) assert(!GAZE_LETTERS.includes(bad), `${bad} is easy to confuse`);
-  unique(QUESTIONS.map((q) => q.q), 'question');
-  for (const q of QUESTIONS) assert(!q.w.includes(q.a), `answer listed as wrong: ${q.q}`);
 });
 
 test('Breathing wording rotates without repeating back-to-back', () => {

@@ -10,7 +10,7 @@ import { WEEK_GOAL, dayKey, weekKey, streakOf, createTrainingLog } from '../js/l
 import { LEVEL_RANGE, TRAINING_RANGE, createLevel } from '../js/lib/adapt.js';
 import { createSession } from '../js/session.js';
 import { totalMinutes, sessionById, GAME_DAY_MAX_MIN } from '../js/plan.js';
-import { normalize, training, gameDay, TRAINING } from '../js/cone/config.js';
+import { normalize, movePreset, MOVE_PRESETS } from '../js/cone/config.js';
 import { decisionsFor } from '../js/cone/decide.js';
 import { drillMs } from '../js/cone/timing.js';
 import { parseSettings } from '../js/settings.js';
@@ -81,13 +81,13 @@ test('Training: 10 / 15 / 20 minutes exactly, every pillar plus visual skills, e
     for (const guide of ['full', 'brief']) {
       for (const state of ['flat', 'ready', 'wired']) {
         for (let seed = 0; seed < 10; seed++) {
-          const s = createSession({ sessionId: 'training', settings: { length, guide }, seed, state, flags: { newDrills: true } });
+          const s = createSession({ sessionId: 'training', settings: { length, guide }, seed, state });
           const ms = s.steps.reduce((a, x) => a + x.durationMs + x.introMs, 0);
           assert(Math.abs(ms - totalMinutes('training', length) * 60000) < 1, `training ${length}: ${ms} ms`);
           const pillars = [...new Set(s.steps.map((x) => x.pillarId))];
           assert(pillars.join() === 'regulate,activate,vision,challenge,rehearse', `pillars ${pillars}`);
           assert(s.steps.at(-1).id === 'myroutine', 'ends on My Routine');
-          assert(!s.steps.some((x) => ['gaze', 'stroop', 'math', 'questions', 'memory', 'mot'].includes(x.id)), 'no limited-evidence drills');
+          assert(!s.steps.some((x) => ['gaze', 'stroop', 'math', 'memory', 'mot'].includes(x.id)), 'no limited-evidence drills');
           assert(s.steps.every((x) => x.durationMs >= 15000), 'every drill gets at least 15 s');
         }
       }
@@ -102,13 +102,12 @@ test('Training is harder, and the only place Occlusion can run', () => {
   assert(TRAINING_RANGE.hard[0] > LEVEL_RANGE.hard[0] && TRAINING_RANGE.hard[1] <= 1, 'Hard too');
   assert(createLevel(undefined, 'normal', { training: true }).value > createLevel(undefined, 'normal').value, 'new drills start harder in Training');
   const on = { length: 'standard', occlusion: 'on' };
-  const flags = { occlusion: true };
-  const s = (sessionId, day) => createSession({ sessionId, settings: { ...on, day }, seed: 1, flags });
+  const s = (sessionId, day) => createSession({ sessionId, settings: { ...on, day }, seed: 1 });
   assert(s('training', 'game').training && s('training', 'game').content.occlusion, 'the Training session');
   assert(s('vision', 'training').training && s('vision', 'training').content.occlusion, 'a part in Training mode');
   assert(!s('game', 'training').training && !s('game', 'training').content.occlusion, 'Game Ready never, even in Training mode');
   assert(!s('vision', 'game').content.occlusion && !s('myroutine', 'training').training, 'Game Day mode and My Routine: never');
-  assert(!createSession({ sessionId: 'training', settings: { length: 'standard' }, seed: 1, flags }).content.occlusion, 'off unless turned on');
+  assert(!createSession({ sessionId: 'training', settings: { length: 'standard' }, seed: 1 }).content.occlusion, 'off unless turned on');
   assert(s('training', 'game').content.level('capture').value >= TRAINING_RANGE.normal[0], 'Training levels');
   assert(focusScore({ points: 0, sessionId: 'training', difficulty: 'normal' }) === focusScore({ points: 0, sessionId: 'game', difficulty: 'normal' }), 'Training earns the full finish bonus');
   assert(parseSettings({}).day === 'game' && parseSettings({ day: 'training' }).day === 'training' && parseSettings({ day: 'nap' }).day === 'game', 'mode saved');
@@ -117,10 +116,11 @@ test('Training is harder, and the only place Occlusion can run', () => {
 
 test('MOVE Training: more decision work, 5 × 30 s; Game Day stays short', () => {
   for (const custom of [{ cueType: 'colors', cones: 4 }, { cueType: 'arrows', directions: ['L', 'R', 'F', 'B'], cones: 4 }, { cueType: 'numbers', cones: 7 }, { mode: 'planned' }, { cueType: 'sport' }]) {
-    const t = training(normalize(custom));
+    const t = movePreset('standard', 'training', normalize(custom));
+    const want = MOVE_PRESETS.training.standard;
     assert(t.mode === 'reactive' && t.decision && decisionsFor(t).length >= 2, `decisions on for ${custom.cueType ?? custom.mode}`);
-    assert(t.setMode === 'timed' && t.sets === TRAINING.sets && t.timedSec === TRAINING.timedSec && t.pace === TRAINING.pace, 'preset');
-    assert(drillMs(t) <= 12 * 60000 && drillMs(t) > drillMs(gameDay(normalize(custom))), 'longer than Game Day, still short');
+    assert(t.setMode === 'timed' && t.sets === want.sets && t.timedSec === want.timedSec && t.pace === want.pace, 'preset');
+    assert(drillMs(t) <= 12 * 60000 && drillMs(t) > drillMs(movePreset('speed', 'game', normalize(custom))), 'longer than Game Day, still short');
   }
 });
 

@@ -1,15 +1,16 @@
-// Runs a MOVE drill inside the shared session engine (so it gets the pause
-// button, screen wake lock, and pause-when-hidden for free). Just the drill:
-// each cue full-screen, "Set 2 of 4 · Rep 7" in the top bar, and a big rest
-// countdown between sets with "Too fast / Just right / Too slow" for the next
-// set. No taps while cues are showing. Nothing from FOCUS runs here.
+// Runs a MOVE drill inside the shared session engine (so it gets the touch
+// lock, hold-to-pause, screen wake lock, and pause-when-hidden for free). Just
+// the drill: a spoken get-set countdown (5–10 s, Settings) so there's time to
+// set the phone down, each cue full-screen, "Set 2 of 4 · Rep 7" in the top
+// bar, and a big rest countdown between sets with "Too fast / Just right / Too
+// slow" for the next set. Rest never waits for a tap: the next set starts on
+// its own. No taps while cues are showing. Nothing from FOCUS runs here.
 // Two-cue decisions show both cues briefly, then clear (it's a memory task).
 // Planned drills show GO for the run, then a walk-back countdown.
 
-import { countdown } from '../stages/common.js';
-import { tone, say, buzz } from '../lib/audio.js';
+import { tone, say, buzz, cues } from '../lib/audio.js';
 import { faceHtml, spotStyle } from './render.js';
-import { COUNTDOWN_MS } from './config.js';
+import { countdownMs } from './config.js';
 import { finalMs, plannedMs, TIMING } from './timing.js';
 
 const PAIR_SHOW_MS = 1500;   // two cues stay up this long, then it's from memory
@@ -67,8 +68,8 @@ async function runDrill(ctx, plan, setup, tuning, stats) {
     const set = plan.sets[s];
     hud.textContent = `Set ${s + 1} of ${total} · Get ready`;
     blank();
-    await countdown(ctx, stage, s ? `SET ${s + 1}` : 'GET SET');
-    await sleep(COUNTDOWN_MS - 2400);
+    await getSet(ctx, stage, countdownMs(setup, s), s ? { label: `SET ${s + 1}` }
+      : { label: 'GET SET', note: 'Set your phone down facing you. Brightness all the way up.' });
 
     let rep = 0;
     let holds = 0;
@@ -108,7 +109,7 @@ async function runDrill(ctx, plan, setup, tuning, stats) {
       }
     }
     blank();
-    buzz([40, 60, 40]);   // set complete
+    cues.done();   // set complete: two notes (and a buzz where the phone allows)
     stats.reps += rep;
     stats.holds += holds;
     stats.sets++;
@@ -116,6 +117,28 @@ async function runDrill(ctx, plan, setup, tuning, stats) {
     if (s < total - 1) await rest(ctx, stage, plan.restMs, s + 2, total, hud, tuning);
   }
   return stats;
+}
+
+// The countdown before a set, one number a second (the last ones spoken when
+// the phone may talk), then GO. The first set's is 5–10 s; later sets get 3.
+async function getSet({ sleep }, box, ms, { label, note = '' }) {
+  const layer = document.createElement('div');
+  layer.className = 'count count--move';
+  layer.innerHTML = `<p class="count__label">${label}</p><p class="count__num"></p>${note ? `<p class="count__note">${note}</p>` : ''}`;
+  box.appendChild(layer);
+  const num = layer.querySelector('.count__num');
+  try {
+    const secs = Math.max(1, Math.round(ms / 1000));
+    for (let n = secs; n >= 1; n--) {
+      num.textContent = n;
+      tone(587, { dur: 0.09, gain: 0.1 });
+      say(String(n));
+      await sleep(1000);
+    }
+    tone(880, { dur: 0.16, gain: 0.14 });
+  } finally {
+    layer.remove();
+  }
 }
 
 // "Too fast / Just right / Too slow": big buttons, easy to hit while breathing
@@ -139,7 +162,7 @@ export function wireTune(root, onPick, notes = TUNE_NOTE) {
     if (!b) return;
     root.querySelectorAll('[data-tune]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
     root.querySelector('.tune__note').textContent = notes[b.dataset.tune];
-    buzz(20);
+    buzz(20);   // the picked button lights up on screen too
     onPick(b.dataset.tune);
   });
 }
@@ -151,7 +174,7 @@ async function rest({ sleep, now }, stage, ms, next, total, hud, tuning) {
   const layer = document.createElement('div');
   layer.className = 'cd__rest';
   layer.innerHTML = `<p class="cd__rest-label">Rest</p><p class="cd__rest-time"></p>
-    <p class="cd__rest-next">Set ${next} of ${total} next</p>${tuneButtons()}`;
+    <p class="cd__rest-next">Set ${next} of ${total} starts on its own</p>${tuneButtons()}`;
   stage.appendChild(layer);
   const time = layer.querySelector('.cd__rest-time');
   wireTune(layer, (choice) => tuning.pick(choice));

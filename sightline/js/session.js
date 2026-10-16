@@ -2,12 +2,11 @@
 // from a single seeded generator. Pure module (no DOM), used by the app and
 // by the tests.
 //
-//   createSession({ sessionId?, settings, seed?, recent?, flags? })
+//   createSession({ sessionId?, settings, seed?, recent? })
 //     sessionId  'game' (Game Ready, default) or one pillar: see FOCUS_SESSIONS
 //     seed    replay a session exactly (?seed=N); otherwise a fresh one
 //     recent  "recently used" records from createVariety().recent(),
 //             newest first; their content is skipped where possible
-//     flags   which flagged drills are on, e.g. { newDrills: true }
 //     seen    drill id → times this phone has run it (Auto instructions)
 //     state   'flat' | 'ready' | 'wired' from the check-in (shapes breathing and pacing)
 //     routine the athlete's My Routine (js/myroutine.js)
@@ -19,7 +18,6 @@
 // session.record() lists what this session actually used, for the variety list.
 
 import { createRng, deck } from './lib/rng.js';
-import { questionStream } from './content/questions.js';
 import { planSteps, guideChooser, PACING, STATES } from './plan.js';
 import { DEFAULT_ROUTINE, cleanRoutine, routineSeconds } from './myroutine.js';
 import { colorCallStream, goNoGoStream, stroopStream, peripheralStream, memoryStream, gaps } from './content/reaction.js';
@@ -34,7 +32,7 @@ import { createLevel } from './lib/adapt.js';
 
 const setsOf = (recent, field) => recent.map((r) => new Set(r?.[field] ?? []));
 
-export function createSession({ sessionId = 'game', settings, seed, recent = [], flags = {}, seen = {}, state = 'ready', routine = DEFAULT_ROUTINE, levels = {} }) {
+export function createSession({ sessionId = 'game', settings, seed, recent = [], seen = {}, state = 'ready', routine = DEFAULT_ROUTINE, levels = {} }) {
   const rng = createRng(seed);
   const last = recent[0]?.order ?? {};
   const mood = STATES.includes(state) ? state : 'ready';
@@ -43,13 +41,11 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
 
   const steps = planSteps(sessionId, settings, rng.fork('order'), {
     avoid: { regulate: last.regulate, activate: last.activate, vision: last.vision, challenge: last.challenge, extras: last.extras },
-    flags,
     guideFor: guideChooser(settings.guide, seen),
     state: mood,
     routineS: routineSeconds(myRoutine),
   });
 
-  const questions = questionStream(rng.fork('questions'), { recent: setsOf(recent, 'questions') });
   // Visualization scripts for this athlete's sport and position.
   const scripts = deck(rng.fork('scripts'), scriptsFor(sport, position), { key: (s) => s.id, recent: setsOf(recent, 'scripts') });
   // Cue words: motivational ones rotate across sessions; skill ones match the sport.
@@ -65,8 +61,8 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
   const levelOf = {};
   const motRng = rng.fork('mot');
   const training = sessionId === 'training' || (settings.day === 'training' && sessionId !== 'game' && sessionId !== 'myroutine');
-  // Occlusion: Training only (opt-in, behind its flag). Never on Game Day.
-  const occlusion = !!flags.occlusion && settings.occlusion === 'on' && training;
+  // Occlusion: Training only (opt-in). Never on Game Day.
+  const occlusion = settings.occlusion === 'on' && training;
 
   const content = {
     colorCall: colorCallStream(rng.fork('colorcall')),
@@ -75,7 +71,6 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
     peripheral: peripheralStream(rng.fork('peripheral')),
     memory: memoryStream(rng.fork('memory')),
     math: (opts) => { const p = math(opts); mathUsed.push(p.text); return p; },
-    questions: () => questions.next(),
     pursuit: pursuitPlan(rng.fork('pursuit')),
     saccades: saccadeStream(rng.fork('saccades')),
     gaze: gazeStream(rng.fork('gaze')),
@@ -110,7 +105,6 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
     content,
     levels: () => Object.fromEntries(Object.entries(levelOf).map(([id, l]) => [id, l.value])),
     record: () => ({
-      questions: questions.used(),
       scripts: script ? [script.id] : [],
       math: mathUsed.slice(),
       cues: cueSuggestions.slice(),

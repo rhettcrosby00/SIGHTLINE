@@ -1,6 +1,15 @@
 // Routine engine: plays each step in order, drives the progress bar and HUD,
 // handles pause/quit, and keeps the screen awake.
 //
+// It pauses on its own, with a big Resume, whenever the phone gets in the way:
+// the screen locks, the athlete switches apps, a call or alarm takes over the
+// sound, or something covers the app. (A notification banner on its own can't
+// be seen by a web app.) If the screen can't be kept awake (Low Power Mode,
+// Battery Saver, an older phone) a tip says so.
+// Options: lock (MOVE) ignores every tap during the drill; holding a finger
+// anywhere for 1 s pauses. resumeLeadS (MOVE) counts back in after Resume, so
+// there's time to get back to the start spot.
+//
 // Every drill module exports:
 //   async run(ctx) -> { trials?, correct?, rtMs?, ... }
 // ctx: { el, settings, session, step, durationMs, signal, sleep, now, remaining, hold, ready, isPaused }
@@ -15,13 +24,23 @@
 // skips ready buttons so scripted runs don't stall.
 
 import { keepAwake, allowSleep } from './lib/wakelock.js';
-import { cues } from './lib/audio.js';
+import { cues, onInterrupt, resumeAudio, say } from './lib/audio.js';
+
+export const HOLD_TO_PAUSE_MS = 1000;
+export const AWAKE_TIP = 'Your screen may turn off by itself. Low Power Mode (or Battery Saver) can stop Sightline keeping it on: turn it off, or set Auto-Lock to Never for now.';
+export const PAUSE_WHY = {
+  hidden: 'You left the app or the screen locked.',
+  sound: 'Something took over the sound, like a call or an alarm.',
+  covered: 'Something covered the screen.',
+  hold: '',
+  tap: '',
+};
 
 const $ = (id) => document.getElementById(id);
 
 class AbortedError extends Error {}
 
-export async function runSession(steps, settings, { session, speed = 1, autoReady = false } = {}) {
+export async function runSession(steps, settings, { session, speed = 1, autoReady = false, lock = false, resumeLeadS = 0 } = {}) {
   const stageEl = $('stage');
   const fill = $('progress-fill');
   const bar = fill.parentElement;
@@ -108,17 +127,87 @@ export async function runSession(steps, settings, { session, speed = 1, autoRead
   };
 
   // Pause / resume / quit
-  const pause = () => { paused = true; overlay.hidden = false; $('btn-resume').focus(); };
-  const resume = () => { paused = false; overlay.hidden = true; };
-  const quit = () => { paused = false; overlay.hidden = true; controller.abort(); };
-  const onVisibility = () => { if (document.visibilityState === 'hidden' && !paused) pause(); };
+  const screen = $('screen-session');
+  const why = $('pause-why');
+  let lead = null;   // the count back in after Resume (MOVE)
+  const pause = (reason = 'tap') => {
+    const counting = !!lead;   // paused again while counting back in: stay paused
+    if (lead) { clearInterval(lead); lead = null; overlay.classList.remove('is-counting'); }
+    if (paused && !counting) return;
+    paused = true;
+    why.textContent = PAUSE_WHY[reason] ?? '';
+    overlay.hidden = false;
+    $('btn-resume').focus();
+  };
+  const unpause = () => { paused = false; overlay.hidden = true; overlay.classList.remove('is-counting'); };
+  const resume = () => {
+    resumeAudio();   // inside the tap: sound comes back after a call
+    if (!resumeLeadS || lead) return unpause();
+    let n = resumeLeadS;
+    overlay.classList.add('is-counting');
+    why.innerHTML = `Back to your start spot<b class="pause__count">${n}</b>`;
+    say(String(n));
+    lead = setInterval(() => {
+      n--;
+      if (n > 0) { why.querySelector('.pause__count').textContent = n; say(String(n)); return; }
+      clearInterval(lead);
+      lead = null;
+      unpause();
+    }, 1000);
+  };
+  const quit = () => { if (lead) clearInterval(lead); lead = null; paused = false; overlay.hidden = true; controller.abort(); };
+  const onVisibility = () => { if (document.visibilityState === 'hidden') pause('hidden'); };
+  const onHide = () => pause('hidden');
+  // Phones only: a blur with the page still showing is system UI over the app (Control Center, a call screen).
+  const touch = matchMedia('(pointer: coarse)').matches;
+  let blurTimer = null;
+  const onBlur = () => {
+    if (!touch) return;
+    clearTimeout(blurTimer);
+    blurTimer = setTimeout(() => { if (!document.hasFocus()) pause('covered'); }, 250);
+  };
+  const stopInterrupt = onInterrupt(() => pause('sound'));
 
-  $('btn-pause').onclick = pause;
+  // Touch lock (MOVE): taps do nothing; a 1 s hold anywhere pauses.
+  let holdTimer = null;
+  const ring = $('hold-ring');
+  const endHold = () => { clearTimeout(holdTimer); holdTimer = null; ring.hidden = true; };
+  const onHoldStart = (e) => {
+    if (paused || !e.isPrimary || e.target.closest('.tune')) return;
+    endHold();
+    ring.style.left = `${e.clientX}px`;
+    ring.style.top = `${e.clientY}px`;
+    ring.hidden = false;
+    holdTimer = setTimeout(() => { endHold(); pause('hold'); }, HOLD_TO_PAUSE_MS / speed);
+  };
+  const noMenu = (e) => e.preventDefault();
+  if (lock) {
+    screen.classList.add('is-locked');
+    $('stage').addEventListener('pointerdown', onHoldStart);
+    screen.querySelector('.hud').addEventListener('pointerdown', onHoldStart);
+    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) screen.addEventListener(t, endHold);
+    screen.addEventListener('contextmenu', noMenu);
+  }
+
+  // Screen awake: if the phone won't keep it on, say so once (it doesn't stop the session).
+  const tip = $('awake-tip');
+  let tipTimer = null;
+  const awakeProblem = () => {
+    if (tipTimer) return;
+    tip.textContent = AWAKE_TIP;
+    tip.hidden = false;
+    tipTimer = setTimeout(() => { tip.hidden = true; }, 12000);
+  };
+
+  $('btn-pause').onclick = () => pause('tap');
   $('btn-resume').onclick = resume;
   $('btn-quit').onclick = quit;
   document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('pagehide', onHide);
+  document.addEventListener('freeze', onHide);
+  window.addEventListener('blur', onBlur);
 
-  keepAwake();
+  keepAwake({ onProblem: awakeProblem });
   overlay.hidden = true;
   last = performance.now();
   hudTimer = setInterval(drawHud, 100);
@@ -150,7 +239,23 @@ export async function runSession(steps, settings, { session, speed = 1, autoRead
     throw err;
   } finally {
     clearInterval(hudTimer);
+    clearTimeout(blurTimer);
+    clearTimeout(tipTimer);
+    if (lead) clearInterval(lead);
+    endHold();
+    tip.hidden = true;
+    stopInterrupt();
     document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('pagehide', onHide);
+    document.removeEventListener('freeze', onHide);
+    window.removeEventListener('blur', onBlur);
+    if (lock) {
+      screen.classList.remove('is-locked');
+      $('stage').removeEventListener('pointerdown', onHoldStart);
+      screen.querySelector('.hud').removeEventListener('pointerdown', onHoldStart);
+      for (const t of ['pointerup', 'pointercancel', 'pointerleave']) screen.removeEventListener(t, endHold);
+      screen.removeEventListener('contextmenu', noMenu);
+    }
     $('btn-pause').onclick = $('btn-resume').onclick = $('btn-quit').onclick = null;
     stageEl.innerHTML = '';
     allowSleep();

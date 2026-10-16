@@ -4,7 +4,7 @@
 // only for its distance and rep style.
 
 import { test, assert } from './harness.js';
-import { normalize, normalizeSignals, quickStart, PACES, STYLES, DISTANCE_YD } from '../js/cone/config.js';
+import { normalize, normalizeSignals, movePreset, PACES, STYLES, DISTANCE_YD } from '../js/cone/config.js';
 import { planDrill } from '../js/cone/plan.js';
 import {
   TIMING, runSeconds, formulaSeconds, minimumSeconds, repTiming, coneSlots, finalMs, applyTune, tuneKey,
@@ -133,7 +133,7 @@ test('"Too fast / Just right / Too slow" changes the next set by about 10% and s
   for (const e of planDrill(slowest, 1).sets[0].events) assert(finalMs(e, up) <= 12000, 'over 12 s');
   for (const e of planDrill(fastest, 1).sets[0].events) assert(finalMs(e, down) >= 1000, 'under 1 s');
   // "Too slow" at 5 yds Training: 3.3 s → about 3.0 s on the next set.
-  const q = quickStart();
+  const q = movePreset('standard', 'game');
   const e = { baseMs: 3300, minMs: 2475, jitter: 0 };
   assert(finalMs(e, applyTune(1, 'faster')) === 2970 && finalMs(e, applyTune(1, 'slower')) === 3630, 'Too slow / Too fast at 5 yds');
   assert(timingSummary(q) === '5 yds · Training pace · about 3.3 s per rep · ~18 reps per minute', `summary: ${timingSummary(q)}`);

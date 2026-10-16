@@ -2,23 +2,25 @@
 //
 // Two sides: FOCUS (js/focus.js — eyes, mind, breath; phone in hand, every
 // answer a tap) and MOVE (js/cone/ui.js — phone on a stand, react and cut).
+// Home offers just those two, each with "Run last"; each side opens with
+// Game Day / Training and three presets (js/presets.js).
 
 import { initSettings, updateSetting } from './settings.js';
 import { setMusicMode } from './lib/audio.js';
-import { hydrateIcons, icon } from './lib/icons.js';
-import { showGuide, guideSeen } from './guide.js';
+import { hydrateIcons } from './lib/icons.js';
+import { showGuide, showFirstRun } from './guide.js';
 import { createVariety } from './lib/variety.js';
 import { createLastRuns } from './migrate.js';
 import { initFocus } from './focus.js';
-import { initMove, MOVE_RUNS } from './cone/ui.js';
+import { initMove } from './cone/ui.js';
 import { createTrainingLog, WEEK_GOAL } from './lib/streak.js';
 import { initLeaderboard } from './score/ui.js';
 import { initRoutineBuilder } from './myroutine-ui.js';
-import { isOn } from './features.js';
-import { initPreGame, preGameMinutes } from './pregame.js';
+import { initInstall } from './install.js';
+import { parseRunKey } from './presets.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '3.1';
+export const APP_VERSION = '4.0';
 
 const $ = (id) => document.getElementById(id);
 
@@ -43,55 +45,63 @@ function show(name, { back = false } = {}) {
 hydrateIcons();
 
 // Dev aids: ?speed=20 fast-forwards; ?autostart=1 starts Game Ready (or
-// ?autostart=1&session=activate a one-part session, ?autostart=quick|custom|signals
-// a MOVE drill); ?only=lockin,stroop runs just those drill ids; ?autoready=1
-// skips the Ready taps; ?noguide=1 skips the first-run guide; ?seed=N replays
-// a session exactly (ignores and doesn't update the "recently used" list).
+// ?autostart=1&session=activate a one-part session, ?autostart=game:speed |
+// custom | signals a MOVE run); ?only=lockin,stroop runs just those drill ids;
+// ?autoready=1 skips the Ready taps; ?noguide=1 skips the first-run setup;
+// ?seed=N replays a session exactly (ignores and doesn't update the
+// "recently used" list).
 const params = new URLSearchParams(location.search);
 const dev = {
   speed: Math.max(1, Number(params.get('speed')) || 1),
   autoReady: params.has('autoready'),
   seed: params.get('seed'),
   only: params.get('only')?.split(','),
-  state: params.get('state'),   // flat | ready | wired, to test the check-in's routines
+  state: params.get('state'),   // flat | ready | wired, to test the readiness tap's routines
 };
 const variety = createVariety();
 const lastRuns = createLastRuns();
 const trainingLog = createTrainingLog();   // training days, for the weekly streak (this phone only)
+const week = () => ({ ...trainingLog.summary(), goal: WEEK_GOAL });
+const install = initInstall();
 
-// ---- Settings (FOCUS options + theme), reachable from home and from FOCUS ----
+// ---- Settings, reachable from home and from FOCUS (Advanced → Options) ----
 let focus = null;
 let move = null;
 let settingsFrom = 'start';
 const getSettings = initSettings({
-  onChange: (s) => { setMusicMode(s.music === 'on'); renderHome(); focus?.renderHub(); },
+  onChange: (s) => { setMusicMode(s.music === 'on'); renderHome(); },
 });
 function openSettings(from) {
   settingsFrom = from;
   $('settings-back-label').textContent = from === 'focus' ? 'Focus' : 'Home';
   show('settings');
 }
-const closeSettings = () => show(settingsFrom, { back: true });
+const closeSettings = () => { if (settingsFrom === 'focus') focus.renderHub(); show(settingsFrom, { back: true }); };
 $('btn-settings').addEventListener('click', () => openSettings('start'));
 $('btn-settings-back').addEventListener('click', closeSettings);
 $('btn-settings-done').addEventListener('click', closeSettings);
 
-// ---- Leaderboard (behind a flag until approved) ----
-const leaderboard = isOn('leaderboard') ? initLeaderboard({ show, getSettings }) : null;
-if (leaderboard) {
-  $('btn-board').hidden = false;
-  $('btn-board').addEventListener('click', () => leaderboard.openBoard('start'));
-  $('btn-done-board').hidden = false;
-  $('btn-done-board').addEventListener('click', () => leaderboard.openBoard('done', { side: 'focus' }));
-}
+// ---- Leaderboard ----
+const leaderboard = initLeaderboard({ show, getSettings });
+$('btn-board').addEventListener('click', () => leaderboard.openBoard('start'));
+$('btn-done-board').addEventListener('click', () => leaderboard.openBoard('done', { side: 'focus' }));
 
 // ---- The two sides ----
+// After a FOCUS session: the install tip, and "Next: Move" after a Game Day preset
+// (Game Speed: set the phone down, the countdown gives time to get to the start).
+const NEXT_MOVE = 'game:speed';
 focus = initFocus({
-  show, dev, variety, getSettings, updateSetting, leaderboard,
-  onRun: (id) => lastRuns.set('focus', id),
+  show, dev, variety, getSettings, updateSetting, leaderboard, week,
+  onRun: (key) => lastRuns.set('focus', key),
   onTrained: () => trainingLog.add(),
   onOptions: () => openSettings('focus'),
   onRoutine: () => builder.open(),
+  afterSession: ({ key }) => {
+    install.finished($('done-install'));
+    const next = parseRunKey(key)?.day === 'game';
+    $('btn-next-move').hidden = !next;
+    if (next) $('next-move-desc').textContent = move.describeRun(NEXT_MOVE);
+  },
 });
 const builder = initRoutineBuilder({
   show, getSettings,
@@ -103,73 +113,50 @@ const sport = {
   get: () => getSettings().sport,
   set(value) { updateSetting('sport', value); updateSetting('position', ''); updateSetting('sportAsked', true); },
 };
-move = initMove({ show, dev, leaderboard, sport, onRun: (run) => lastRuns.set('move', run), onTrained: () => trainingLog.add() });
+move = initMove({
+  show, dev, leaderboard, sport, getSettings, updateSetting, week,
+  onRun: (key) => lastRuns.set('move', key),
+  onTrained: () => trainingLog.add(),
+  afterSession: ({ slot }) => install.finished(slot),
+});
+$('btn-next-move').addEventListener('click', () => move.run(NEXT_MOVE));
+$('btn-done').addEventListener('click', () => { $('summary-board').innerHTML = ''; $('done-install').innerHTML = ''; });
 
-// ---- Home: Game Day or Training, then two choices, each with its preset, time and "Run last" ----
-// Game Day: Game Ready and MOVE's Game Day. Training: the Training session and MOVE Training.
-const mains = () => (getSettings().day === 'training' ? { focus: 'training', move: 'training' } : { focus: 'game', move: 'gameday' });
+// ---- Home: two choices, each with "Run last" (one tap) once something has run ----
 function renderHome() {
-  if (!focus) return;
-  const day = getSettings().day;
-  const main = mains();
-  document.querySelectorAll('[data-day]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.day === day)));
-  if (day === 'training') {
-    const { thisWeek, streak } = trainingLog.summary();
-    $('day-note').innerHTML = `Longer and harder, on days without a game. This week: <b>${thisWeek}</b> of ${WEEK_GOAL[0]}–${WEEK_GOAL[1]} training days${
-      streak ? ` · <b>${streak}</b>-week streak` : ''}.`;
-  } else {
-    $('day-note').textContent = 'Short and calm, ends easy. Before you compete.';
-  }
-  $('btn-game').innerHTML = `${icon('play')}${focus.title(main.focus)} · ${focus.minutes(main.focus)} min`;
-  $('routine-len').textContent = focus.routineLabel();
-  $('btn-quick').innerHTML = `${icon('play')}${MOVE_RUNS[main.move]} · ${move.minutes(main.move)} min`;
+  if (!focus || !move) return;
   const last = lastRuns.get();
-  // "Run last" shows when it's something other than the preset button above it.
-  const focusLast = last.focus && last.focus !== main.focus && last.focus !== 'myroutine' ? last.focus : null;
-  $('btn-focus-last').hidden = !focusLast;
-  if (focusLast) $('focus-last-desc').textContent = `${focus.title(focusLast)} · ${focus.minutes(focusLast)} min`;
-  const moveLast = last.move && last.move !== main.move ? last.move : null;
-  $('btn-move-last').hidden = !moveLast;
-  if (moveLast) $('move-last-desc').textContent = `${MOVE_RUNS[moveLast]} · ${move.minutes(moveLast)} min`;
+  const f = last.focus ? focus.describeRun(last.focus) : '';
+  const m = last.move && move.knows(last.move) ? move.describeRun(last.move) : '';
+  $('btn-focus-last').hidden = !f;
+  $('btn-focus-open').hidden = !!f;
+  $('focus-last-desc').textContent = f;
+  $('btn-move-last').hidden = !m;
+  $('btn-move-open').hidden = !!m;
+  $('move-last-desc').textContent = m;
 }
 onHome = renderHome;
 renderHome();
 
-// ---- Full Pre-Game (behind a flag): Focus (Quick), then Move's Game Day, Game Day only ----
-const pregame = isOn('pregame') ? initPreGame({ focus, move }) : null;
-function renderPreGame() {
-  $('btn-pregame').hidden = !pregame || getSettings().day === 'training';
-  $('pregame-desc').textContent = `Focus, then set your phone down for Move · about ${Math.round(preGameMinutes(move.minutes('gameday')))} min`;
-}
-onHome = () => { renderHome(); renderPreGame(); };
-renderPreGame();
-$('btn-pregame').addEventListener('click', () => pregame?.start());
-
 $('btn-focus').addEventListener('click', () => focus.openHub());
+$('btn-focus-open').addEventListener('click', () => focus.openHub());
 $('btn-move').addEventListener('click', () => move.openHub());
-$('btn-game').addEventListener('click', () => focus.start(mains().focus));
-$('btn-routine').addEventListener('click', () => focus.start('myroutine'));   // one tap from home
-$('btn-quick').addEventListener('click', () => move.open(mains().move));
-document.querySelector('.home__day').addEventListener('click', (e) => {
-  const day = e.target.closest('[data-day]')?.dataset.day;
-  if (!day) return;
-  updateSetting('day', day);
-  renderHome();
-  renderPreGame();
-  focus.renderHub();
-});
-$('btn-focus-last').addEventListener('click', () => focus.start(lastRuns.get().focus));
-$('btn-move-last').addEventListener('click', () => move.runLast(lastRuns.get().move));
+$('btn-move-open').addEventListener('click', () => move.openHub());
+$('btn-focus-last').addEventListener('click', () => focus.runLast(lastRuns.get().focus));
+$('btn-move-last').addEventListener('click', () => move.run(lastRuns.get().move));
 
 $('version').textContent = `· v${APP_VERSION}`;
 $('about-version').textContent = `Version ${APP_VERSION}`;
 
 // Splash: show the logo for a beat, then fade (immediately for test runs).
+// A brand-new phone (or the first open after v4.0) gets the first-run setup.
 const splash = $('splash');
 const hideSplash = () => {
   splash.classList.add('is-out');
   setTimeout(() => splash.remove(), 300);
-  if (!guideSeen() && !params.has('noguide') && !params.has('autostart')) showGuide();
+  if (!getSettings().setupDone && !params.has('noguide') && !params.has('autostart')) {
+    showFirstRun({ getSettings, updateSetting, onDone: renderHome });
+  }
 };
 setTimeout(hideSplash, params.has('autostart') ? 0 : Math.max(0, 700 - performance.now()));
 
@@ -216,22 +203,7 @@ if ('serviceWorker' in navigator && (!isLocal || params.has('sw'))) {
   }).catch(() => {});
 }
 
-// Install: Chrome/Android offers a prompt; iOS Safari gets a one-line tip.
-const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-if (!installed) {
-  const box = $('install');
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    box.innerHTML = '<button type="button" class="link-btn">Install for offline use</button>';
-    box.hidden = false;
-    box.firstElementChild.addEventListener('click', () => { box.hidden = true; e.prompt(); });
-  });
-  if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-    box.textContent = 'To use offline: Share → Add to Home Screen.';
-    box.hidden = false;
-  }
-}
-
 const auto = params.get('autostart');
-if (auto && auto in MOVE_RUNS) move.runLast(auto);
+const autoMove = { quick: 'game:quick' }[auto] ?? auto;
+if (auto && move.knows(autoMove)) move.run(autoMove);
 else if (auto) focus.start(params.get('session') ?? 'game');

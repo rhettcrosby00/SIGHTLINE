@@ -55,7 +55,7 @@ test('Check-in: Ready is the standard routine (one rotating pattern, standard pa
     assert(reg.length === 1 && !['energize', 'lockin'].includes(reg[0]), `ready regulate: ${reg}`);
     seen.add(reg[0]);
   }
-  assert(seen.size === 3, `patterns: ${[...seen]}`);
+  assert(seen.size === 4, `patterns: ${[...seen]}`);
   assert(PACING.ready.window === 1 && PACING.ready.gap === 1, 'standard pacing');
   assert(Object.keys(STATE_LABELS).join() === STATES.join(), 'check-in buttons match the states');
 });

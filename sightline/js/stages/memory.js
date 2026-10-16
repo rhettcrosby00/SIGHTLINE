@@ -3,7 +3,7 @@
 // next sequence is one longer; miss it and the length stays the same.
 // Sequences come from the session (js/content/reaction.js), so a seed replays.
 
-import { howTo, countdown, mini, practiceLeft } from './common.js';
+import { howTo, countdown, mini, practiceLeft, tapGuard } from './common.js';
 import { cueById } from '../lib/colors.js';
 import { cues, tone } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
@@ -58,13 +58,15 @@ export const memory = {
     const btn = (id) => pad.querySelector(`[data-id="${id}"]`);
 
     let onTap = null;
+    const guard = tapGuard();
     pad.addEventListener('pointerdown', (e) => {
       const id = e.target.closest('.pad__btn')?.dataset.id;
-      if (id && onTap) { e.preventDefault(); onTap(id); }
+      if (id && onTap) { e.preventDefault(); if (guard.ok()) onTap(id); }
     });
     const waitTap = (ms) => new Promise((resolve, reject) => {
       let done = false;
       const finish = (v) => { if (!done) { done = true; onTap = null; resolve(v); } };
+      guard.cue();
       onTap = finish;
       sleep(ms).then(() => finish(null), (err) => { if (!done) { done = true; onTap = null; reject(err); } });
     });

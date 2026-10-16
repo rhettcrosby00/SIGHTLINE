@@ -2,11 +2,10 @@
 // off on the live site until approved. Set to true to turn on everywhere.
 
 export const FEATURES = {
-  newDrills: true,        // approved: 4-7-8 Breathing, Memory Sequence (Physiological Sigh was approved earlier)
-  leaderboard: true,      // approved: name entry, one shared online board, coach tools
-  occlusion: true,        // approved with Training Mode: opt-in Occlusion (the target hides and comes back), Training only
-  partner: true,          // approved: MOVE Partner mode (a coach's phone sends the cues; api/partner.js)
-  pregame: true,          // approved: Full Pre-Game: Focus (Quick) → set your phone down → Move Game Day, about 10 min
+  // Every approved feature is simply part of the app now. Add new ones here as
+  // 'preview' while they're being built; set them to true once approved.
+  // false = parked: the code stays, but it's off everywhere.
+  partner: false,   // MOVE Partner mode (a coach's phone sends the cues), parked in v4.0
 };
 
 // The live site's address(es). Anything else (preview links, localhost) is a preview.

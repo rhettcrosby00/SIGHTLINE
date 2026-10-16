@@ -6,7 +6,7 @@
 // The symbol's time adapts (js/lib/adapt.js): shorter after right answers.
 // The symbol shows once per target (seconds apart): far under 3 flashes a second.
 
-import { howTo, countdown } from './common.js';
+import { howTo, countdown, tapGuard } from './common.js';
 import { cues } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
 import { QE_SYMBOLS } from '../content/eyes.js';
@@ -53,13 +53,15 @@ export const quietEye = {
     const buttons = [...root.querySelectorAll('.pad__btn')];
 
     let onTap = null;
+    const guard = tapGuard();
     root.querySelector('.pad').addEventListener('pointerdown', (e) => {
       const id = e.target.closest('.pad__btn')?.dataset.id;
-      if (id && onTap) { e.preventDefault(); onTap(id); }
+      if (id && onTap) { e.preventDefault(); if (guard.ok()) onTap(id); }
     });
     const waitTap = (ms) => new Promise((resolve, reject) => {
       let done = false;
       const finish = (v) => { if (!done) { done = true; onTap = null; resolve(v); } };
+      guard.cue();
       onTap = finish;
       sleep(ms).then(() => finish(null), (err) => { if (!done) { done = true; onTap = null; reject(err); } });
     });

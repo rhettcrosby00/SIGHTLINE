@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { test, assert } from './harness.js';
 import { planDrill } from '../js/cone/plan.js';
-import { normalize, validate, gameDay, GAME_DAY, DECISIONS, DIRECTIONS, DIRECTION_PRESETS, CONE_COLORS, colorById, OPPOSITE } from '../js/cone/config.js';
+import { normalize, validate, movePreset, MOVE_PRESETS, DECISIONS, DIRECTIONS, DIRECTION_PRESETS, CONE_COLORS, colorById, OPPOSITE } from '../js/cone/config.js';
 import { CUES } from '../js/cone/cues/index.js';
 import { decisionsFor, answerFor, leftRight, mirrors, DECISION_RATE } from '../js/cone/decide.js';
 import { SPORT_PACKS, SPORT_DIRS, packFor } from '../js/cone/cues/sport.js';
@@ -185,15 +185,16 @@ test('Planned drills: each pattern returns to the start, timing is known, no sur
   }
 });
 
-test('Game Day: 3 short sets at Game Speed with full rest, on the athlete’s own cones', () => {
-  assert(GAME_DAY.sets >= 3 && GAME_DAY.sets <= 4 && GAME_DAY.timedSec >= 15 && GAME_DAY.timedSec <= 30 && GAME_DAY.pace === 'game', 'Game Day numbers');
-  for (const custom of [{ cueType: 'colors', cones: 5 }, { cueType: 'arrows', directions: ['L', 'R', 'F'], cones: 3, decision: true }, { mode: 'planned' }, { cueType: 'sport', sport: 'soccer' }]) {
-    const g = gameDay(normalize(custom));
-    assert(g.mode === 'reactive' && g.setMode === 'timed' && g.timedSec === GAME_DAY.timedSec && g.sets === GAME_DAY.sets && g.pace === 'game', 'preset');
+test('Game Speed (Game Day): 3 short sets at game pace with full rest, on the athlete’s own cones', () => {
+  const GS = MOVE_PRESETS.game.speed;
+  assert(GS.sets >= 3 && GS.sets <= 4 && GS.timedSec >= 15 && GS.timedSec <= 30 && GS.pace === 'game' && !GS.decision, 'Game Speed numbers');
+  for (const custom of [{ cueType: 'colors', cones: 5 }, { cueType: 'arrows', directions: ['L', 'R', 'F'], cones: 3, decision: true }, { mode: 'planned' }, { cueType: 'numbers', cones: 4 }]) {
+    const g = movePreset('speed', 'game', normalize(custom));
+    assert(g.mode === 'reactive' && g.setMode === 'timed' && g.timedSec === GS.timedSec && g.sets === GS.sets && g.pace === 'game' && !g.decision, 'preset');
     if (custom.cueType) assert(g.cueType === custom.cueType, 'keeps the athlete’s cue type');
-    assert(suggestedRestSec(g) >= GAME_DAY.timedSec * TIMING.restRatio.game, 'full rest (1:5)');
-    assert(drillMs(g) <= 6 * 60000, `Game Day runs ${Math.round(drillMs(g) / 1000)} s`);
+    assert(suggestedRestSec(g) >= GS.timedSec * TIMING.restRatio.game, 'full rest (1:5)');
+    assert(drillMs(g) <= 6 * 60000, `Game Speed runs ${Math.round(drillMs(g) / 1000)} s`);
     const plan = planDrill(g, 1);
-    assert(plan.sets.length === GAME_DAY.sets, 'sets');
+    assert(plan.sets.length === GS.sets, 'sets');
   }
 });

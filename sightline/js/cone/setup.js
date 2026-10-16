@@ -163,10 +163,10 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
       { stack: true, hint: 'The same sport as your visualization in Focus.' })}
     <div class="setting setting--stack">
       <ul class="calls">${SPORT_DIRS.map((d) => `<li><b>${pack[d]}</b><span>${icon(DIR_ICON[d], { size: 18 })}${nice(dirById[d].label)}</span></li>`).join('')}</ul>
-      <p class="setting__hint">Short calls read from farther: these read at a glance from about ${Math.floor(Math.min(...calls.map((c) => readableYards(c))))} yd on a phone.${
+      <p class="setting__hint">Words are small from far away: these read at a glance from about ${Math.floor(Math.min(...calls.map((c) => readableYards(c))))} yd on a phone, so set the cones close. Colors, arrows and numbers read from much farther.${
         RIGHT_HANDED.includes(s.sport) ? ' Calls assume a right-hander; lefties swap the left and right cones.' : ''}</p>
     </div>`;
-  const soundSummary = isMusicMode() ? 'Silent: music mode is on' : s.sound === 'on' ? (s.callouts ? 'Beep + callouts' : 'Beep') : 'Off';
+  const soundSummary = isMusicMode() ? 'Silent: music mode is on' : s.callouts ? 'Beeps + callouts' : 'Beeps';
 
   // Distances: one for every cone, or one per cone (Custom setup only). First step ignores distance.
   const tune = tunes.get(s);
@@ -265,9 +265,8 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
         ${row('Fake-outs', seg('fakes', s.fakes, [['off', 'Off'], ['low', 'Low'], ['medium', 'Med']]), { hint: 'A gray Hold screen now and then. Stay still.' })}`))}
 
       ${group('', expander('sound', 'Sound', soundSummary, ui.open.has('sound'), `
-        ${row('Beep on each cue', `<button type="button" class="switch" role="switch" data-flip="sound" aria-checked="${s.sound === 'on'}" aria-label="Sound"></button>`)}
-        ${s.sound === 'on' ? row('Spoken callouts', `<button type="button" class="switch" role="switch" data-flip="callouts" aria-checked="${s.callouts}" aria-label="Spoken callouts"></button>`,
-          { hint: 'The phone says the cue, like “Red” or “Left”.' }) : ''}`))}
+        ${row('Spoken callouts', `<button type="button" class="switch" role="switch" data-flip="callouts" aria-checked="${s.callouts}" aria-label="Spoken callouts"></button>`,
+          { hint: 'The phone says the cue, like “Red” or “Left”. Beeps and the countdown follow Settings → Sounds.' })}`))}
     </div>
     <div class="screen__foot">
       ${ui.confirm ? `
@@ -323,7 +322,7 @@ export function initSetup(el, { onNav, variant = 'custom', sport = { get: () => 
     if (b.hasAttribute('data-tune-reset')) { tunes.set(s, 1); return draw(); }
     if (d.expand) { ui.open.has(d.expand) ? ui.open.delete(d.expand) : ui.open.add(d.expand); return draw(); }
     if (d.colorrow !== undefined) { ui.color = ui.color === Number(d.colorrow) ? -1 : Number(d.colorrow); return draw(); }
-    if (d.flip) return update({ [d.flip]: d.flip === 'sound' ? (s.sound === 'on' ? 'off' : 'on') : !s[d.flip] });
+    if (d.flip) return update({ [d.flip]: !s[d.flip] });
     if (d.decision) {
       const on = s.decisions.includes(d.decision);
       const next = on ? s.decisions.filter((x) => x !== d.decision) : [...s.decisions, d.decision];

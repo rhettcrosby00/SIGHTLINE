@@ -77,17 +77,37 @@ export function backdrop(el) {
   return '#ffffff';
 }
 
+// Field-proof taps for every FOCUS drill: a second tap within 100 ms of the
+// last one is a bounce or a double tap, so it doesn't count twice; a tap in
+// the first 150 ms after a cue appears was on its way before the cue (a
+// guess), so it doesn't count as a reaction. Both are simply ignored.
+export const TAP_GUARD = { debounceMs: 100, cueLockMs: 150 };
+export function tapGuard(now = () => performance.now()) {
+  let last = -Infinity;
+  let cueAt = -Infinity;
+  return {
+    cue(t = now()) { cueAt = t; },   // a cue just appeared: the answer window opens
+    ok(t = now()) {
+      if (t - cueAt < TAP_GUARD.cueLockMs || t - last < TAP_GUARD.debounceMs) return false;
+      last = t;
+      return true;
+    },
+  };
+}
+
 // Answer taps on a pad of [data-id] buttons: wait(ms) resolves with the
 // tapped id, or null when time runs out (or rejects if the session is quit).
 export function tapper({ sleep }, pad) {
   let onTap = null;
+  const guard = tapGuard();
   pad.addEventListener('pointerdown', (e) => {
     const id = e.target.closest('[data-id]')?.dataset.id;
-    if (id && onTap) { e.preventDefault(); onTap(id); }
+    if (id && onTap) { e.preventDefault(); if (guard.ok()) onTap(id); }
   });
   return (ms) => new Promise((resolve, reject) => {
     let done = false;
     const finish = (v) => { if (!done) { done = true; onTap = null; resolve(v); } };
+    guard.cue();
     onTap = finish;
     sleep(ms).then(() => finish(null), (err) => { if (!done) { done = true; onTap = null; reject(err); } });
   });
@@ -104,8 +124,8 @@ export function animate(now, frame) {
 
 // ---- Looping examples ----------------------------------------------------------
 // demo = { html } for a custom CSS animation, or
-// demo = { pad, frames: [{ cue, answer, caption, buttons? }] }
-//   pad: 'colors' | 'oddeven' | 'list' | 'anywhere' (matches the real drill)
+// demo = { pad, frames: [{ cue, answer, caption }] }
+//   pad: 'colors' | 'oddeven' | 'anywhere' (matches the real drill)
 //   answer: a cue id, 'any' (tap anywhere) or null (hold / freeze)
 // Each frame shows the mini cue, then "taps" the right answer a beat later.
 
@@ -122,8 +142,6 @@ function tapFrame(f, pad) {
     padHtml = ['green', 'red', 'blue', 'yellow'].map((id) => miniBtn(cueById[id], cueById[id].label, f.answer)).join('');
   } else if (pad === 'oddeven') {
     padHtml = miniBtn(cueById.blue, 'ODD', f.answer) + miniBtn(cueById.red, 'EVEN', f.answer);
-  } else if (pad === 'list') {
-    padHtml = f.buttons.map((b) => miniBtn(cueById[b.id], b.label, f.answer)).join('');
   }
   const cueCls = f.answer === 'any' ? 'is-answer' : f.answer === null ? 'is-answer is-hold' : '';
   return `

@@ -144,7 +144,7 @@ export const restSec = (setup) => (setup.restMode === 'custom' ? setup.restSec :
 // Full drill time: sets of cues (or timed sets) plus countdowns and rests.
 export function drillMs(setup) {
   const per = setup.setMode === 'timed' ? setup.timedSec * 1000 : setup.reps * averageRepSeconds(setup) * 1000;
-  return setup.sets * (per + COUNTDOWN_MS) + (setup.sets - 1) * restSec(setup) * 1000;
+  return setup.sets * per + setup.getSetS * 1000 + (setup.sets - 1) * (COUNTDOWN_MS + restSec(setup) * 1000);
 }
 
 // The farthest any rep goes, for the "faster than realistic" check.

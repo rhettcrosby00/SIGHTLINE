@@ -12,18 +12,18 @@ import { createSeen } from '../js/lib/seen.js';
 import { parseSettings } from '../js/settings.js';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const LIMITED = ['gaze', 'stroop', 'math', 'questions', 'memory', 'mot'];
+const LIMITED = ['gaze', 'stroop', 'math', 'memory', 'mot'];
 // Drills nobody can fail (no right or wrong answer)…
 const UNFAILABLE = ['settle', 'sigh', 'resonance', 'breath478', 'energize', 'lockin', 'pursuit', 'saccades', 'gaze', 'visualize', 'myroutine'];
 // …and scored drills that finish on easy cues (js/stages/reaction.js, memory.js).
-const EASY_FINISH = ['colorcall', 'gonogo', 'peripheral', 'quieteye', 'nearfar', 'capture', 'span', 'stroop', 'math', 'questions', 'memory', 'mot'];
+const EASY_FINISH = ['colorcall', 'gonogo', 'peripheral', 'quieteye', 'nearfar', 'capture', 'span', 'stroop', 'math', 'memory', 'mot'];
 
 test('Game Ready has no limited-evidence drills; Extras holds exactly those', () => {
   const extras = PILLARS.find((p) => p.id === 'extras').drills.map((d) => d.id).sort();
   assert(extras.join() === LIMITED.slice().sort().join(), `Extras: ${extras}`);
   for (let seed = 0; seed < 300; seed++) {
     for (const length of ['quick', 'standard', 'full']) {
-      const s = createSession({ sessionId: 'game', settings: { length, difficulty: 'normal' }, seed, flags: { newDrills: true } });
+      const s = createSession({ sessionId: 'game', settings: { length, difficulty: 'normal' }, seed });
       const bad = s.steps.filter((x) => LIMITED.includes(x.id));
       assert(!bad.length, `Game Ready includes ${bad.map((x) => x.id)}`);
     }
@@ -64,7 +64,7 @@ test('Every session ends on success: an unfailable last step, or easy last cues'
   }
   for (const { id } of FOCUS_SESSIONS) {
     for (let seed = 0; seed < 50; seed++) {
-      const s = createSession({ sessionId: id, settings: { length: 'standard' }, seed, flags: { newDrills: true } });
+      const s = createSession({ sessionId: id, settings: { length: 'standard' }, seed });
       const lastId = s.steps.at(-1).id;
       if (id === 'game' || id === 'rehearse' || id === 'myroutine') assert(lastId === 'myroutine', `${id} ends on ${lastId}`);
       else if (id === 'regulate') assert(lastId === 'lockin', `${id} ends on ${lastId}`);

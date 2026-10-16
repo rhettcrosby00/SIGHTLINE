@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v3.1';
+const CACHE_VERSION = 'v4.0';
 const CACHE = `sightline-${CACHE_VERSION}`;
 
 // Google Fonts (Archivo + Schibsted Grotesk) live in their own cache that
@@ -27,7 +27,8 @@ const ASSETS = [
   './js/myroutine-ui.js',
   './js/myroutine.js',
   './js/plan.js',
-  './js/pregame.js',
+  './js/presets.js',
+  './js/install.js',
   './js/routine.js',
   './js/session.js',
   './js/settings.js',
@@ -46,12 +47,10 @@ const ASSETS = [
   './js/content/cues.js',
   './js/content/eyes.js',
   './js/content/math.js',
-  './js/content/questions.js',
   './js/content/reaction.js',
   './js/content/scripts.js',
   './js/content/sports.js',
   './js/content/vision.js',
-  './js/data/questions.js',
   './js/lib/adapt.js',
   './js/lib/audio.js',
   './js/lib/check.js',

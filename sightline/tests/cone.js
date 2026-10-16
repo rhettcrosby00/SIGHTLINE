@@ -5,10 +5,10 @@ import { test, assert } from './harness.js';
 import { planDrill, GRID_SPOTS } from '../js/cone/plan.js';
 import {
   normalize, validate, coneColors, CONE_COLORS, DIRECTIONS, DIRECTION_PRESETS, OPPOSITE,
-  FAKE_RATES, CUE_TYPES, MIN_CONES, MAX_CONES, PACES, STYLES, quickStart, normalizeSignals,
+  FAKE_RATES, CUE_TYPES, MIN_CONES, MAX_CONES, PACES, STYLES, movePreset, presetCones, MOVE_PRESETS, PRESET_CUES, normalizeSignals,
 } from '../js/cone/config.js';
 import { CUES } from '../js/cone/cues/index.js';
-import { coneSlots, finalMs, TIMING } from '../js/cone/timing.js';
+import { coneSlots, finalMs, drillMs, TIMING } from '../js/cone/timing.js';
 import { createRng } from '../js/lib/rng.js';
 import { coneSession } from '../js/cone/run.js';
 
@@ -256,14 +256,33 @@ test('A Cone Drill session is only the Cone Drill — no breathing or other dril
 
 // ---- MOVE presets ------------------------------------------------------------
 
-test('MOVE Quick Start: 4 cones, colors, 5 yd out and back, Training pace, 3 sets — and it plans a full drill', () => {
-  const q = quickStart({ sound: 'off', callouts: true });
-  assert(q.cueType === 'colors' && q.cones === 4 && q.distance === 5 && q.distanceMode === 'same' && q.style === 'outback'
-    && q.pace === 'training' && !q.manual && q.sets === 3 && q.restMode === 'auto', 'preset changed');
-  assert(q.sound === 'off' && q.callouts === true, 'Quick Start should keep the athlete’s sound choice');
-  assert(validate(q).ok, 'Quick Start must always be valid');
-  const plan = planDrill(q, 1);
-  assert(plan.sets.length === 3 && plan.sets.every((st) => goKeys(st).length === 10), 'Quick Start should be 3 sets of 10');
+test('MOVE presets: Quick, Standard, Game Speed on the same cones, always valid, colors / arrows / numbers only', () => {
+  const customs = [{}, { cueType: 'arrows', directions: ['L', 'R', 'F'], cones: 3 }, { cueType: 'numbers', cones: 6, distance: 8 },
+    { cueType: 'sport', sport: 'soccer' }, { mode: 'planned' }, { cueType: 'mixed', cones: 4 }, { cueType: 'colors', coloredCones: true, colors: ['red', 'red'] },
+    { cueType: 'colors', cones: 5, distanceMode: 'each', coneYards: { c1: 3, c2: 10 }, callouts: true }];
+  for (const custom of customs) {
+    const cones = presetCones(custom);
+    assert(validate(cones).ok && PRESET_CUES.includes(cones.cueType), `cones for ${JSON.stringify(custom)}`);
+    for (const day of ['game', 'training']) {
+      for (const id of ['quick', 'standard', 'speed']) {
+        const s = movePreset(id, day, custom);
+        const want = MOVE_PRESETS[day][id];
+        assert(validate(s).ok, `${day} ${id} invalid`);
+        assert(s.mode === 'reactive' && s.setMode === 'timed' && s.sets === want.sets && s.timedSec === want.timedSec && s.pace === want.pace, `${day} ${id}`);
+        assert(s.decision === (day === 'training'), 'decisions on Training days only');
+        assert(s.cueType === cones.cueType && s.cones === cones.cones && s.distance === cones.distance && s.style === cones.style, 'every preset on the same cones');
+        assert(s.position === 'center' && s.display === 'hold' && s.fakes === 'off' && !s.manual, 'presets keep it simple');
+        assert(s.callouts === !!custom.callouts, 'spoken callouts follow the Custom setup');
+        assert(drillMs(s) <= 12 * 60000, `${day} ${id}: ${Math.round(drillMs(s) / 1000)} s`);
+        const plan = planDrill(s, 1);
+        assert(plan.sets.length === want.sets && Math.abs(plan.totalMs - drillMs(s)) < drillMs(s) * 0.25, 'plans a full drill');
+      }
+    }
+  }
+  assert(presetCones({ cueType: 'sport' }).cueType === 'colors', 'sport words become colors (they don’t read from far away)');
+  const fallback = presetCones({ cueType: 'colors', coloredCones: true, colors: ['red', 'red', 'red', 'red'], cones: 4 });
+  assert(fallback.cones === 4 && fallback.distance === 5 && fallback.cueType === 'colors', 'cones that can’t run fall back to 4 at 5 yd');
+  assert(drillMs(movePreset('quick', 'game')) < drillMs(movePreset('standard', 'game')), 'Quick is shortest');
 });
 
 test('MOVE Signals Only: arrows only, no cones to place, any 2–8 directions', () => {

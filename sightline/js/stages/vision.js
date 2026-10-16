@@ -4,7 +4,7 @@
 // shows its letter or pattern once per round, seconds apart: far under the
 // 3-flashes-a-second limit.
 
-import { howTo, countdown, practiceLeft, tapper } from './common.js';
+import { howTo, countdown, practiceLeft, tapper, tapGuard } from './common.js';
 import { cues, buzz } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
 import { nearFarAt, spanAt, scoreSpan } from '../content/vision.js';
@@ -166,9 +166,10 @@ export const span = {
 
     // Taps toggle squares while it's the athlete's turn.
     let onTap = null;
+    const guard = tapGuard();
     grid.addEventListener('pointerdown', (e) => {
       const cell = e.target.closest('[data-cell]');
-      if (cell && onTap) { e.preventDefault(); onTap(Number(cell.dataset.cell), cell); }
+      if (cell && onTap) { e.preventDefault(); if (guard.ok()) onTap(Number(cell.dataset.cell), cell); }
     });
 
     const round = async (easy) => {
@@ -190,6 +191,7 @@ export const span = {
       await new Promise((resolve, reject) => {
         let over = false;
         const end = (v) => { if (!over) { over = true; onTap = null; resolve(v); } };
+        guard.cue();
         onTap = (i, cell) => {
           if (picks.has(i)) picks.delete(i); else picks.add(i);
           cell.classList.toggle('is-picked', picks.has(i));

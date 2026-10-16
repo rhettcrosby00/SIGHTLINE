@@ -191,6 +191,12 @@ test('Rate limit: too many scores from one place in 10 minutes are refused', asy
   await svc.submit({ name: 'Spam', side: 'focus', score: 100, settings: FOCUS }, 'same-ip');
 });
 
+test('A whole team on one school Wi-Fi can post at the same time', async () => {
+  const { svc } = setup();
+  for (let i = 0; i < 40; i++) await svc.submit({ name: `Player ${i}`, side: 'focus', score: 100, settings: FOCUS }, 'school-wifi');
+  assert(LIMITS.submitPerWindow >= 40, 'room for a full roster');
+});
+
 test('Coach tools need the PIN; wrong PINs lock out; rename, merge and remove work', async () => {
   const { svc } = setup();
   await svc.submit({ name: 'Jordan', side: 'focus', score: 500, settings: FOCUS }, 'a');
@@ -261,4 +267,14 @@ test('Server: health check, and a clear message until the database is connected'
 
 test('Scoring numbers live in one config', () => {
   assert(SCORING.focus.correct === 100 && SCORING.focus.wrong === -50 && SCORING.move.perRep === 50 && SCORING.completionBonus.game === 500, 'config');
+});
+
+test('Old rate-limit windows are cleared out, so the table stays small', async () => {
+  const clock = { t: Date.UTC(2026, 9, 16, 15) };
+  const store = memoryStore({ now: () => clock.t });
+  for (let i = 0; i < 50; i++) await store.hit(`submit:ip${i}`, 600);
+  assert(store.hitCount() === 50, 'one window per network');
+  clock.t += 601 * 1000;
+  await store.hit('submit:new', 600);
+  assert(store.hitCount() === 1, `ended windows should be gone, ${store.hitCount()} left`);
 });

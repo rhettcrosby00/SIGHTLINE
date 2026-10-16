@@ -70,13 +70,13 @@ export function renderSummary(el, { title, results, settings, totalMs, readiness
     if (quickest) note = `Quickest drill today: <b>${quickest.name}</b> at ${sec(quickest.rtMs)} s. Lower is faster.`;
   }
 
-  // Headspace: cue word and the before → after check-in (Flat · Ready · Wired).
+  // Headspace: cue word and how they felt (Flat · Ready · Wired; a before → after if there is one).
   const { before = null, after = null } = readiness;
   const level = (st) => (st == null ? '—' : STATE_LABELS[st]?.name ?? '—');
   const head = [
     settings.cue ? `<div class="head__item"><p class="head__label">Cue word</p><p class="head__value">${esc(settings.cue)}</p></div>` : '',
     before != null || after != null
-      ? `<div class="head__item"><p class="head__label">How you felt</p><p class="head__value">${level(before)} → ${level(after)}</p></div>`
+      ? `<div class="head__item"><p class="head__label">How you felt</p><p class="head__value">${after == null ? level(before) : `${level(before)} → ${level(after)}`}</p></div>`
       : '',
     // Focus Check, start → end (reaction, seconds).
     checked.before?.rtMs != null || checked.after?.rtMs != null

@@ -1,14 +1,29 @@
-// Gentle sound + vibration cues. Call unlock() from a tap (iOS needs a gesture).
+// Gentle sound + vibration cues. Call unlock() from the Start tap (iOS needs a
+// gesture), so cues are never silent because sound wasn't allowed yet.
+//   Sound on: tones (and spoken numbers / callouts) play even with the
+//   iPhone's silent switch on, where the phone supports it (Audio Session API).
+//   That pauses other music while a session runs.
 //   Sound off: no tones or voice; vibration still works.
 //   Music mode ("Keep my music playing"): the app never starts audio at all, so
 //   the athlete's own music keeps playing; cues come as vibration and visuals.
 // Vibration needs a phone that supports it (Android). iPhone doesn't let web
-// apps vibrate, so there the screen carries every cue.
+// apps vibrate, so every buzz comes with a tone or a change on screen.
+// onInterrupt(fn): a call or alarm took the sound away mid-session (iPhone).
 
 let ctx = null;
 let enabled = false;
 let voiceOn = false;
 let musicMode = false;
+const interrupts = new Set();
+
+export function onInterrupt(fn) { interrupts.add(fn); return () => interrupts.delete(fn); }
+// After a pause: take the sound back (call from a tap).
+export function resumeAudio() { if (enabled && ctx && ctx.state !== 'running') ctx.resume().catch?.(() => {}); }
+
+// Play through the silent switch when the app makes sound; mix politely when it doesn't.
+function audioSession(type) {
+  try { if (globalThis.navigator?.audioSession) navigator.audioSession.type = type; } catch { /* not supported */ }
+}
 
 export function setMusicMode(on) { musicMode = !!on; }
 export const isMusicMode = () => musicMode;
@@ -18,14 +33,19 @@ const canVibrate = () => typeof navigator !== 'undefined' && typeof navigator.vi
 // `voice`: also allow spoken callouts (speech synthesis), primed inside the tap.
 export function unlock(soundOn, { voice = false } = {}) {
   enabled = soundOn && !musicMode;
+  audioSession(enabled ? 'playback' : 'ambient');
   voiceOn = enabled && voice && 'speechSynthesis' in globalThis;
   if (voiceOn) {
     try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(' ')); } catch { voiceOn = false; }
   }
   if (!enabled) return;
   try {
-    ctx ??= new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === 'suspended') ctx.resume();
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      // Safari: 'interrupted' while a call or alarm has the sound.
+      ctx.addEventListener?.('statechange', () => { if (ctx.state === 'interrupted') interrupts.forEach((fn) => fn()); });
+    }
+    if (ctx.state !== 'running') ctx.resume();
   } catch {
     ctx = null;
   }
