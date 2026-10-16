@@ -63,7 +63,7 @@ test('Home offers two choices only (FOCUS, MOVE), each with a Run last shortcut'
   for (const id of ['btn-focus', 'btn-move', 'btn-focus-last', 'btn-move-last', 'btn-focus-open', 'btn-move-open', 'btn-settings', 'btn-about', 'btn-board']) {
     assert(html.includes(`id="${id}"`), `home is missing #${id}`);
   }
-  const home = html.slice(html.indexOf('id="screen-start"'), html.indexOf('</section>', html.indexOf('id="screen-start"')));
+  const home = html.slice(html.indexOf('id="screen-start"'), html.indexOf('id="screen-focus"'));   // the whole home screen
   assert((home.match(/<article class="side"/g) ?? []).length === 2, 'two sides on home');
   assert(!/data-day=|btn-game|btn-quick|btn-pregame|btn-routine/.test(home), 'nothing else to start from home (Game Day / Training lives on each side)');
   assert(/data-side="focus"[\s\S]*Eyes · Mind · Breath[\s\S]*Hold your phone/.test(html), 'FOCUS card copy');

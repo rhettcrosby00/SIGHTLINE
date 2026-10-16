@@ -8,6 +8,12 @@ export const BRAND = {
   tagline: 'Reps for your eyes.',
 };
 
+// Where the app lives now, and its old address. Opened at an old address, home
+// shows "Sightrep has a new home" (index.html #moved) so installed copies move over.
+export const APP_URL = 'https://app.sightrep.app/';
+export const OLD_HOSTS = ['sightline-psi.vercel.app'];
+export const movedFrom = (host) => OLD_HOSTS.includes(String(host ?? '').toLowerCase());
+
 // The logo, in one place. Files live in assets/logo/ (built from two masters by
 // tools/brand/make.py, so swapping the logo is one change there). Each logo is
 // two images: the dark-background version and the light one (black + deep

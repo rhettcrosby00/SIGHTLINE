@@ -95,6 +95,13 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   border-radius: var(--radius-m); background: var(--raised); color: var(--text); font-weight: 600;
 }
 .banner[hidden] { display: none; }
+/* The old address only: "Sightrep has a new home" (js/brand.js movedFrom). */
+.moved { display: grid; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-m); background: var(--raised); border-left: 4px solid var(--side); }
+.moved[hidden] { display: none; }
+.moved__title { font-weight: 700; font-size: 1.0625rem; line-height: 1.3; }
+.moved__title b { color: var(--side-text); }
+.moved__text { color: var(--muted); font-size: 0.9375rem; line-height: 1.4; }
+.moved .btn { font-size: 1.0625rem; padding-inline: var(--space-4); }
 .home__sides { margin-top: auto; display: grid; gap: var(--space-4); }
 /* A side: header row (opens the side), one-line description, preset, run last. */
 .side {
