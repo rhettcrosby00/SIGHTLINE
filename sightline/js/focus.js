@@ -129,6 +129,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     const meta = sessionById[sessionId] ?? sessionById.game;
     from = opts.from ?? 'start';
     const settings = getSettings();
+    if (opts.length) settings.length = opts.length;   // Full Pre-Game runs the Quick version
     unlockAudio(settings.sound === 'on');   // must happen inside the tap
     onRun(meta.id);
     // Focus Check at the start (if on): noticeably slower than usual offers the lighter (Quick) version.
@@ -181,6 +182,8 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     if (!completed) { back(); return; }
     buzz([60, 80, 120]);   // session complete
     if (meta.timedByRoutine) { back(); return; }   // My Routine on its own: straight back, nothing to sum up
+    // Full Pre-Game: Move comes next; the check-out, summary and scores wait until the end.
+    if (opts.pregame) return { meta, session, results, steps, settings, readiness, checked };
 
     if (meta.training) onTrained();   // a training day, for the weekly streak
     if (bookend) checked.after = (await focusCheck({ phase: 'end', before: checked.before })).result;
@@ -192,14 +195,49 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
 
     const totalMs = steps.reduce((a, s) => a + s.durationMs + (s.introMs ?? 0), 0);   // instructions included
     renderSummary($('summary'), { title: meta.title, results, settings, totalMs, readiness, checked, seed: session.seed });
-    if (leaderboard && !meta.unscored) {
-      const score = focusScore({ points: session.scorer.points, sessionId: meta.id, difficulty: settings.difficulty });
-      const streak = session.scorer.bestStreak;
+    if (leaderboard && !meta.unscored) await leaderboard.afterSession(focusEntry(meta, session, settings));
+    show('done');
+  }
+
+  // This session's leaderboard entry.
+  function focusEntry(meta, session, settings) {
+    const streak = session.scorer.bestStreak;
+    return {
+      side: 'focus',
+      score: focusScore({ points: session.scorer.points, sessionId: meta.id, difficulty: settings.difficulty }),
+      detail: [meta.title, settings.difficulty === 'hard' ? 'Hard ×1.5' : '', streak >= 5 ? `best streak ${streak}` : '', 'finish bonus included']
+        .filter(Boolean).join(' · '),
+      settings: { sessionId: meta.id, length: settings.length, difficulty: settings.difficulty },
+    };
+  }
+
+  // Full Pre-Game, after Move: how they feel now, one summary (Focus, plus a
+  // Move section), and one name entry that saves both scores.
+  async function finishPreGame({ meta, session, results, steps, settings, readiness, checked }, moved) {
+    if (!dev.autoReady) {
+      show('check');
+      readiness.after = await askAfter($('check'), { cue: settings.cue });
+    }
+    $('check').innerHTML = '';
+    const totalMs = steps.reduce((a, s) => a + s.durationMs + (s.introMs ?? 0), 0);
+    renderSummary($('summary'), { title: 'Full Pre-Game', results, settings, totalMs, readiness, checked, seed: session.seed });
+    const ran = moved && !moved.skipped && moved.sets > 0;
+    if (ran) {
+      const block = document.createElement('section');
+      block.className = 'sum__move';
+      block.dataset.side = 'move';
+      block.innerHTML = `
+        <p class="side-tag">${icon('move', { size: 18 })}Move · ${moved.label}</p>
+        <div class="tiles">
+          <div class="tile"><p class="tile__value">${moved.reps}</p><p class="tile__label">reps</p></div>
+          <div class="tile"><p class="tile__value">${moved.completed ? moved.sets : `${moved.sets}/${moved.setsPlanned}`}</p><p class="tile__label">sets</p></div>
+        </div>`;
+      const sum = $('summary').querySelector('.sum');
+      sum.insertBefore(block, sum.querySelector('.sum__foot'));
+    }
+    if (leaderboard) {
       await leaderboard.afterSession({
-        side: 'focus', score,
-        detail: [meta.title, settings.difficulty === 'hard' ? 'Hard ×1.5' : '', streak >= 5 ? `best streak ${streak}` : '', 'finish bonus included']
-          .filter(Boolean).join(' · '),
-        settings: { sessionId: meta.id, length: settings.length, difficulty: settings.difficulty },
+        entries: [focusEntry(meta, session, settings), ...(ran ? [{ side: 'move', score: moved.score, detail: moved.detail, settings: moved.settings }] : [])],
       });
     }
     show('done');
@@ -217,6 +255,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     openHub: () => { renderHub(); show('focus'); },
     renderHub,
     start,
+    finishPreGame,
     routineLabel,
     minutes,
     title: (id) => sessionById[id]?.title ?? '',

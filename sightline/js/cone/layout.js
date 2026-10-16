@@ -12,7 +12,7 @@ import { PATTERNS } from './patterns.js';
 import { RIGHT_HANDED } from './cues/sport.js';
 import { icon, DIR_ICON } from '../lib/icons.js';
 
-function layoutSvg(setup) {
+export function layoutSvg(setup) {
   const W = 320;
   const H = 360;
   const cx = W / 2;

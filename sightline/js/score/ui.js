@@ -44,7 +44,13 @@ export function initLeaderboard({ show, getSettings }) {
 
   // ---- After a session: name entry, then the reveal -------------------------
   // Resolves when the athlete taps Continue (or Skip).
-  function afterSession({ side, score, detail, settings }) {
+  // Several entries (Full Pre-Game: Focus and Move) run one after another; the
+  // name is filled in after the first, so each next one is a single tap.
+  async function afterSession({ entries, ...one }) {
+    for (const entry of entries ?? [one]) await afterOne(entry);
+  }
+
+  function afterOne({ side, score, detail, settings }) {
     return new Promise((finish) => {
       const style = getSettings().nameStyle === 'initials' ? 'initials' : 'name';
       let names = [];
