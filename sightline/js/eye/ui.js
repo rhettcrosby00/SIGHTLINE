@@ -181,6 +181,8 @@ export const status = {
     noteTimer = setTimeout(() => setNote(showingPaused ? 'Eye tracking paused' : ''), 5000);
   },
   flash(text) { status.note(text); },
+  // Which part of the phone runs the face tracker ('GPU' or 'CPU'), for testing.
+  engine(name) { const el = $('eye-status'); if (el) el.dataset.engine = name; },
 };
 function setNote(text) {
   const el = $('eye-note');

@@ -20,7 +20,7 @@ import { initInstall } from './install.js';
 import { parseRunKey } from './presets.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '4.1';
+export const APP_VERSION = '4.2';
 
 const $ = (id) => document.getElementById(id);
 

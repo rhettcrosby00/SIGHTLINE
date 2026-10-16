@@ -31,7 +31,8 @@ export const SHOTS = [
   // The question, then the real face tracker on a camera with no face: tips, Skip, and the drill runs normally.
   { name: 'eye-ask', params: ONLY('pursuit'), steps: [...OPEN, ['wait', 300]], expect: ['Use the front camera?', 'Video never leaves your phone', 'Not now'] },
   { name: 'eye-real-tips', params: ONLY('pursuit'), steps: [...CAMERA_ON, ['waitFor', '.eyecal__checks', 40000], ['wait', 2500]],
-    expect: ['Keep your face in view', 'js:window.__streams.length === 1 && window.__streams[0].getTracks()[0].readyState === "live"', PRIVATE] },
+    expect: ['Keep your face in view', 'js:window.__streams.length === 1 && window.__streams[0].getTracks()[0].readyState === "live"', PRIVATE,
+      'js:["GPU", "CPU"].includes(document.getElementById("eye-status").dataset.engine)'] },
   { name: 'eye-real-skip', params: ONLY('pursuit'), steps: [...CAMERA_ON, ['waitFor', '.eyecal__checks', 40000], ['click', '[data-eye="skip"]'], ['waitFor', '.eyes__dot', 15000], ['wait', 800]],
     expect: ['.eyes__dot', CAMERA_OFF, '#eye-status[hidden]', PRIVATE], combos: 'few' },
   // Camera refused: a note, and the drill runs normally to the end.

@@ -17,13 +17,14 @@
 //
 //   const eye = createEyeCheck()                  one per FOCUS session
 //   const t = await eye.open(ctx, { drill, title }) inside a drill: null = run it normally
-//   t.gaze() → [x, y] | null   t.at(el) → [x, y]   t.mark([x, y])   t.expect([x, y] | null)
+//   t.gaze() → [x, y] | null (responsive)   t.calm() → [x, y] | null (heavier smoothing, for stillness)
+//   t.at(el) → [x, y]   t.mark([x, y])   t.expect([x, y] | null)
 //   t.note(key, value)   t.active()   t.close()
 //   eye.recordings() → for the summary;  eye.dispose() → forget everything
 
 import {
   eyeFeatures, fitCalibration, predict, calibrationError, gazeFilter, frameCheck, confidence,
-  steadyTracker, driftWatch, nextInterval, RATE,
+  steadyTracker, driftWatch, nextInterval, delegatePicker, RATE, CALM,
 } from './math.js';
 import {
   explain as explainScreen, preflight as preflightScreen, calibrate as calibrateScreen, seeGaze as seeGazeScreen,
@@ -36,8 +37,10 @@ const SIMD_TEST = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1
 
 export const EYE_DRILLS = ['quieteye', 'peripheral', 'saccades', 'pursuit'];
 
-// deps (tests and ?eyesim=1): media (getUserMedia), loadLandmarker, read(t) →
+// deps (tests and ?eyesim=1): media (getUserMedia), loadLandmarker(delegate), read(t) →
 // { f, brightness } in place of the face tracker, now, ui (the screens).
+// Speed: the face tracker runs on the phone's graphics chip when that works and
+// is faster (delegatePicker), and each new camera frame is read as it arrives.
 export function createEyeCheck(deps = {}) {
   const media = deps.media ?? ((c) => navigator.mediaDevices.getUserMedia(c));
   const loadLandmarker = deps.loadLandmarker ?? defaultLandmarker;
@@ -46,6 +49,30 @@ export function createEyeCheck(deps = {}) {
     explain: explainScreen, preflight: preflightScreen, calibrate: calibrateScreen, seeGaze: seeGazeScreen,
     failed: failedScreen, status: statusLine, setRecalibrate: recalibrateButton, ...deps.ui,
   };
+  const picker = delegatePicker();
+  let switching = false;
+  // Start the face tracker on the GPU, or the CPU if the GPU won't start.
+  async function startTracker() {
+    try {
+      return await loadLandmarker(picker.current());
+    } catch (err) {
+      if (!picker.failed()) throw err;
+      return loadLandmarker('CPU');
+    }
+  }
+  // Move to the other delegate (the old tracker keeps working until the new one is ready).
+  async function switchTo(delegate) {
+    if (switching) return;
+    switching = true;
+    try {
+      const next = await loadLandmarker(delegate);
+      const old = s.landmarker;
+      s.landmarker = next;
+      old?.close?.();
+    } catch { /* keep the one that works */ }
+    switching = false;
+    status.engine?.(picker.current());
+  }
   const s = {
     off: false,          // declined, unavailable or skipped: drills run normally for the rest of the session
     asked: false,
@@ -106,7 +133,17 @@ export function createEyeCheck(deps = {}) {
       lumAt = t;
       c.clearRect(0, 0, 16, 12);
     }
-    const r = s.landmarker.detectForVideo(v, t);
+    const t0 = clock();
+    let r;
+    try {
+      r = s.landmarker.detectForVideo(v, t);
+    } catch {
+      const to = picker.failed();
+      if (to) switchTo(to);
+      return null;
+    }
+    const to = picker.timing(clock() - t0);
+    if (to) switchTo(to);
     return { f: eyeFeatures(r.faceLandmarks?.[0], r.faceBlendshapes?.[0]?.categories, r.facialTransformationMatrixes?.[0]?.data), brightness: lum };
   }
 
@@ -117,12 +154,27 @@ export function createEyeCheck(deps = {}) {
     let lastAt = -Infinity;
     let avg = 0;
     let stopped = false;
-    let raf = 0;
+    let handle = 0;
+    // Read each new camera frame as it arrives (no waiting for the next screen
+    // refresh); where the browser can't say, every screen refresh instead.
+    let byFrame = !deps.read && typeof s.video?.requestVideoFrameCallback === 'function';
+    let gotFrame = false;
+    const video = s.video;
+    const schedule = () => {
+      if (byFrame) handle = video.requestVideoFrameCallback(() => { gotFrame = true; tick(); });
+      else handle = requestAnimationFrame(tick);
+    };
+    const watchdog = byFrame ? setTimeout(() => {
+      if (gotFrame || stopped) return;
+      video.cancelVideoFrameCallback?.(handle);
+      byFrame = false;
+      schedule();
+    }, 600) : null;
     const tick = () => {
       if (stopped) return;
-      raf = requestAnimationFrame(tick);
+      schedule();
       const t = clock();
-      if (t - lastAt < interval) return;
+      if (t - lastAt < interval - RATE.slackMs) return;   // frames come about every 33 ms, give or take
       lastAt = t;
       const t0 = clock();
       let frame = null;
@@ -133,8 +185,12 @@ export function createEyeCheck(deps = {}) {
       interval = next;
       onFrame(t, frame);
     };
-    raf = requestAnimationFrame(tick);
-    return () => { stopped = true; cancelAnimationFrame(raf); };
+    schedule();
+    return () => {
+      stopped = true;
+      clearTimeout(watchdog);
+      if (byFrame) video.cancelVideoFrameCallback?.(handle); else cancelAnimationFrame(handle);
+    };
   }
 
   // Calibration: live tips until the picture is good, five dots, then (the first
@@ -180,7 +236,7 @@ export function createEyeCheck(deps = {}) {
         if (!(await explain())) { s.off = true; return false; }
       }
       if (!(await cameraOn())) { status.flash('Camera is off. The drill runs normally.'); s.off = true; return false; }
-      try { s.landmarker ??= await loadLandmarker(); } catch { cameraOff(); status.flash('Eye Check couldn’t start on this phone. The drill runs normally.'); s.off = true; return false; }
+      try { s.landmarker ??= await startTracker(); status.engine?.(picker.current()); } catch { cameraOff(); status.flash('Eye Check couldn’t start on this phone. The drill runs normally.'); s.off = true; return false; }
       if (!s.model || s.recal) {
         const done = await runCalibration({ drifted: s.recal });
         s.recal = false;
@@ -197,10 +253,12 @@ export function createEyeCheck(deps = {}) {
     const start = clock();
     const rec = { drill, title, start, gaze: [], targets: [], center: null, locks: [], checks: [], error: s.error, aspect: aspect() };
     const filter = gazeFilter();
+    const calmFilter = gazeFilter(CALM);
     const conf = confidence();
     const steady = steadyTracker({ aspect: rec.aspect });
     const drift = driftWatch({ aspect: rec.aspect });
     let gaze = null;
+    let calm = null;
     let expected = null;
     let live = true;
     let lastLog = -Infinity;
@@ -218,12 +276,15 @@ export function createEyeCheck(deps = {}) {
       if (why === 'slow') return end('Eye tracking stopped: the phone is busy. The drill keeps going.');
       if (ctx.isPaused?.()) return;
       const good = !!frame && frameCheck(frame.f, frame.brightness).ok;
-      const est = good ? filter(t, predict(s.model, frame.f)) : null;
+      const raw = good ? predict(s.model, frame.f) : null;
+      const est = raw ? filter(t, raw) : null;
+      const still = raw ? calmFilter(t, raw) : null;
       const ok = conf(t, good);
       gaze = ok && est ? est : null;
+      calm = ok && still ? still : null;
       status.paused(!ok);
       if (t - lastLog >= 45) { rec.gaze.push(gaze ? [t - start, gaze[0], gaze[1]] : [t - start, null]); lastLog = t; }
-      if (gaze && drift(t, gaze, expected, steady(t, gaze)) && !s.recal) {
+      if (calm && drift(t, calm, expected, steady(t, calm)) && !s.recal) {
         s.recal = true;
         status.note('Eye tracking may be off. It will recalibrate before the next eye drill.');
       }
@@ -237,6 +298,7 @@ export function createEyeCheck(deps = {}) {
     const t = {
       active: () => live && !!gaze,
       gaze: () => (live ? gaze : null),
+      calm: () => (live ? calm : null),
       at(el) {
         const r = el.getBoundingClientRect();
         return [(r.left + r.width / 2) / (globalThis.innerWidth || 1), (r.top + r.height / 2) / (globalThis.innerHeight || 1)];
@@ -274,12 +336,13 @@ export function createEyeCheck(deps = {}) {
   };
 }
 
-async function defaultLandmarker() {
+// delegate: 'GPU' (the graphics chip) or 'CPU'.
+async function defaultLandmarker(delegate = 'GPU') {
   const { FaceLandmarker } = await import(`${VENDOR}vision_bundle.mjs`);
   return FaceLandmarker.createFromOptions(
     { wasmLoaderPath: `${VENDOR}vision_wasm_internal.js`, wasmBinaryPath: `${VENDOR}vision_wasm_internal.wasm` },
     {
-      baseOptions: { modelAssetPath: `${VENDOR}face_landmarker.task`, delegate: 'CPU' },
+      baseOptions: { modelAssetPath: `${VENDOR}face_landmarker.task`, delegate },
       runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true,
     },
   );

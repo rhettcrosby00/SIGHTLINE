@@ -77,9 +77,15 @@ Saccade Jumps and Smooth Pursuit. Never in MOVE or Gaze Stabilization.
   phone from `vendor/mediapipe/` (served by Sightline, saved on first use). A 10-second,
   five-dot calibration (center and corners) fits a small model from those to the screen
   (`js/eye/math.js`); live tips first (face in view, light, phone at arm's length,
-  sunglasses). The gaze is smoothed heavily (One Euro filter) and treated as a general
-  direction: left / center / right, a rough 3 × 3 grid at best. Nothing measures eye-jump
-  speed or eye reaction time (the camera runs about 30 frames a second, 15 on older phones).
+  sunglasses). The gaze is smoothed (One Euro filter) and treated as a general direction:
+  left / center / right, a rough 3 × 3 grid at best. Nothing measures eye-jump speed or eye
+  reaction time (the camera runs about 30 frames a second, 15 on older phones).
+- **Speed** (v4.2): the face tracker runs on the phone's graphics chip when that works and is
+  faster, otherwise the main processor (`delegatePicker`, decided in the first second or so,
+  usually during calibration); each new camera frame is read as it arrives
+  (`requestVideoFrameCallback`); "where are the eyes" feedback uses lighter smoothing
+  (`SMOOTH`), while Quiet Eye's "are the eyes still" and drift use the heavier `CALM`.
+  Feedback changes after 0.15 s held, and still never more than about 2.8 times a second.
 - **During drills, indirect feedback only** (no cursor): the Quiet Eye ring fills only while
   the eyes are steady on the target and resets if they move, and the symbol waits for it (in
   held time, so the number of targets and the score don't change); in Peripheral Flash the
