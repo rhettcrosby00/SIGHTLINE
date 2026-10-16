@@ -2,9 +2,10 @@
   "name": "sightrep",
   "private": true,
   "type": "module",
-  "description": "Sightrep: a pre-game visual reaction and cognitive warm-up. Static site; one serverless function for the leaderboard.",
+  "description": "Sightrep: a pre-game visual reaction and cognitive warm-up. Static site on Cloudflare Pages, plus two small functions (leaderboard, Partner mode).",
   "scripts": {
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "build": "node tests/run.js && node build.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "0.10.4"

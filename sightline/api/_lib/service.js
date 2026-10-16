@@ -79,7 +79,7 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
   }
 
   function checkToken(token) {
-    if (!tokenKey) fail(403, 'Coach tools are off. Add COACH_PIN in Vercel to turn them on.');
+    if (!tokenKey) fail(403, 'Coach tools are off. Add COACH_PIN in the hosting settings to turn them on.');
     const [exp, mac] = String(token ?? '').split('.');
     const ok = exp && mac && mac.length === 64 && timingSafeEqual(Buffer.from(mac, 'hex'), Buffer.from(sign(exp), 'hex'));
     if (!ok || Number(exp) < now()) fail(401, 'Enter the coach PIN again.');
@@ -136,7 +136,7 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
 
     // Coach: check the PIN and hand back a 30-minute token.
     async unlock({ pin: tried } = {}, ip = 'unknown') {
-      if (!pinHash) fail(403, 'Coach tools are off. Add COACH_PIN in Vercel to turn them on.');
+      if (!pinHash) fail(403, 'Coach tools are off. Add COACH_PIN in the hosting settings to turn them on.');
       if (await store.hit(`pin:${ip}`, LIMITS.pinWindowS, { peek: true }) >= LIMITS.pinTries) fail(429, 'Too many wrong PINs. Wait 15 minutes.');
       if (!timingSafeEqual(sha(`${secret}:${tried ?? ''}`), pinHash)) {
         await store.hit(`pin:${ip}`, LIMITS.pinWindowS);

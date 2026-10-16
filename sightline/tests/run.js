@@ -1,6 +1,6 @@
 // All tests. No libraries: `node tests/run.js` (or `npm test`).
-// Vercel runs this before every deploy (see vercel.json); if anything fails,
-// the build fails and nothing goes live.
+// Cloudflare Pages runs this before every deploy (`npm run build`, see
+// wrangler.toml); if anything fails, the build fails and nothing goes live.
 import { report } from './harness.js';
 import './routine.js';
 import './cone.js';
@@ -18,6 +18,7 @@ import './foolproof.js';
 import './eyecheck.js';
 import './brand.js';
 import './waiver.js';
+import './cloudflare.js';
 import './deadcode.js';
 
 process.exit((await report()) ? 1 : 0);

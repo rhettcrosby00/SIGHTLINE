@@ -27,7 +27,7 @@ import { DISCLAIMER } from './content/safety.js';
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '5.2';
+export const APP_VERSION = '5.3';
 
 const $ = (id) => document.getElementById(id);
 

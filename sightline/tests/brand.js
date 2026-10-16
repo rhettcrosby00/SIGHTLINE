@@ -6,6 +6,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { test, assert } from './harness.js';
 import { BRAND, logo, LOGO_DIR, LOGO_SIZE, APP_URL, OLD_HOSTS, movedFrom } from '../js/brand.js';
 import { renameSavedData, OLD_PREFIX, PREFIX } from '../js/migrate.js';
+import { SERVED } from '../build.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = (p) => readFileSync(new URL(p, root), 'utf8');
@@ -26,16 +27,14 @@ test('Name and tagline: one source (js/brand.js), and the page and home-screen a
   assert(/<h1 id="app-title" class="home__logo" data-logo="horizontal" aria-label="Sightrep">/.test(html), 'home: the full logo, named Sightrep');
 });
 
-// Everything Vercel serves from the app folder, except the face tracker's binaries.
+// Everything the site serves (build.mjs SERVED), except pictures and the face tracker's binaries.
 const SHIPPED = [];
-(function walk(dir) {
-  for (const name of readdirSync(new URL(dir, root))) {
-    const p = `${dir}${name}`;
-    if (['node_modules', 'tests'].includes(name) || /\.(png|wasm|task|webp|ico)$/.test(name)) continue;
-    if (statSync(new URL(p, root)).isDirectory()) walk(`${p}/`);
-    else SHIPPED.push(p);
-  }
-}(''));
+const walk = (p) => {
+  if (/\.(png|wasm|task|webp|ico)$/.test(p)) return;
+  if (statSync(new URL(p, root)).isDirectory()) for (const name of readdirSync(new URL(p, root))) walk(`${p}/${name}`);
+  else SHIPPED.push(p);
+};
+SERVED.forEach(walk);
 // The only places the old name may stay: internal names nobody sees.
 const INTERNAL = [
   ['js/migrate.js', /sightline\./g],                          // moving old saved data
@@ -43,8 +42,6 @@ const INTERNAL = [
   ['sw.js', /'sightline-v1'|'sightline-'/g],                    // clearing the old offline caches
   ['js/features.js', /sightline-psi\.vercel\.app/g],            // Vercel's own address for the project
   ['js/brand.js', /'sightline-psi\.vercel\.app'/g],             // the old address, to point it at the new one
-  ['api/_lib/partner.js', /'sightline'/g], ['api/_lib/service.js', /'sightline'/g],   // a server-side default, never shown
-  ['README.md', /sightline-psi\.vercel\.app|`sightline\.\*`|sightline\.\*|sightline\.…|Sightline became Sightrep|Sightline/g],   // notes for developers
 ];
 const stripComments = (src) => src.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');
 
@@ -53,7 +50,7 @@ test('No "Sightline" anywhere an athlete can see it (the old name only in intern
   for (const f of SHIPPED) {
     let src = read(f);
     for (const [file, re] of INTERNAL) if (file === f) src = src.replace(re, '');
-    if (f !== 'README.md') src = stripComments(src);   // comments are never shown
+    src = stripComments(src);   // comments are never shown
     if (/sightline/i.test(src)) left.push(`${f}: ${/.{0,40}sightline.{0,40}/i.exec(src)[0]}`);
   }
   assert(left.length === 0, `still says Sightline:\n    ${left.join('\n    ')}`);

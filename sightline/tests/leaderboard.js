@@ -8,7 +8,7 @@ import { cleanName, nameKey, nameProblem, isBlocked, similarNames, NAME_MAX } fr
 import { normalize } from '../js/cone/config.js';
 import { createService, weekStart, LIMITS } from '../api/_lib/service.js';
 import { memoryStore } from '../api/_lib/memory-store.js';
-import handler from '../api/leaderboard.js';
+import { handle } from '../api/leaderboard.js';
 import { submitScore, flushQueue, getPlayerRank } from '../js/score/board.js';
 
 const near = (a, b) => Math.abs(a - b) < 1e-6;
@@ -251,17 +251,11 @@ test('Offline scores wait on the phone and post when back online', async () => {
 });
 
 test('Server: health check, and a clear message until the database is connected', async () => {
-  const call = async (method, url, body) => {
-    const res = { statusCode: 0, headers: {}, setHeader(k, v) { this.headers[k] = v; }, end(b) { this.body = JSON.parse(b); } };
-    await handler({ method, url, query: Object.fromEntries(new URL(url, 'http://x').searchParams), body, headers: {} }, res);
-    return res;
-  };
-  delete process.env.DATABASE_URL;
-  delete process.env.LB_MEMORY;
+  const call = (method, url, body) => handle({ method, query: Object.fromEntries(new URL(url, 'http://x').searchParams), body }, {});
   const health = await call('GET', '/api/leaderboard?action=health');
-  assert(health.statusCode === 200 && health.body.db === false, 'health');
+  assert(health.status === 200 && health.body.db === false, 'health');
   const off = await call('GET', '/api/leaderboard?action=board&side=focus&tab=total');
-  assert(off.statusCode === 503 && /isn’t connected/.test(off.body.error), 'not-connected message');
+  assert(off.status === 503 && /isn’t connected/.test(off.body.error), 'not-connected message');
   assert(!JSON.stringify(health.body).includes('postgres'), 'health leaks settings');
 });
 

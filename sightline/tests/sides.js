@@ -168,7 +168,8 @@ test('Feature flags: approved features don’t linger as switches; previews stay
   // The Sightrep addresses count as live: preview features stay off there.
   FEATURES.__live = 'preview';
   try {
-    for (const host of ['app.sightrep.app', 'sightrep.app']) assert(!isOn('__live', { host, search: '' }), `a preview feature shows on ${host}`);
+    for (const host of ['app.sightrep.app', 'sightrep.app', 'sightrep.pages.dev', 'sightrep-a1b.pages.dev']) assert(!isOn('__live', { host, search: '' }), `a preview feature shows on ${host}`);
+    for (const host of ['feature-unlock.sightrep.pages.dev', '4f2c9a1e.sightrep.pages.dev']) assert(isOn('__live', { host, search: '' }), `a Cloudflare preview link should show preview features: ${host}`);
   } finally {
     delete FEATURES.__live;
   }

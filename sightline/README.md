@@ -181,8 +181,9 @@ later.
 
 ## Run it locally
 
-No build step. The app is static; only the leaderboard function has a dependency (the Neon
-database driver, installed by Vercel). Serve the folder with any static server:
+No build step needed to try it. The app is static; only the server functions have a
+dependency (the Neon database driver, installed by Cloudflare). Serve the folder with any
+static server:
 
 ```bash
 python3 -m http.server 5173
@@ -190,13 +191,28 @@ python3 -m http.server 5173
 
 Then open http://localhost:5173.
 
+## Hosting (Cloudflare Pages)
+
+Sightrep runs on Cloudflare Pages (free plan; it allows a paid app). The project is connected
+to this GitHub repo:
+
+- **Settings:** root directory `sightline`, build command `npm run build` (the tests, then
+  `build.mjs`, which copies only the app's files into `dist/`). `wrangler.toml` sets the output
+  folder and turns on `nodejs_compat` (the server uses `node:crypto`).
+- **Server:** `functions/api/[name].js` serves `/api/leaderboard` and `/api/partner`. It turns
+  each request into the plain object `handle()` in `api/*.js` takes. Everything else is plain
+  files (free, unlimited).
+- **Secrets:** Settings → Variables and Secrets → `DATABASE_URL` (the Neon database) and
+  `COACH_PIN`, as encrypted secrets. Never in the repo.
+- **Previews:** every branch gets its own public link, `https://<branch>.sightrep.pages.dev`.
+  `sightrep.pages.dev` is the live site (same as app.sightrep.app).
+- **Database:** Neon, first set up through Vercel's Storage tab. If Vercel lists it as
+  "Vercel-managed", it keeps working as long as the (free) Vercel account exists.
+
 ## Put it on a phone
 
 The phone needs the app served over **HTTPS** for offline use, installing, and keeping the
-screen awake. Any static host works:
-
-- **Netlify Drop:** drag this folder onto https://app.netlify.com/drop.
-- **GitHub Pages:** push this folder to a repo, then turn on Pages in the repo settings.
+screen awake: open https://app.sightrep.app.
 
 On the phone, open the URL once while online, then install it:
 
@@ -235,32 +251,35 @@ a session). The version number shows at the bottom of the start screen.
   wait on the phone and post later.
 - `js/score/ui.js`: name entry (first time), the result on the summary, the board, coach tools.
   The server still answers `side=all` and `tab=best`; the app no longer asks.
-- `api/leaderboard.js`: the one Vercel serverless function. It checks every score against the
-  most its session could earn, rate-limits, and guards coach tools with `COACH_PIN`.
-- Setup (Vercel): Storage → Create Database → Neon (free) → connect to Production and Preview;
-  Settings → Environment Variables → `COACH_PIN`. The database address never appears in the app.
+- `api/leaderboard.js`: the leaderboard server (served through `functions/api/[name].js`). It
+  checks every score against the most its session could earn, rate-limits, and guards coach
+  tools with `COACH_PIN`.
+- Setup: `DATABASE_URL` and `COACH_PIN` in Cloudflare's project settings (see Hosting). The
+  database address never appears in the app.
 - `/api/leaderboard?action=health` shows `{ db, coach }` (true/false only).
 
 ## Web addresses
 
 | Address | What it is |
 |---|---|
-| https://app.sightrep.app | the app |
-| https://sightrep.app | the marketing site (for now, the app too) |
-| https://www.sightrep.app | permanent (301) redirect to sightrep.app |
-| sightline-psi.vercel.app | Vercel's own name for the project (preview links work as before). Opened there, home shows "Sightrep has a new home" with a button to app.sightrep.app (`movedFrom` in `js/brand.js`); plan: a permanent redirect to app.sightrep.app about two weeks after 5.0. |
+| https://app.sightrep.app | the app (Cloudflare Pages custom domain) |
+| https://sightrep.app | permanent (301) redirect to app.sightrep.app until the marketing site exists (one app address, so a phone's saved data lives in one place) |
+| https://www.sightrep.app | permanent (301) redirect to app.sightrep.app |
+| sightrep.pages.dev | Cloudflare's own name for the live site |
+| sightline-psi.vercel.app | the old address, on Vercel (no longer deployed from this repo). Home shows "Sightrep has a new home" with a button to app.sightrep.app (`movedFrom` in `js/brand.js`); next: a permanent redirect to app.sightrep.app (Vercel → Settings → Domains → Edit). |
 
-DNS is on Cloudflare, every record **DNS only** (gray cloud): CNAMEs for `@`, `app` and `www` to
-the target Vercel shows under the project's **Settings → Domains**. Cloudflare Email Routing adds
+DNS is on Cloudflare. `app` is the Pages custom domain (Cloudflare manages that record); the
+`sightrep.app` and `www` redirects are Cloudflare Redirect Rules. Cloudflare Email Routing adds
 and locks its own MX, SPF and DKIM records (support@ and hello@ forward to the team inbox); leave
 them alone. `node ../tools/domains/check.mjs [version]` checks every address from outside: HTTPS
-certificates, redirects, the app version, and the email DNS (one SPF record, DMARC).
+certificates, redirects, that Cloudflare serves the app, the app version, the server's health,
+and the email DNS (one SPF record, DMARC).
 
 ## Feature flags
 
 `js/features.js` holds switches for work in progress only. Add a new feature as
-`name: 'preview'`: on for Vercel preview links and locally, off on sightline-psi.vercel.app
-(add `?name` to the live address to see it anyway), and check it with `isOn('name')`. Once
+`name: 'preview'`: on for preview links (`<branch>.sightrep.pages.dev`) and locally, off on
+the live addresses (add `?name` to the live address to see it anyway), and check it with `isOn('name')`. Once
 it's approved, remove the switch and its "off" path; the tests fail if an approved switch lingers
 or a switch is never checked. `false` parks a feature: its code stays, off everywhere. Today:
 `partner: false` (Partner mode).
@@ -326,8 +345,8 @@ node tests/run.js
 
 The tests simulate 1,000 sessions and check the variety rules, the MOVE planner, contrast in
 every theme, the FOCUS / MOVE split and saved-data upgrades, and dead code (unused files,
-exports, imports, styles, icons and screens). Vercel runs them before every deploy
-(`vercel.json`), so a failing test stops the build and nothing goes live.
+exports, imports, styles, icons and screens). Cloudflare runs them before every deploy
+(`npm run build`), so a failing test stops the build and nothing goes live.
 
 Screen checks (every screen at iPhone SE and Pro Max sizes, light, dark and outdoor, with
 layout problems listed) live outside the app in `../tools/screens/`; see its README. The `eye`
@@ -359,6 +378,8 @@ Saved data moved from `sightline.*` to `sightrep.*` keys in v5.0 (`renameSavedDa
 | File | What it does |
 |---|---|
 | `js/main.js` | Home (two sides, Run last), Settings, About, offline support |
+| `functions/api/[name].js`, `api/` | The server on Cloudflare Pages: the entry point, and the leaderboard and Partner handlers |
+| `build.mjs`, `wrangler.toml` | What the site serves (`dist/`), and the Cloudflare Pages settings |
 | `js/brand.js` | The name, the tagline and the logo component |
 | `js/waiver.js`, `js/content/safety.js` | The safety waiver screen and its saved acceptance; every word of the waiver, disclaimer and safety notes |
 | `js/presets.js` | Quick / Standard / Game Speed, Run last keys, the Game Day / Training switch |

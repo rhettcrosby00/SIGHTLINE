@@ -1,5 +1,5 @@
-// Postgres leaderboard store (Neon, connected through Vercel). The database
-// address comes from Vercel's settings (DATABASE_URL); it's never in the app.
+// Postgres leaderboard store (Neon). The database address comes from the
+// hosting project's settings (DATABASE_URL on Cloudflare); it's never in the app.
 // Stores only name, score, side, session settings and date.
 
 import { neon } from '@neondatabase/serverless';
