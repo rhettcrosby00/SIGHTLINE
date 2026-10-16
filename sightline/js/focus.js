@@ -24,12 +24,15 @@ import { createRoutineStore, routineSeconds } from './myroutine.js';
 import { createRng } from './lib/rng.js';
 import { checkPlan, createCheckLog } from './lib/check.js';
 import { runFocusCheck, showCheckResult } from './stages/focuscheck.js';
+import { createEyeCheck } from './eye/index.js';
+import { simulatedEye } from './eye/sim.js';
+import { renderEyeSummary } from './eye/ui.js';
 
 const $ = (id) => document.getElementById(id);
 // Whole minutes, or halves under 2 minutes ("1.5 min").
 const roundMin = (m) => (m < 2 ? Math.round(m * 2) / 2 : Math.round(m));
 
-// show(name, {back}) switches screens; dev = { speed, autoReady, seed, only, state }
+// show(name, {back}) switches screens; dev = { speed, autoReady, seed, only, state, eyeSim }
 // from the URL; onRun(key) fires when a session starts (for "Run last");
 // leaderboard (optional) gets the score after each finished session.
 // onTrained() fires when a Training session finishes (the weekly streak);
@@ -47,6 +50,7 @@ export function initFocus({
   let from = 'start';   // where Done (or quitting) goes back to
   let feel = 'ready';   // this visit's readiness tap
   let advanced = false;   // the Advanced section is open
+  let stopReplays = () => {};   // Eye Check replays on the summary
 
   const routineS = () => routineSeconds(routines.get());
   const minutes = (id, length = getSettings().length) => roundMin(totalMinutes(id, length, routineS()));
@@ -201,6 +205,8 @@ export function initFocus({
     });
     const steps = buildRoutine(session).filter((s) => !dev.only || dev.only.includes(s.id));
     session.scorer = createFocusScorer();   // leaderboard points, cue by cue
+    // Eye Check (beta): opt-in. Its estimates stay in memory for this summary only, and never reach the scorer.
+    session.eye = settings.eyeCheck === 'on' ? createEyeCheck(dev.eyeSim ? simulatedEye(dev.eyeSim) : {}) : null;
 
     $('screen-session').dataset.side = 'focus';
     show('session');
@@ -208,6 +214,8 @@ export function initFocus({
     if (!dev.seed) variety.add(session.record());   // also after a quit: they saw it
     seen.add(results.map((r) => r.id));             // Auto instructions get shorter as drills get familiar
     levels.save(session.levels());                  // next time, each drill starts where it ended
+    const eyeRecordings = session.eye?.recordings() ?? [];
+    session.eye?.dispose();                         // camera off; nothing kept but the summary's copy
     if (!completed) { back(); return; }
     buzz([60, 80, 120]);   // session complete (the summary appears too)
     if (meta.timedByRoutine) { back(); return; }   // My Routine on its own: straight back, nothing to sum up
@@ -218,6 +226,7 @@ export function initFocus({
 
     const totalMs = steps.reduce((a, s) => a + s.durationMs + (s.introMs ?? 0), 0);   // instructions included
     renderSummary($('summary'), { title: meta.title, results, settings, totalMs, readiness: { before: state }, checked, seed: session.seed });
+    stopReplays = renderEyeSummary($('summary').querySelector('.sum'), eyeRecordings);
     afterSession({ key: opts.key ?? meta.id });
     if (leaderboard && !meta.unscored) await leaderboard.afterSession(focusEntry(meta, session, settings), { slot: $('summary-board') });
     show('done');
@@ -241,7 +250,8 @@ export function initFocus({
   };
 
   // Nothing is kept: clear the summary and go back.
-  $('btn-done').addEventListener('click', () => { $('summary').innerHTML = ''; back(); });
+  // Eye Check's estimates go with it.
+  $('btn-done').addEventListener('click', () => { stopReplays(); stopReplays = () => {}; $('summary').innerHTML = ''; back(); });
 
   return {
     openHub: () => { feel = 'ready'; renderHub(); show('focus'); },

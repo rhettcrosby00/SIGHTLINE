@@ -20,7 +20,7 @@ import { initInstall } from './install.js';
 import { parseRunKey } from './presets.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '4.0';
+export const APP_VERSION = '4.1';
 
 const $ = (id) => document.getElementById(id);
 
@@ -57,6 +57,7 @@ const dev = {
   seed: params.get('seed'),
   only: params.get('only')?.split(','),
   state: params.get('state'),   // flat | ready | wired, to test the readiness tap's routines
+  eyeSim: params.get('eyesim'),   // Eye Check with a pretend face (js/eye/sim.js)
 };
 const variety = createVariety();
 const lastRuns = createLastRuns();

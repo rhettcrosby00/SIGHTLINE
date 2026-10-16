@@ -12,6 +12,7 @@ python3 tools/screens/testserver.py      # the app on :5175, with /__set to seed
 node tools/screens/apiserver.mjs         # leaderboard + Partner API on :5176, in memory
 node tools/screens/cdp.mjs main          # every shot in scenarios/main.mjs
 node tools/screens/cdp.mjs main move-     # only shots whose name matches
+node tools/screens/cdp.mjs eye           # Eye Check: fake camera, real face tracker, ?eyesim
 python3 tools/screens/sheet.py home      # sheets/home.png: all sizes and themes side by side
 ```
 

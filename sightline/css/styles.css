@@ -822,3 +822,81 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .install-card__steps li { display: grid; grid-template-columns: 5.5em 1fr; gap: var(--space-2); line-height: 1.45; }
 .install-card__steps .icon { display: inline-block; vertical-align: -4px; }
 
+
+/* ---------- Eye Check (beta): js/eye/ ---------- */
+/* Calibration and the camera question sit over the drill (and over Pause, for Recalibrate). */
+.eyecal { position: fixed; inset: 0; z-index: 8; display: grid; align-items: end; padding: 0 var(--gutter) calc(env(safe-area-inset-bottom) + var(--space-4)); background: var(--bg); }
+.eyecal[hidden] { display: none; }
+.eyecal__card { display: grid; gap: var(--space-3); max-width: 480px; width: 100%; justify-self: center; }
+.eyecal__card--see { position: relative; z-index: 1; padding: var(--space-4); border-radius: var(--radius-m); background: var(--surface); border: var(--line-w) solid var(--line); }
+.eyecal__kicker { display: flex; align-items: center; gap: var(--space-2); font: 600 var(--text-label)/1.2 var(--font-body); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--side-text); }
+.eyecal__title { font-family: var(--font-display); font-variation-settings: var(--wdth-wide); font-weight: var(--weight-display); font-size: var(--text-display); line-height: var(--leading-display); text-transform: uppercase; }
+.eyecal__lead { line-height: 1.45; }
+.eyecal__list { display: grid; gap: var(--space-2); padding-left: 1.2em; color: var(--muted); line-height: 1.4; }
+.eyecal__checks { list-style: none; display: grid; gap: var(--space-2); }
+.eyecal__checks li { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; color: var(--muted); }
+.eyecal__checks li::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); transition: background var(--dur-base) var(--ease-out); }
+.eyecal__checks li.is-ok { color: var(--text); }
+.eyecal__checks li.is-ok::before { background: var(--good); border-color: var(--good); }
+.eyecal__tip { min-height: 1.4em; font-weight: 600; line-height: 1.4; }
+.eyecal__acc { line-height: 1.45; }
+/* Calibration dots: one at a time; it glides to the next spot and fills (no flashing). */
+.eyecal.is-dots { align-items: start; padding-top: calc(env(safe-area-inset-top) + var(--space-4)); }
+.eyecal__dotlead { text-align: center; font-weight: 600; color: var(--muted); margin-top: 22dvh; }
+.eyecal__dot { position: fixed; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 4px solid var(--text); display: grid; place-items: center; transition: left 0.3s var(--ease-out), top 0.3s var(--ease-out); }
+.eyecal__dot i { width: 100%; height: 100%; border-radius: 50%; background: var(--side); transform: scale(0.15); }
+.eyecal__dot.is-filling i { animation: eye-fill 1.9s linear forwards; }
+@keyframes eye-fill { to { transform: scale(1); } }
+.eyecal__skip { min-width: 64px; justify-content: center; position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + var(--space-4)); transform: translateX(-50%); color: var(--muted); }
+/* See your gaze: a large, soft circle (never a sharp dot). Calibration only. */
+.eyecal__glow { position: fixed; left: 0; top: 0; width: 160px; height: 160px; border-radius: 50%; pointer-events: none; background: var(--side); opacity: 0.35; transition: transform 0.12s linear; }
+.eyecal__glow[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .eyecal__dot, .eyecal__glow { transition: none; } .eyecal__dot.is-filling i { animation-duration: 0.01s; } }
+
+/* During a drill: the camera indicator, and a small note when tracking pauses. */
+.eye-status { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-3); padding: 2px var(--gutter) 4px; font: 600 var(--text-caption)/1.3 var(--font-body); color: var(--muted); }
+.eye-status[hidden] { display: none; }
+.cam-badge { display: inline-flex; align-items: center; gap: 6px; }
+.eye-status:not([data-camera="1"]) .cam-badge { display: none; }
+.cam-badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+.eye-note:empty { display: none; }
+
+/* Peripheral Flash: eyes off the center dot → it turns red and pulses slowly; the edge they glanced toward lights up (fades in, never flashes). */
+.rx__edge { position: absolute; pointer-events: none; background: var(--bad); opacity: 0; transition: opacity 0.4s var(--ease-out); }
+.rx[data-eyes="away"] .rx__edge { opacity: 0.85; }
+.rx__edge[data-side="left"] { left: 0; top: 0; bottom: 0; width: 10px; }
+.rx__edge[data-side="right"] { right: 0; top: 0; bottom: 0; width: 10px; }
+.rx__edge[data-side="up"] { left: 0; right: 0; top: 0; height: 10px; }
+.rx__edge[data-side="down"] { left: 0; right: 0; bottom: 0; height: 10px; }
+.rx { position: relative; }
+.rx__fix { transition: background 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out); }
+.rx[data-eyes="away"] .rx__fix { background: var(--bad); animation: eye-pulse 1.4s ease-in-out infinite; }
+@keyframes eye-pulse { 50% { transform: translate(-50%, -50%) scale(1.25); } }
+.rx[data-eyes="away"] .rx__fix:not(.rx__fix--lock) { animation-name: eye-pulse-plain; }
+@keyframes eye-pulse-plain { 50% { transform: scale(1.25); } }
+/* Smooth Pursuit: the dot dims while the eyes fall behind. */
+.eyes__dot { transition: opacity 0.35s var(--ease-out); }
+.eyes__dot.is-behind { opacity: 0.4; }
+/* Saccade Jumps: a small check when the eyes moved toward the number (direction only). */
+.eyes__target { overflow: visible; }
+.eyes__check { position: absolute; right: -14px; top: -14px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--good); color: #fff; opacity: 0; transition: opacity 0.25s var(--ease-out); }
+.eyes__check.is-on { opacity: 1; }
+/* Quiet Eye: the target lights up while the eyes are on it. */
+.qe .qe__dot { transition: box-shadow 0.3s var(--ease-out); }
+.qe.is-eyes-on .qe__dot { box-shadow: 0 0 0 6px var(--side); }
+@media (prefers-reduced-motion: reduce) { .rx[data-eyes="away"] .rx__fix { animation: none; } }
+
+/* Summary: replay, heat map, stats and one tip per drill. */
+.eyesum { display: grid; gap: var(--space-3); padding-top: var(--space-4); border-top: var(--line-w) solid var(--line); }
+.eyesum__note { color: var(--muted); font-size: var(--text-caption); line-height: 1.4; }
+.eyesum__drill { display: grid; gap: var(--space-2); padding: var(--space-3) 0; border-bottom: var(--line-w) solid var(--line); }
+.eyesum__title { font-weight: 700; font-size: 1.0625rem; }
+.eyesum__stats { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-weight: 600; }
+.eyesum__tip { line-height: 1.4; }
+.eyesum__viz { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.eyesum__viz figure { display: grid; gap: var(--space-1); justify-items: center; }
+.eyesum__viz canvas { border-radius: var(--radius-s); border: var(--line-w) solid var(--line); }
+.eyesum__viz figcaption { color: var(--muted); font-size: var(--text-caption); }
+.eyesum__ctl { display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-2); }
+.eyesum__ctl .btn { min-height: var(--tap); font-size: 1rem; }
+.eyesum__ctl .btn[aria-pressed="true"] { background: var(--text); color: var(--bg); }

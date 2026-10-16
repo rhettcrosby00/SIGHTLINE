@@ -4,8 +4,8 @@
 //   firstRun: show the first-run setup (otherwise ?noguide=1 skips it)
 //   steps run in the page: ['click', sel] | ['wait', ms] | ['waitFor', sel, ms]
 //     | ['scrollEnd'] | ['scrollTo', sel] | ['eval', js] | ['type', sel, text] | ['select', sel, value]
-//     | ['hold', sel, ms] (a finger held down on sel for ms)
-//   expect: text that must be on screen, or a selector ('#…' / '.…') that must match
+//     | ['hold', sel, ms] (a finger held down on sel for ms) | ['until', jsExpression, ms]
+//   expect: text that must be on screen, a selector ('#…' / '.…') that must match, or 'js:expression' that must be true
 //   combos: 'few' = SE dark and Pro Max light only
 export const BASE = { length: 'standard', difficulty: 'normal', sound: 'off', guide: 'full', cue: 'ATTACK' };
 

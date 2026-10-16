@@ -225,15 +225,21 @@
         <button id="btn-pause" class="hud__pause" type="button" aria-label="Pause"><i data-icon="pause" data-size="18"></i></button>
         <span class="hud__hold" aria-hidden="true">Hold to pause</span>
       </div>
+      <div id="eye-status" class="eye-status" hidden>
+        <span class="cam-badge"><i aria-hidden="true"></i>Camera on · Eye Check (beta)</span>
+        <span id="eye-note" class="eye-note" aria-live="polite"></span>
+      </div>
     </div>
     <div id="stage" class="stage"></div>
     <p id="awake-tip" class="awake-tip" role="status" hidden></p>
     <span id="hold-ring" class="hold-ring" aria-hidden="true" hidden></span>
+    <div id="eye-layer" class="eyecal" hidden></div>
 
     <div id="pause-overlay" class="pause" hidden>
       <p class="pause__title">Paused</p>
       <p id="pause-why" class="pause__why" aria-live="polite"></p>
       <button id="btn-resume" class="btn btn--primary btn--block pause__resume" type="button"><i data-icon="play" data-size="28"></i>Resume</button>
+      <button id="btn-eye-recal" class="btn btn--secondary btn--block" type="button" hidden>Recalibrate Eye Check</button>
       <button id="btn-quit" class="btn btn--secondary btn--block" type="button">End session</button>
     </div>
   </section>

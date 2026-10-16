@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v4.0';
+const CACHE_VERSION = 'v4.1';
 const CACHE = `sightline-${CACHE_VERSION}`;
 
 // Google Fonts (Archivo + Schibsted Grotesk) live in their own cache that
@@ -11,6 +11,12 @@ const CACHE = `sightline-${CACHE_VERSION}`;
 const FONT_CACHE = 'sightline-fonts-v1';
 const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap';
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
+
+// Eye Check (beta) only: MediaPipe face tracking (about 15 MB) is saved on
+// first use, in its own cache that survives app updates, and never precached
+// (most phones never need it).
+const EYE_CACHE = 'sightline-eye-v1';
+const EYE_PATH = '/vendor/mediapipe/';
 
 const ASSETS = [
   './',
@@ -28,6 +34,10 @@ const ASSETS = [
   './js/myroutine.js',
   './js/plan.js',
   './js/presets.js',
+  './js/eye/index.js',
+  './js/eye/math.js',
+  './js/eye/sim.js',
+  './js/eye/ui.js',
   './js/install.js',
   './js/routine.js',
   './js/session.js',
@@ -128,7 +138,7 @@ self.addEventListener('message', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('sightline-') && k !== CACHE && k !== FONT_CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('sightline-') && k !== CACHE && k !== FONT_CACHE && k !== EYE_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -148,6 +158,13 @@ self.addEventListener('fetch', (e) => {
   }
   // The leaderboard is always live: never cached.
   if (url.origin !== self.location.origin || url.pathname.includes('/api/')) return;
+  if (url.pathname.includes(EYE_PATH)) {
+    e.respondWith(caches.open(EYE_CACHE).then((c) => c.match(req).then((hit) => hit || fetch(req).then((res) => {
+      if (res.ok) c.put(req, res.clone());
+      return res;
+    }))));
+    return;
+  }
   e.respondWith(
     caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((res) => {
       if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }

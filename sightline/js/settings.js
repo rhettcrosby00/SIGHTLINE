@@ -28,6 +28,8 @@ export const GROUPS = [
       hint: () => 'Low fades the cues toward the background, like poor light, shadow or glare: Color Call, Saccade Jumps, Peripheral Flash and Target Capture. Turn your brightness up outdoors.' },
     { key: 'occlusion', label: 'Occlusion (training)', toggle: true,
       hint: () => 'Training mode only, never in Game Ready. In Smooth Pursuit, Saccade Jumps and Object Tracking the moving target disappears and comes back, so you predict where it went. Only the target, never the screen. Leave it off if flashing light bothers you.' },
+    { key: 'eyeCheck', label: 'Eye Check (beta)', toggle: true,
+      hint: () => 'Uses the front camera to estimate where your eyes look during Quiet Eye, Peripheral Flash, Saccade Jumps and Smooth Pursuit, with a 10-second calibration first. Video never leaves your phone and nothing is recorded. Feedback only: it never changes your score. Estimates, not a vision or medical test.' },
     { key: 'focusCheck', label: 'Focus Check (training)', toggle: true,
       hint: () => 'Training mode only. About 30 seconds of taps at the start and end of a Training session: today against your usual on this phone. A readiness check, not a medical test.' },
   ] },
@@ -60,7 +62,7 @@ const FIELDS = [...GROUPS.flatMap((g) => g.fields), ...PRESET_FIELDS];
 export const DEFAULTS = {
   length: 'standard', difficulty: 'normal', sound: 'on', music: 'off', guide: 'auto', appearance: 'auto', nameStyle: 'name',
   sport: 'general', position: '', sportAsked: false, cue: 'COMPETE', guideV: 2,
-  contrast: 'full', occlusion: 'off', occlusionOk: false, focusCheck: 'off',
+  contrast: 'full', occlusion: 'off', occlusionOk: false, focusCheck: 'off', eyeCheck: 'off',
   day: 'game',   // each side: Game Day or Training
   getSet: '7',   // MOVE: seconds of countdown before the first set
   setupDone: false,   // the first-run setup was finished or skipped (js/guide.js)
@@ -114,6 +116,7 @@ export function describe(s) {
     ...(s.contrast === 'low' ? ['Low contrast'] : []),
     ...(s.occlusion === 'on' ? ['Occlusion'] : []),
     ...(s.focusCheck === 'on' ? ['Focus Check'] : []),
+    ...(s.eyeCheck === 'on' ? ['Eye Check (beta)'] : []),
     s.music === 'on' ? 'Music mode' : `Sounds ${s.sound}`,
   ].join(' · ');
 }
