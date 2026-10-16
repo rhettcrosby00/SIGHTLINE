@@ -35,6 +35,8 @@ export function sqlStore(url) {
           count = case when lb_hits.reset_at < now() then 1 else lb_hits.count + 1 end,
           reset_at = case when lb_hits.reset_at < now() then now() + make_interval(secs => ${windowS}::double precision) else lb_hits.reset_at end
         returning count`;
+      // A fresh window: also clear out windows that have ended, so the table stays small.
+      if (rows[0].count === 1) await sql`delete from lb_hits where reset_at < now()`;
       return rows[0].count;
     },
 

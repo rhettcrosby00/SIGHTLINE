@@ -14,7 +14,6 @@ import { describe } from './settings.js';
 import { createFocusScorer, focusScore } from './score/scoring.js';
 import { unlock as unlockAudio, buzz } from './lib/audio.js';
 import { icon } from './lib/icons.js';
-import { isOn } from './features.js';
 import { createSeen } from './lib/seen.js';
 import { createLevelStore } from './lib/adapt.js';
 import { createRoutineStore, routineSeconds } from './myroutine.js';
@@ -30,7 +29,6 @@ const $ = (id) => document.getElementById(id);
 // onTrained() fires when a Training session finishes (the weekly streak).
 export function initFocus({ show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {}, onRoutine = () => {}, onTrained = () => {}, leaderboard = null }) {
   const hubEl = $('focus-hub');
-  const flags = { newDrills: isOn('newDrills'), occlusion: isOn('occlusion') };
   const seen = createSeen();   // drills this phone has run, for Auto instructions
   const levels = createLevelStore();   // adaptive difficulty: each drill's level, on this phone
   const routines = createRoutineStore();   // My Routine, saved on this phone
@@ -142,7 +140,7 @@ export function initFocus({ show, dev = {}, variety, getSettings, updateSetting,
     }
     // Every session is freshly shuffled; content from the last few sessions rests.
     const build = (state, seed) => createSession({
-      sessionId: meta.id, settings, seed, recent: dev.seed ? [] : variety.recent(), flags, seen: seen.get(),
+      sessionId: meta.id, settings, seed, recent: dev.seed ? [] : variety.recent(), seen: seen.get(),
       state, routine: routines.get(), levels: levels.get(),
     });
     let session = build('ready', dev.seed);

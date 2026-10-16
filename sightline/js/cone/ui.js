@@ -19,7 +19,6 @@ import { unlock as unlockAudio, buzz } from '../lib/audio.js';
 import { icon } from '../lib/icons.js';
 import { SUM_LOGO } from '../stages/summary.js';
 import { initPartner } from './partner.js';
-import { isOn } from '../features.js';
 import { moveScore, moveMultiplier, SCORING } from '../score/scoring.js';
 
 const $ = (id) => document.getElementById(id);
@@ -71,7 +70,7 @@ export function initMove({ show, dev = {}, onRun = () => {}, onTrained = () => {
     if (where === 'board') return leaderboard?.openBoard('cone-done', { side: 'move' });
     if (where === 'menu') { renderHub(); return show('move', { back: true }); }
     if (where === 'custom') return open('custom');
-    if (where === 'partner' && partner) { partner.open(); return show('partner'); }
+    if (where === 'partner') { partner.open(); return show('partner'); }
     if (where === 'setup') {
       const ctl = run === 'signals' ? signals : custom;
       ctl.render();
@@ -85,10 +84,10 @@ export function initMove({ show, dev = {}, onRun = () => {}, onTrained = () => {
   const fromSetup = (variant) => (where, s) => { run = variant; setup = s; nav(where); };
   const custom = initSetup($('cd-setup'), { onNav: fromSetup('custom'), variant: 'custom', sport });
   // Partner mode: the stand phone uses the Custom setup's cones (reactive).
-  const partner = isOn('partner') ? initPartner($('cd-partner'), {
+  const partner = initPartner($('cd-partner'), {
     getSetup: () => ({ ...custom.get(), mode: 'reactive' }),
     onBack: () => nav('menu'),
-  }) : null;
+  });
   const signals = initSetup($('cd-signals'), { onNav: fromSetup('signals'), variant: 'signals', sport });
   const setupFor = (r) => (r === 'quick' ? quickStart(custom.get()) : r === 'gameday' ? gameDay(custom.get())
     : r === 'training' ? training(custom.get()) : r === 'signals' ? signals.get() : custom.get());
@@ -114,10 +113,10 @@ export function initMove({ show, dev = {}, onRun = () => {}, onTrained = () => {
         ${rowFor('custom', describeSetup(custom.get(), 'custom'), 'chevron-right')}
         ${rowFor('signals', `No cones · ${describeSetup(signals.get(), 'signals')}`, 'chevron-right')}
       </div></section>
-      ${partner ? `<section class="group"><h3 class="group__title">With a coach</h3><div class="group__rows">
+      <section class="group"><h3 class="group__title">With a coach</h3><div class="group__rows">
         <button type="button" class="hub-row" data-nav="partner">
           <span class="hub-row__text"><strong>Partner mode</strong><small>A coach’s phone sends the cues</small></span>${icon('chevron-right')}
-        </button></div></section>` : ''}
+        </button></div></section>
       <div class="screen__foot">
         <p class="cset__est">${describeSetup(setupFor('quick'), 'quick')} · ${minutesOf(setupFor('quick'))} min</p>
         <button type="button" class="btn btn--primary btn--block" data-run="quick">${icon('play')}Quick Start</button>

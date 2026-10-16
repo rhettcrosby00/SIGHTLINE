@@ -1,5 +1,4 @@
-// Partner mode API (a Vercel serverless function at /api/partner; the app
-// shows it behind the `partner` flag in js/features.js).
+// Partner mode API (a Vercel serverless function at /api/partner).
 //   POST { action: 'open', setup }        → { code }      the stand phone opens a room
 //   GET  ?action=poll&code=1234&after=N   → { seq, cue, setup }
 //   POST { action: 'cue', code, cue }     → { seq }       the coach's phone calls a cue
@@ -38,9 +37,9 @@ export default async function handler(req, res) {
     const ip = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
     const svc = await service().catch(() => null);
     if (!svc) return send(res, 503, { error: 'Partner mode isn’t connected yet.' });
-    if (req.method === 'GET' && query.action === 'poll') return send(res, 200, await svc.poll(query));
+    if (req.method === 'GET' && query.action === 'poll') return send(res, 200, await svc.poll(query, ip));
     if (req.method === 'POST' && body.action === 'open') return send(res, 200, await svc.open(body, ip));
-    if (req.method === 'POST' && body.action === 'cue') return send(res, 200, await svc.send(body));
+    if (req.method === 'POST' && body.action === 'cue') return send(res, 200, await svc.send(body, ip));
     return send(res, 404, { error: 'Not found.' });
   } catch (err) {
     if (err instanceof HttpError) return send(res, err.status, { error: err.message });

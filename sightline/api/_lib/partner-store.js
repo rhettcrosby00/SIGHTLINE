@@ -3,9 +3,21 @@
 
 export function partnerMemory() {
   const rooms = new Map();
+  const hits = new Map();
   return {
     async init() {},
-    async sweep(t) { for (const [k, r] of rooms) if (r.expiresAt <= t) rooms.delete(k); },
+    // Count a request in a time window ({ peek } reads without counting).
+    async hit(bucket, windowS, t, { peek = false } = {}) {
+      let h = hits.get(bucket);
+      if (!h || h.resetAt <= t) h = { count: 0, resetAt: t + windowS * 1000 };
+      if (!peek) h.count++;
+      hits.set(bucket, h);
+      return h.count;
+    },
+    async sweep(t) {
+      for (const [k, r] of rooms) if (r.expiresAt <= t) rooms.delete(k);
+      for (const [k, h] of hits) if (h.resetAt <= t) hits.delete(k);
+    },
     async roomsSince(ipHash, since) { return [...rooms.values()].filter((r) => r.ipHash === ipHash && r.at >= since).length; },
     async create({ code, setup, ipHash, at, expiresAt }) {
       if (rooms.has(code) && rooms.get(code).expiresAt > at) return false;
@@ -41,8 +53,26 @@ export async function partnerSql(url) {
         created_at timestamptz not null,
         updated_at timestamptz not null,
         expires_at timestamptz not null)`;
+      await sql`create table if not exists partner_hits (bucket text primary key, count integer not null, reset_at timestamptz not null)`;
     },
-    async sweep(t) { await sql`delete from partner_rooms where expires_at <= ${iso(t)}::timestamptz`; },
+    async hit(bucket, windowS, t, { peek = false } = {}) {
+      if (peek) {
+        const rows = await sql`select count from partner_hits where bucket = ${bucket} and reset_at > ${iso(t)}::timestamptz`;
+        return rows[0]?.count ?? 0;
+      }
+      const reset = iso(t + windowS * 1000);
+      const rows = await sql`
+        insert into partner_hits (bucket, count, reset_at) values (${bucket}, 1, ${reset}::timestamptz)
+        on conflict (bucket) do update set
+          count = case when partner_hits.reset_at <= ${iso(t)}::timestamptz then 1 else partner_hits.count + 1 end,
+          reset_at = case when partner_hits.reset_at <= ${iso(t)}::timestamptz then ${reset}::timestamptz else partner_hits.reset_at end
+        returning count`;
+      return rows[0].count;
+    },
+    async sweep(t) {
+      await sql`delete from partner_rooms where expires_at <= ${iso(t)}::timestamptz`;
+      await sql`delete from partner_hits where reset_at <= ${iso(t)}::timestamptz`;
+    },
     async roomsSince(ipHash, since) {
       const rows = await sql`select count(*)::int as n from partner_rooms where ip_hash = ${ipHash} and created_at >= ${iso(since)}::timestamptz`;
       return rows[0].n;

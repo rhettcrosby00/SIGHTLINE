@@ -2,12 +2,11 @@
 // from a single seeded generator. Pure module (no DOM), used by the app and
 // by the tests.
 //
-//   createSession({ sessionId?, settings, seed?, recent?, flags? })
+//   createSession({ sessionId?, settings, seed?, recent? })
 //     sessionId  'game' (Game Ready, default) or one pillar: see FOCUS_SESSIONS
 //     seed    replay a session exactly (?seed=N); otherwise a fresh one
 //     recent  "recently used" records from createVariety().recent(),
 //             newest first; their content is skipped where possible
-//     flags   which flagged drills are on, e.g. { newDrills: true }
 //     seen    drill id → times this phone has run it (Auto instructions)
 //     state   'flat' | 'ready' | 'wired' from the check-in (shapes breathing and pacing)
 //     routine the athlete's My Routine (js/myroutine.js)
@@ -34,7 +33,7 @@ import { createLevel } from './lib/adapt.js';
 
 const setsOf = (recent, field) => recent.map((r) => new Set(r?.[field] ?? []));
 
-export function createSession({ sessionId = 'game', settings, seed, recent = [], flags = {}, seen = {}, state = 'ready', routine = DEFAULT_ROUTINE, levels = {} }) {
+export function createSession({ sessionId = 'game', settings, seed, recent = [], seen = {}, state = 'ready', routine = DEFAULT_ROUTINE, levels = {} }) {
   const rng = createRng(seed);
   const last = recent[0]?.order ?? {};
   const mood = STATES.includes(state) ? state : 'ready';
@@ -43,7 +42,6 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
 
   const steps = planSteps(sessionId, settings, rng.fork('order'), {
     avoid: { regulate: last.regulate, activate: last.activate, vision: last.vision, challenge: last.challenge, extras: last.extras },
-    flags,
     guideFor: guideChooser(settings.guide, seen),
     state: mood,
     routineS: routineSeconds(myRoutine),
@@ -65,8 +63,8 @@ export function createSession({ sessionId = 'game', settings, seed, recent = [],
   const levelOf = {};
   const motRng = rng.fork('mot');
   const training = sessionId === 'training' || (settings.day === 'training' && sessionId !== 'game' && sessionId !== 'myroutine');
-  // Occlusion: Training only (opt-in, behind its flag). Never on Game Day.
-  const occlusion = !!flags.occlusion && settings.occlusion === 'on' && training;
+  // Occlusion: Training only (opt-in). Never on Game Day.
+  const occlusion = settings.occlusion === 'on' && training;
 
   const content = {
     colorCall: colorCallStream(rng.fork('colorcall')),

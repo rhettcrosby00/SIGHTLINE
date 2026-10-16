@@ -24,6 +24,10 @@ the Decision Layer, 5 × 30 s). Parts run from the FOCUS screen in Training mode
 too; Game Ready never is. Home shows this week's training days against 2–4 and a weekly
 streak (weeks in a row with 2+ training days; `js/lib/streak.js`, this phone only).
 
+**Full Pre-Game** (Game Day home; `js/pregame.js`): FOCUS Game Ready (Quick), then "Set your
+phone down" and MOVE's Game Day sets, one check-out, one summary and both scores. About 10
+minutes.
+
 **Focus Check** (optional, Settings; `js/lib/check.js`, `js/stages/focuscheck.js`): about 30
 seconds at the start and end of Game Ready and Training, or on its own from the FOCUS screen.
 Two warm-up taps, 6 reaction taps (tap when the circle turns green), then 8 go / no-go cues.
@@ -56,7 +60,7 @@ set by Normal (levels 0–0.6) or Hard (0.4–1). Each drill's level is remember
 **Low contrast** (Settings → Contrast) fades Color Call, Saccade Jumps, Peripheral Flash and Target
 Capture toward the background, never below 2.5:1 (`js/lib/contrast.js`).
 
-**Occlusion** (behind the `occlusion` flag; Training only, never Game Ready): in Smooth Pursuit,
+**Occlusion** (Settings, opt-in; Training only, never Game Ready): in Smooth Pursuit,
 Saccade Jumps and Object Tracking the moving target disappears and comes back, never faster than
 3 changes a second. Only the target, never the screen. A photosensitivity warning shows the
 first time it's turned on. **Extras** (optional): Gaze Stabilization, Stroop, Quick
@@ -83,10 +87,12 @@ style (Out and back, First step, Cone to cone) and pace; between sets the athlet
   direction. Longer calls read from closer; the setup shows about how far.
 - **Planned vs Reactive** (`js/cone/patterns.js`): Planned runs a known pattern (5-10-5, Square,
   T-drill): GO, then a walk-back countdown. Reactive (the default) is true agility.
-- **Partner mode** (behind the `partner` flag; `js/cone/partner.js`, `api/partner.js`): the
-  stand phone shows a 4-digit code; a coach's phone types it and taps cones to send cues. The
-  phones meet through the server (a room with the setup and the latest cue, gone after 2
-  hours); the stand phone checks about 3 times a second.
+- **Partner mode** (`js/cone/partner.js`, `api/partner.js`): the stand phone shows a 4-digit
+  code; a coach's phone types it and taps cones to send cues. The phones meet through the
+  server (a room with the setup and the latest cue, gone after 2 hours). The stand phone checks
+  about 3 times a second while cues are coming and eases off after 30 s without one; it never
+  changes the whole screen more than about 3 times a second. Limits per network: 10 new rooms an
+  hour, and 30 wrong codes per 10 minutes (then "wait a few minutes").
 
 A short summary follows each session. There are no accounts.
 
@@ -164,14 +170,12 @@ a session). The version number shows at the bottom of the start screen.
 
 ## Feature flags
 
-`js/features.js`. `'preview'` means on for Vercel preview links and locally, off on
-sightline-psi.vercel.app (add `?flagName` to the live address to see it anyway).
-- `newDrills: true` (approved): 4-7-8 Breathing, Memory Sequence.
-- `leaderboard: true` (approved): name entry, the online board and coach tools.
-- `occlusion: true` (approved with Training Mode): the opt-in Occlusion setting; Training only.
-- `partner: true` (approved): MOVE Partner mode (a coach's phone sends the cues).
-- `pregame: true` (approved): Full Pre-Game on the Game Day home screen: Focus Game Ready (Quick), then
-  "Set your phone down" and Move's Game Day sets, one summary and both scores (`js/pregame.js`). About 10 minutes.
+`js/features.js` holds switches for work in progress only. Add a new feature as
+`name: 'preview'`: on for Vercel preview links and locally, off on sightline-psi.vercel.app
+(add `?name` to the live address to see it anyway), and check it with `isOn('name')`. Once
+it's approved, remove the switch and its "off" path; the tests fail if an approved switch lingers
+or a switch is never checked. None are open right now: 4-7-8 Breathing, Memory Sequence, the
+leaderboard, Occlusion, Partner mode and Full Pre-Game are all simply part of the app.
 
 ## Saved on the phone
 
@@ -210,6 +214,9 @@ The tests simulate 1,000 sessions and check the variety rules, the MOVE planner,
 every theme, the FOCUS / MOVE split and saved-data upgrades, and dead code (unused files,
 exports, imports, styles, icons and screens). Vercel runs them before every deploy
 (`vercel.json`), so a failing test stops the build and nothing goes live.
+
+Screen checks (every screen at iPhone SE and Pro Max sizes, light, dark and outdoor, with
+layout problems listed) live outside the app in `../tools/screens/`; see its README.
 
 ## Logo files
 

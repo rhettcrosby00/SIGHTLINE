@@ -251,16 +251,15 @@ test('Low contrast stays above its floor in every theme, and really is fainter',
   assert(low.content.lowContrast && !createSession({ sessionId: 'game', settings: { length: 'standard' }, seed: 1 }).content.lowContrast, 'Low contrast is a setting, off by default');
 });
 
-test('Occlusion: opt-in, warned about, behind its flag, Training mode only, never on Game Day', () => {
+test('Occlusion: opt-in, warned about, Training mode only, never on Game Day', () => {
   const on = { length: 'standard', occlusion: 'on', day: 'training' };
-  assert(createSession({ sessionId: 'activate', settings: on, seed: 1, flags: { occlusion: true } }).content.occlusion, 'on in Eyes only (Training mode) when chosen');
-  assert(createSession({ sessionId: 'training', settings: { ...on, day: 'game' }, seed: 1, flags: { occlusion: true } }).content.occlusion, 'on in the Training session');
-  assert(!createSession({ sessionId: 'activate', settings: { ...on, day: 'game' }, seed: 1, flags: { occlusion: true } }).content.occlusion, 'off in Game Day mode');
-  assert(!createSession({ sessionId: 'game', settings: on, seed: 1, flags: { occlusion: true } }).content.occlusion, 'never in Game Ready');
-  assert(!createSession({ sessionId: 'activate', settings: on, seed: 1, flags: {} }).content.occlusion, 'off while its flag is off');
-  assert(!createSession({ sessionId: 'activate', settings: { length: 'standard' }, seed: 1, flags: { occlusion: true } }).content.occlusion, 'off unless chosen');
+  assert(createSession({ sessionId: 'activate', settings: on, seed: 1 }).content.occlusion, 'on in Eyes only (Training mode) when chosen');
+  assert(createSession({ sessionId: 'training', settings: { ...on, day: 'game' }, seed: 1 }).content.occlusion, 'on in the Training session');
+  assert(!createSession({ sessionId: 'activate', settings: { ...on, day: 'game' }, seed: 1 }).content.occlusion, 'off in Game Day mode');
+  assert(!createSession({ sessionId: 'game', settings: on, seed: 1 }).content.occlusion, 'never in Game Ready');
+  assert(!createSession({ sessionId: 'activate', settings: { length: 'standard' }, seed: 1 }).content.occlusion, 'off unless chosen');
   const field = GROUPS.flatMap((g) => g.fields).find((f) => f.key === 'occlusion');
-  assert(field?.flag === 'occlusion' && /never in game ready/i.test(field.hint()), 'the setting sits behind its flag and says Training only');
+  assert(field && /never in game ready/i.test(field.hint()), 'the setting says Training only');
   assert(/epilepsy/i.test(OCCLUSION_WARNING) && /seizure/i.test(OCCLUSION_WARNING) && /never flashes/i.test(OCCLUSION_WARNING), 'photosensitivity warning');
   assert(/confirm\(OCCLUSION_WARNING\)/.test(read('js/settings.js')), 'the warning shows before it turns on');
 });

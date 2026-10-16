@@ -21,7 +21,6 @@ const SESSIONS = 1000;
 const LENGTHS = ['quick', 'standard', 'full'];
 const DIFFS = ['normal', 'hard'];
 const settingsFor = (i) => ({ length: LENGTHS[i % 3], difficulty: DIFFS[Math.floor(i / 6) % 2] });
-const FLAGS = [{ newDrills: false }, { newDrills: true }];
 
 // Draw every stream as hard as a real session could (plus practice), in a
 // fixed order, and return everything that was shown.
@@ -71,8 +70,7 @@ const maxRun = (arr, value) => {
 // tests. Half with the new drills on (preview), half off (live).
 const runs = Array.from({ length: SESSIONS }, (_, i) => {
   const settings = settingsFor(i);
-  const flags = FLAGS[i % 2];
-  return { settings, flags, d: drawSession(createSession({ settings, seed: 1000 + i, flags }), settings) };
+  return { settings, d: drawSession(createSession({ settings, seed: 1000 + i }), settings) };
 });
 
 // 1 ---------------------------------------------------------------------------------
@@ -161,7 +159,7 @@ test('Game Ready (Ready): Regulate → Activate → Challenge → Rehearse; one 
   const challengeOrders = new Set();
   const activateOrders = new Set();
   const breaths = new Set();
-  for (const { d, flags, settings } of runs) {
+  for (const { d, settings } of runs) {
     const seq = d.steps.map((s) => s.pillar).filter((p, i, a) => p !== a[i - 1]);
     assert(seq.join() === pillarIds.join(), `pillar order ${seq.join()}`);
     assert(d.steps.at(-1).id === 'myroutine' && d.steps.at(-2).id === 'visualize', 'Rehearse order changed');
@@ -171,7 +169,6 @@ test('Game Ready (Ready): Regulate → Activate → Challenge → Rehearse; one 
     const eyes = settings.length === 'quick' ? ['peripheral', 'saccades'] : ['peripheral', 'pursuit', 'saccades'];
     assert(d.steps.filter((s) => s.pillar === 'activate').map((s) => s.id).sort().join() === eyes.join(), 'Activate drills wrong');
     assert(d.steps.filter((s) => s.pillar === 'challenge').map((s) => s.id).sort().join() === 'colorcall,gonogo', 'Challenge drills wrong');
-    if (!flags.newDrills) assert(!d.steps.some((s) => ['breath478', 'memory'].includes(s.id)), 'flagged drill shown with the flag off');
     challengeOrders.add(d.steps.filter((s) => s.pillar === 'challenge').map((s) => s.id).join());
     activateOrders.add(d.steps.filter((s) => s.pillar === 'activate').map((s) => s.id).join());
   }
@@ -182,25 +179,23 @@ test('Game Ready (Ready): Regulate → Activate → Challenge → Rehearse; one 
 
 test('One-part sessions run only their part (Breathing, Eyes, Visual skills, Reaction, Rehearse, Extras)', () => {
   const want = {
-    regulate: (f) => ['settle', 'sigh', 'resonance', ...(f.newDrills ? ['breath478'] : []), 'lockin'],
+    regulate: () => ['settle', 'sigh', 'resonance', 'breath478', 'lockin'],
     activate: () => ['pursuit', 'saccades', 'peripheral', 'quieteye'],
     vision: () => ['nearfar', 'capture', 'span'],
     challenge: () => ['colorcall', 'gonogo'],
     rehearse: () => ['visualize', 'myroutine'],
-    extras: (f) => ['gaze', 'stroop', 'math', 'questions', ...(f.newDrills ? ['memory'] : []), 'mot'],
+    extras: () => ['gaze', 'stroop', 'math', 'questions', 'memory', 'mot'],
   };
-  for (let i = 0; i < 200; i++) {
-    for (const flags of FLAGS) {
-      for (const [id, ids] of Object.entries(want)) {
-        const s = createSession({ sessionId: id, settings: settingsFor(i), seed: i, flags });
-        const got = s.steps.map((x) => x.id);
-        // Extras has more drills than a Quick session with full instructions holds: one may sit out.
-        const all = ids(flags);
-        assert(got.every((x) => all.includes(x)) && new Set(got).size === got.length, `${id}: ${got}`);
-        assert(got.length >= all.length - (id === 'extras' ? 1 : 0), `${id}: ${got}`);
-        if (id === 'regulate') assert(got.at(-1) === 'lockin', 'Breathing only should finish with Lock In');
-        if (id === 'rehearse') assert(got.at(-1) === 'myroutine', 'Rehearse only should finish with My Routine');
-      }
+  for (let i = 0; i < 400; i++) {
+    for (const [id, ids] of Object.entries(want)) {
+      const s = createSession({ sessionId: id, settings: settingsFor(i), seed: i });
+      const got = s.steps.map((x) => x.id);
+      // Extras has more drills than a Quick session with full instructions holds: one may sit out.
+      const all = ids();
+      assert(got.every((x) => all.includes(x)) && new Set(got).size === got.length, `${id}: ${got}`);
+      assert(got.length >= all.length - (id === 'extras' ? 1 : 0), `${id}: ${got}`);
+      if (id === 'regulate') assert(got.at(-1) === 'lockin', 'Breathing only should finish with Lock In');
+      if (id === 'rehearse') assert(got.at(-1) === 'myroutine', 'Rehearse only should finish with My Routine');
     }
   }
 });
@@ -226,20 +221,18 @@ test('Breathing timelines fill their slot exactly', () => {
 test('Game Ready is 5, 8 or 10 minutes, instructions included, and never more than 10', () => {
   assert(['quick', 'standard', 'full'].map((l) => totalMinutes('game', l)).join() === '5,8,10', 'Game Ready lengths');
   // Every session's drills plus instructions add up to exactly what the menu shows,
-  // for every length, flag and instructions setting (Full, Brief, Auto at any stage).
+  // for every length and instructions setting (Full, Brief, Auto at any stage).
   const guides = [{ guide: 'full' }, { guide: 'brief' }, { guide: 'auto' }, { guide: 'auto', seen: { colorcall: 5, gonogo: 1, peripheral: 3 } }];
   for (const { id } of FOCUS_SESSIONS) {
     for (const length of LENGTHS) {
-      for (const flags of FLAGS) {
-        for (const { guide, seen } of guides) {
-          for (const seed of [7, 8, 9]) {
-            const s = createSession({ sessionId: id, settings: { length, difficulty: 'normal', guide }, seed, flags, seen });
-            const ms = s.steps.reduce((a, x) => a + x.durationMs + x.introMs, 0);
-            const want = totalMinutes(id, length, routineSeconds(DEFAULT_ROUTINE)) * 60000;
-            assert(Math.abs(ms - want) < 1, `${id} ${length} ${guide}: ${ms} ms vs ${want} ms`);
-            assert(s.steps.every((x) => x.durationMs >= 10000), `${id} ${length}: a drill under 10 s`);
-            if (id === 'game') assert(ms <= GAME_DAY_MAX_MIN * 60000, `Game Ready over ${GAME_DAY_MAX_MIN} min`);
-          }
+      for (const { guide, seen } of guides) {
+        for (const seed of [7, 8, 9, 10, 11, 12]) {
+          const s = createSession({ sessionId: id, settings: { length, difficulty: 'normal', guide }, seed, seen });
+          const ms = s.steps.reduce((a, x) => a + x.durationMs + x.introMs, 0);
+          const want = totalMinutes(id, length, routineSeconds(DEFAULT_ROUTINE)) * 60000;
+          assert(Math.abs(ms - want) < 1, `${id} ${length} ${guide}: ${ms} ms vs ${want} ms`);
+          assert(s.steps.every((x) => x.durationMs >= 10000), `${id} ${length}: a drill under 10 s`);
+          if (id === 'game') assert(ms <= GAME_DAY_MAX_MIN * 60000, `Game Ready over ${GAME_DAY_MAX_MIN} min`);
         }
       }
     }

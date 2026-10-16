@@ -21,7 +21,7 @@ export const GROUPS = [
       hint: () => 'Auto shows an example and a short practice the first 3 times you run a drill, then just the rule.' },
     { key: 'contrast', label: 'Contrast', options: [['full', 'Full'], ['low', 'Low']],
       hint: () => 'Low fades the cues toward the background, like poor light, shadow or glare: Color Call, Saccade Jumps, Peripheral Flash and Target Capture. Turn your brightness up outdoors.' },
-    { key: 'occlusion', label: 'Occlusion (training)', toggle: true, flag: 'occlusion',
+    { key: 'occlusion', label: 'Occlusion (training)', toggle: true,
       hint: () => 'Training mode only, never in Game Ready. In Smooth Pursuit, Saccade Jumps and Object Tracking the moving target disappears and comes back, so you predict where it went. Only the target, never the screen. Leave it off if flashing light bothers you.' },
     { key: 'focusCheck', label: 'Focus Check', toggle: true,
       hint: () => 'About 30 seconds of taps at the start and end of Game Ready and Training. Shows today against your usual on this phone. A readiness check, not a medical test.' },
@@ -36,7 +36,7 @@ export const GROUPS = [
     { key: 'music', label: 'Keep my music playing', toggle: true,
       hint: () => 'The app plays no sound at all, so your own music never stops. Cues come as vibration (on phones that allow it) and on screen. iPhone doesn’t let web apps vibrate, so keep an eye on the screen there.' },
   ] },
-  { title: 'Leaderboard', flag: 'leaderboard', fields: [
+  { title: 'Leaderboard', fields: [
     { key: 'nameStyle', label: 'Names', options: [['name', 'Name'], ['initials', 'Initials']],
       hint: () => 'Up to 12 characters, or classic 3-letter initials.' },
   ] },

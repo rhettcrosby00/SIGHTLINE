@@ -24,6 +24,8 @@ export function memoryStore({ now = () => Date.now() } = {}) {
       if (!h || h.resetAt < t) h = { count: 0, resetAt: t + windowS * 1000 };
       if (!peek) h.count++;
       hits.set(bucket, h);
+      // A fresh window: also clear out windows that have ended (same as Postgres).
+      if (h.count === 1 && !peek) for (const [k, v] of hits) if (v.resetAt < t) hits.delete(k);
       return h.count;
     },
 
@@ -75,6 +77,7 @@ export function memoryStore({ now = () => Date.now() } = {}) {
     async removeScore(id) { rows = rows.filter((r) => r.id !== id); },
     async removeAll() { rows = []; },
     async getMeta(k) { return meta.get(k) ?? null; },
+    hitCount: () => hits.size,   // for the tests
     async setMeta(k, v) { meta.set(k, v); },
   };
 }

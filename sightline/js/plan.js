@@ -26,8 +26,7 @@ const BREATH = { intro: { full: 0, brief: 0 }, min: 30, weight: 90 };
 const EYES = { intro: { full: 13, brief: 6 }, min: 15, weight: 40 };
 const SCORED = { intro: { full: 22, brief: 6 }, min: 20, weight: 60 };
 
-// Every FOCUS drill, by pillar. `flag` drills only appear when that feature
-// flag is on (js/features.js). Finishers and special drills never join a
+// Every FOCUS drill, by pillar. Finishers and special drills never join a
 // shuffle: Lock In and Energize are placed on purpose, Quiet Eye isn't in Game
 // Ready (My Routine has its own quiet-eye moment), and My Routine runs last.
 // Vision (sports-vision skills) runs as its own session, not in Game Ready.
@@ -38,7 +37,7 @@ export const PILLARS = [
     { id: 'settle', title: 'Box Breathing', ...BREATH },
     { id: 'sigh', title: 'Cyclic Sigh', ...BREATH },
     { id: 'resonance', title: 'Resonance Breathing', ...BREATH },
-    { id: 'breath478', title: '4-7-8 Breathing', ...BREATH, flag: 'newDrills' },
+    { id: 'breath478', title: '4-7-8 Breathing', ...BREATH },
     { id: 'energize', title: 'Energize', ...BREATH, min: 35, weight: 45, special: true },
     { id: 'lockin', title: 'Lock In', ...BREATH, min: 35, weight: 45, special: true },
   ] },
@@ -66,7 +65,7 @@ export const PILLARS = [
     { id: 'stroop', title: 'Stroop', ...SCORED },
     { id: 'math', title: 'Quick Math', ...SCORED },
     { id: 'questions', title: 'Quick Questions', ...SCORED },
-    { id: 'memory', title: 'Memory Sequence', ...SCORED, intro: { full: 25, brief: 6 }, flag: 'newDrills' },
+    { id: 'memory', title: 'Memory Sequence', ...SCORED, intro: { full: 25, brief: 6 } },
     { id: 'mot', title: 'Object Tracking', ...SCORED, intro: { full: 14, brief: 6 }, min: 30 },
   ] },
 ];
@@ -105,9 +104,9 @@ const DROP_ORDER = ['pursuit', 'gonogo', 'peripheral'];
 
 const sameOrder = (a, b) => a && b && a.length === b.length && a.every((x, i) => x === b[i]);
 
-// Drills a pillar can shuffle right now (feature flags), special drills excluded.
-function available(pillarId, flags) {
-  return pillarById[pillarId].drills.filter((d) => !d.special && (!d.flag || flags[d.flag]));
+// Drills a pillar can shuffle, special drills excluded.
+function available(pillarId) {
+  return pillarById[pillarId].drills.filter((d) => !d.special);
 }
 
 // Shuffle, avoiding last session's exact order when there's a choice.
@@ -120,10 +119,10 @@ function shuffled(rng, drills, avoid) {
 }
 
 // The drills a session runs, in order: { d, pillar (shown in the top bar), fixed? (seconds) }.
-function drillsFor(sessionId, length, rng, avoid, flags, state, routineS) {
+function drillsFor(sessionId, length, rng, avoid, state, routineS) {
   const i = LENGTH_INDEX[length];
   const step = (id, pillarId, fixed) => ({ d: drillById[id], pillar: pillarById[pillarId ?? drillById[id].pillarId], fixed });
-  const calmPool = available('regulate', flags);
+  const calmPool = available('regulate');
   // Regulate, matched to the check-in.
   const regulate = () => {
     if (state === 'wired') return [step('sigh', null, WIRED_SIGH[i]), step('resonance', null, WIRED_RESONANCE[i])];
@@ -135,11 +134,11 @@ function drillsFor(sessionId, length, rng, avoid, flags, state, routineS) {
     // Regulate, the eye drills (Quick skips Smooth Pursuit), the two reaction
     // drills, Visualization, then My Routine: it always ends on something
     // that can't be failed.
-    const eyes = available('activate', flags).filter((d) => !d.notInGame && (length !== 'quick' || d.id !== 'pursuit'));
+    const eyes = available('activate').filter((d) => !d.notInGame && (length !== 'quick' || d.id !== 'pursuit'));
     return [
       ...regulate(),
       ...shuffled(rng, eyes, avoid.activate).map((d) => step(d.id)),
-      ...shuffled(rng, available('challenge', flags), avoid.challenge).map((d) => step(d.id)),
+      ...shuffled(rng, available('challenge'), avoid.challenge).map((d) => step(d.id)),
       step('visualize'),
       step('myroutine', null, routineS),
     ];
@@ -148,9 +147,9 @@ function drillsFor(sessionId, length, rng, avoid, flags, state, routineS) {
     // Every pillar plus the Visual skills, each shuffled; then Visualization and My Routine.
     return [
       ...regulate(),
-      ...shuffled(rng, available('activate', flags), avoid.activate).map((d) => step(d.id)),
-      ...shuffled(rng, available('vision', flags), avoid.vision).map((d) => step(d.id)),
-      ...shuffled(rng, available('challenge', flags), avoid.challenge).map((d) => step(d.id)),
+      ...shuffled(rng, available('activate'), avoid.activate).map((d) => step(d.id)),
+      ...shuffled(rng, available('vision'), avoid.vision).map((d) => step(d.id)),
+      ...shuffled(rng, available('challenge'), avoid.challenge).map((d) => step(d.id)),
       step('visualize'),
       step('myroutine', null, routineS),
     ];
@@ -162,7 +161,7 @@ function drillsFor(sessionId, length, rng, avoid, flags, state, routineS) {
   }
   if (sessionId === 'rehearse') return [step('visualize'), step('myroutine', null, routineS)];
   if (sessionId === 'myroutine') return [step('myroutine', null, routineS)];
-  return shuffled(rng, available(sessionId, flags), avoid[sessionId]).map((d) => step(d.id));
+  return shuffled(rng, available(sessionId), avoid[sessionId]).map((d) => step(d.id));
 }
 
 // Whole-session minutes (instructions included), as shown in the menus.
@@ -185,7 +184,6 @@ export const introSeconds = (drillId, guide) => drillById[drillId]?.intro?.[guid
 
 // Ordered steps for one session, each with its own time and instruction mode.
 //   avoid    pillar id → last session's drill order (so the shuffle varies)
-//   flags    which flagged drills are on, e.g. { newDrills: true }
 //   guideFor drill id → 'full' | 'brief' (Instructions setting; Auto goes
 //            Brief once a drill is familiar)
 //   state    'flat' | 'ready' | 'wired' from the check-in (default ready)
@@ -193,10 +191,10 @@ export const introSeconds = (drillId, guide) => drillById[drillId]?.intro?.[guid
 // The session's minutes cover everything: instruction time comes off the top,
 // fixed parts (set breathing, My Routine) take their seconds, each other drill
 // gets its minimum, and the rest is shared by weight.
-export function planSteps(sessionId, settings, rng, { avoid = {}, flags = {}, guideFor = () => 'full', state = 'ready', routineS = 30 } = {}) {
+export function planSteps(sessionId, settings, rng, { avoid = {}, guideFor = () => 'full', state = 'ready', routineS = 30 } = {}) {
   const length = settings.length in LENGTH_INDEX ? settings.length : 'standard';
   const total = totalMinutes(sessionId, length, routineS) * 60;
-  let list = drillsFor(sessionId, length, rng, avoid, flags, STATES.includes(state) ? state : 'ready', routineS)
+  let list = drillsFor(sessionId, length, rng, avoid, STATES.includes(state) ? state : 'ready', routineS)
     .map((x) => ({ ...x, guide: guideFor(x.d.id) }));
   const need = (l) => l.reduce((a, x) => a + introSeconds(x.d.id, x.guide) + (x.fixed ?? x.d.min), 0);
   // Too much for a short session (e.g. Wired + Quick)? Drop the least essential drills.

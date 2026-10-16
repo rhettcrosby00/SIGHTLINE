@@ -81,7 +81,7 @@ test('Training: 10 / 15 / 20 minutes exactly, every pillar plus visual skills, e
     for (const guide of ['full', 'brief']) {
       for (const state of ['flat', 'ready', 'wired']) {
         for (let seed = 0; seed < 10; seed++) {
-          const s = createSession({ sessionId: 'training', settings: { length, guide }, seed, state, flags: { newDrills: true } });
+          const s = createSession({ sessionId: 'training', settings: { length, guide }, seed, state });
           const ms = s.steps.reduce((a, x) => a + x.durationMs + x.introMs, 0);
           assert(Math.abs(ms - totalMinutes('training', length) * 60000) < 1, `training ${length}: ${ms} ms`);
           const pillars = [...new Set(s.steps.map((x) => x.pillarId))];
@@ -102,13 +102,12 @@ test('Training is harder, and the only place Occlusion can run', () => {
   assert(TRAINING_RANGE.hard[0] > LEVEL_RANGE.hard[0] && TRAINING_RANGE.hard[1] <= 1, 'Hard too');
   assert(createLevel(undefined, 'normal', { training: true }).value > createLevel(undefined, 'normal').value, 'new drills start harder in Training');
   const on = { length: 'standard', occlusion: 'on' };
-  const flags = { occlusion: true };
-  const s = (sessionId, day) => createSession({ sessionId, settings: { ...on, day }, seed: 1, flags });
+  const s = (sessionId, day) => createSession({ sessionId, settings: { ...on, day }, seed: 1 });
   assert(s('training', 'game').training && s('training', 'game').content.occlusion, 'the Training session');
   assert(s('vision', 'training').training && s('vision', 'training').content.occlusion, 'a part in Training mode');
   assert(!s('game', 'training').training && !s('game', 'training').content.occlusion, 'Game Ready never, even in Training mode');
   assert(!s('vision', 'game').content.occlusion && !s('myroutine', 'training').training, 'Game Day mode and My Routine: never');
-  assert(!createSession({ sessionId: 'training', settings: { length: 'standard' }, seed: 1, flags }).content.occlusion, 'off unless turned on');
+  assert(!createSession({ sessionId: 'training', settings: { length: 'standard' }, seed: 1 }).content.occlusion, 'off unless turned on');
   assert(s('training', 'game').content.level('capture').value >= TRAINING_RANGE.normal[0], 'Training levels');
   assert(focusScore({ points: 0, sessionId: 'training', difficulty: 'normal' }) === focusScore({ points: 0, sessionId: 'game', difficulty: 'normal' }), 'Training earns the full finish bonus');
   assert(parseSettings({}).day === 'game' && parseSettings({ day: 'training' }).day === 'training' && parseSettings({ day: 'nap' }).day === 'game', 'mode saved');

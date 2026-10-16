@@ -23,7 +23,7 @@ test('Game Ready has no limited-evidence drills; Extras holds exactly those', ()
   assert(extras.join() === LIMITED.slice().sort().join(), `Extras: ${extras}`);
   for (let seed = 0; seed < 300; seed++) {
     for (const length of ['quick', 'standard', 'full']) {
-      const s = createSession({ sessionId: 'game', settings: { length, difficulty: 'normal' }, seed, flags: { newDrills: true } });
+      const s = createSession({ sessionId: 'game', settings: { length, difficulty: 'normal' }, seed });
       const bad = s.steps.filter((x) => LIMITED.includes(x.id));
       assert(!bad.length, `Game Ready includes ${bad.map((x) => x.id)}`);
     }
@@ -64,7 +64,7 @@ test('Every session ends on success: an unfailable last step, or easy last cues'
   }
   for (const { id } of FOCUS_SESSIONS) {
     for (let seed = 0; seed < 50; seed++) {
-      const s = createSession({ sessionId: id, settings: { length: 'standard' }, seed, flags: { newDrills: true } });
+      const s = createSession({ sessionId: id, settings: { length: 'standard' }, seed });
       const lastId = s.steps.at(-1).id;
       if (id === 'game' || id === 'rehearse' || id === 'myroutine') assert(lastId === 'myroutine', `${id} ends on ${lastId}`);
       else if (id === 'regulate') assert(lastId === 'lockin', `${id} ends on ${lastId}`);

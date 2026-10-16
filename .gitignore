@@ -2,3 +2,7 @@
 .DS_Store
 design/
 node_modules/
+tools/screens/shots/
+tools/screens/sheets/
+tools/screens/prof.*
+tools/screens/report-*.json

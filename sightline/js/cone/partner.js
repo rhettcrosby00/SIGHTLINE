@@ -1,9 +1,12 @@
-// Partner mode (behind the `partner` flag, approved): a coach's phone sends
+// Partner mode: a coach's phone sends
 // the cues, for coach-led reaction games. This phone either shows the cues
 // (on the stand, with the Custom setup's cones) or sends them.
 // The phones meet through /api/partner with a 4-digit code. The stand phone
-// checks for a new cue about 3 times a second, so a cue shows up within
-// about half a second of the tap. Nothing about the athlete is sent.
+// checks for a new cue about 3 times a second (easing off after 30 s with no
+// cue, to save battery and server calls), so a cue shows up within about half
+// a second of the tap. Nothing about the athlete is sent.
+// Photosensitivity: the stand phone's whole screen changes at most about 3
+// times a second, however fast the coach taps.
 
 import { faceHtml } from './render.js';
 import { CUES } from './cues/index.js';
@@ -14,7 +17,12 @@ import { icon, DIR_ICON } from '../lib/icons.js';
 import { esc } from '../lib/text.js';
 
 const API = 'api/partner';
-const POLL_MS = 300;
+export const POLL = { fastMs: 300, slowMs: 800, quietMs: 30_000 };
+export const MIN_CHANGE_MS = 350;   // ≤ ~3 full-screen changes a second
+
+// How long to wait before checking again: quick while cues are coming,
+// slower once it's been quiet for a while.
+export const pollDelay = (msSinceCue) => (msSinceCue < POLL.quietMs ? POLL.fastMs : POLL.slowMs);
 
 async function call(method, params) {
   let res;
@@ -100,7 +108,11 @@ export function initPartner(el, { getSetup, onBack }) {
     let alive = true;
     let timer = 0;
     let cueEl = null;
-    stop = () => { alive = false; clearTimeout(timer); allowSleep(); stop = () => {}; };
+    let lastCueAt = performance.now();   // for the poll back-off
+    let lastChangeAt = -Infinity;        // for the 3-a-second screen limit
+    let pending = null;                  // a cue waiting for that limit
+    let pendingTimer = 0;
+    stop = () => { alive = false; clearTimeout(timer); clearTimeout(pendingTimer); allowSleep(); stop = () => {}; };
     const status = (t) => { const s = el.querySelector('.partner__status'); if (s) s.textContent = t; };
     const show = (cue) => {
       if (!cueEl) {
@@ -112,8 +124,20 @@ export function initPartner(el, { getSetup, onBack }) {
           </div>`;
         cueEl = el.querySelector('.cd__cue');
       }
+      // Too soon after the last change? Wait, and show the newest cue then.
+      const wait = lastChangeAt + MIN_CHANGE_MS - performance.now();
+      if (wait > 0) {
+        pending = cue;
+        if (!pendingTimer) pendingTimer = setTimeout(() => { pendingTimer = 0; if (alive && pending) { const c = pending; pending = null; show(c); } }, wait);
+        return;
+      }
+      lastChangeAt = performance.now();
       const face = partnerFace(setup, cue);
       cueEl.innerHTML = face ? faceHtml(face) : '';
+      // A small "pop" (size only, no flash) so a repeat of the same cone still reads as new.
+      cueEl.classList.remove('is-new');
+      void cueEl.offsetWidth;
+      if (face) cueEl.classList.add('is-new');
       if (face) {
         tone(face.kind === 'hold' ? 330 : 880, { dur: 0.12, gain: 0.14 });
         buzz(face.kind === 'hold' ? [20, 40, 20] : 30);
@@ -123,12 +147,12 @@ export function initPartner(el, { getSetup, onBack }) {
       if (!alive) return;
       try {
         const r = await call('GET', { action: 'poll', code, after: seq });
-        if (alive && r.cue && r.seq > seq) { seq = r.seq; show(r.cue); }
+        if (alive && r.cue && r.seq > seq) { seq = r.seq; lastCueAt = performance.now(); show(r.cue); }
         if (!cueEl) status('Connected. Waiting for the first cue…');
       } catch (e) {
         if (!cueEl) status(e.message);
       }
-      if (alive) timer = setTimeout(tick, POLL_MS);
+      if (alive) timer = setTimeout(tick, pollDelay(performance.now() - lastCueAt));
     };
     tick();
   }

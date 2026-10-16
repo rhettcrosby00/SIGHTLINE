@@ -8,7 +8,7 @@ import { GROUPS, parseSettings, DEFAULTS } from '../js/settings.js';
 import { migrateLast, createLastRuns, LAST_KEY, OLD_LAST_KEY, MOVE_RUN_IDS } from '../js/migrate.js';
 import { normalize } from '../js/cone/config.js';
 import { FOCUS_SESSIONS } from '../js/plan.js';
-import { isOn } from '../js/features.js';
+import { FEATURES, isOn } from '../js/features.js';
 
 const root = new URL('../', import.meta.url);
 const read = (p) => readFileSync(new URL(p, root), 'utf8');
@@ -153,8 +153,15 @@ test('Old links and home-screen shortcuts still open the app', () => {
   for (const p of ['autostart', 'only', 'speed', 'autoready', 'seed', 'noguide']) assert(main.includes(`'${p}'`), `?${p} no longer handled`);
 });
 
-test('Feature flag: new FOCUS drills are on everywhere (approved)', () => {
-  for (const host of ['sightline-psi.vercel.app', 'sightline-git-feature-x.vercel.app', 'localhost']) {
-    assert(isOn('newDrills', { host, search: '' }), `new drills should be on everywhere (approved), but not on ${host}`);
+test('Feature flags: approved features don’t linger as switches; previews stay off live', () => {
+  const stale = Object.entries(FEATURES).filter(([, v]) => v !== 'preview').map(([k]) => k);
+  assert(stale.length === 0, `approved flags to remove: ${stale}`);
+  // The mechanism still works for the next preview feature.
+  FEATURES.__test = 'preview';
+  try {
+    assert(!isOn('__test', { host: 'sightline-psi.vercel.app', search: '' }), 'a preview flag is off on the live site');
+    assert(isOn('__test', { host: 'sightline-git-x.vercel.app', search: '' }) && isOn('__test', { host: 'localhost', search: '' }), 'on in previews');
+  } finally {
+    delete FEATURES.__test;
   }
 });

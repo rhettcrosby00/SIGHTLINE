@@ -262,3 +262,13 @@ test('Server: health check, and a clear message until the database is connected'
 test('Scoring numbers live in one config', () => {
   assert(SCORING.focus.correct === 100 && SCORING.focus.wrong === -50 && SCORING.move.perRep === 50 && SCORING.completionBonus.game === 500, 'config');
 });
+
+test('Old rate-limit windows are cleared out, so the table stays small', async () => {
+  const clock = { t: Date.UTC(2026, 9, 16, 15) };
+  const store = memoryStore({ now: () => clock.t });
+  for (let i = 0; i < 50; i++) await store.hit(`submit:ip${i}`, 600);
+  assert(store.hitCount() === 50, 'one window per network');
+  clock.t += 601 * 1000;
+  await store.hit('submit:new', 600);
+  assert(store.hitCount() === 1, `ended windows should be gone, ${store.hitCount()} left`);
+});

@@ -14,11 +14,10 @@ import { initMove, MOVE_RUNS } from './cone/ui.js';
 import { createTrainingLog, WEEK_GOAL } from './lib/streak.js';
 import { initLeaderboard } from './score/ui.js';
 import { initRoutineBuilder } from './myroutine-ui.js';
-import { isOn } from './features.js';
 import { initPreGame, preGameMinutes } from './pregame.js';
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '3.1';
+export const APP_VERSION = '3.2';
 
 const $ = (id) => document.getElementById(id);
 
@@ -76,14 +75,10 @@ $('btn-settings').addEventListener('click', () => openSettings('start'));
 $('btn-settings-back').addEventListener('click', closeSettings);
 $('btn-settings-done').addEventListener('click', closeSettings);
 
-// ---- Leaderboard (behind a flag until approved) ----
-const leaderboard = isOn('leaderboard') ? initLeaderboard({ show, getSettings }) : null;
-if (leaderboard) {
-  $('btn-board').hidden = false;
-  $('btn-board').addEventListener('click', () => leaderboard.openBoard('start'));
-  $('btn-done-board').hidden = false;
-  $('btn-done-board').addEventListener('click', () => leaderboard.openBoard('done', { side: 'focus' }));
-}
+// ---- Leaderboard ----
+const leaderboard = initLeaderboard({ show, getSettings });
+$('btn-board').addEventListener('click', () => leaderboard.openBoard('start'));
+$('btn-done-board').addEventListener('click', () => leaderboard.openBoard('done', { side: 'focus' }));
 
 // ---- The two sides ----
 focus = initFocus({
@@ -135,15 +130,15 @@ function renderHome() {
 onHome = renderHome;
 renderHome();
 
-// ---- Full Pre-Game (behind a flag): Focus (Quick), then Move's Game Day, Game Day only ----
-const pregame = isOn('pregame') ? initPreGame({ focus, move }) : null;
+// ---- Full Pre-Game: Focus (Quick), then Move's Game Day. Game Day only ----
+const pregame = initPreGame({ focus, move });
 function renderPreGame() {
-  $('btn-pregame').hidden = !pregame || getSettings().day === 'training';
+  $('btn-pregame').hidden = getSettings().day === 'training';
   $('pregame-desc').textContent = `Focus, then set your phone down for Move · about ${Math.round(preGameMinutes(move.minutes('gameday')))} min`;
 }
 onHome = () => { renderHome(); renderPreGame(); };
 renderPreGame();
-$('btn-pregame').addEventListener('click', () => pregame?.start());
+$('btn-pregame').addEventListener('click', () => pregame.start());
 
 $('btn-focus').addEventListener('click', () => focus.openHub());
 $('btn-move').addEventListener('click', () => move.openHub());
