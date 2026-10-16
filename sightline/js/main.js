@@ -19,13 +19,15 @@ import { initRoutineBuilder } from './myroutine-ui.js';
 import { initInstall } from './install.js';
 import { parseRunKey } from './presets.js';
 import { BRAND, APP_URL, movedFrom, hydrateLogos } from './brand.js';
+import { createWaiverStore, showWaiver, showFullWaiver } from './waiver.js';
+import { DISCLAIMER } from './content/safety.js';
 
 // Sightline is now Sightrep: move this phone's saved data to the new keys
 // before anything below reads it.
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '5.1';
+export const APP_VERSION = '5.2';
 
 const $ = (id) => document.getElementById(id);
 
@@ -49,6 +51,27 @@ function show(name, { back = false } = {}) {
 
 hydrateIcons();
 hydrateLogos();   // home and About (js/brand.js)
+
+// ---- The safety waiver comes first, on every device (js/waiver.js) ----
+// index.html starts with <html data-gate="waiver">, which hides every other
+// screen. It's lifted only once this version of the waiver is accepted.
+// Everything that can open by itself (the first-run setup, the ?autostart
+// direct links) waits for `accepted`.
+// TODO accounts: once athletes sign in, also save acceptance on the account
+// and check it at login (js/waiver.js).
+const waiver = createWaiverStore();
+const accepted = waiver.needed()
+  ? (show('waiver'), showWaiver($('screen-waiver')).then((checks) => {
+    waiver.accept(checks);
+    document.documentElement.removeAttribute('data-gate');
+    show('start');
+  }))
+  : Promise.resolve().then(() => document.documentElement.removeAttribute('data-gate'));
+$('btn-about-waiver').addEventListener('click', () => showFullWaiver());
+$('btn-settings-waiver').addEventListener('click', () => showFullWaiver());
+$('disclaimer').textContent = DISCLAIMER;
+$('about-disclaimer').textContent = DISCLAIMER;
+
 // Opened at the old address: point to the new one (?moved=1 shows it anywhere, for checking).
 $('moved').hidden = !(movedFrom(location.hostname) || new URLSearchParams(location.search).has('moved'));
 $('moved-link').href = APP_URL;
@@ -165,9 +188,11 @@ const splash = $('splash');
 const hideSplash = () => {
   splash.classList.add('is-out');
   setTimeout(() => splash.remove(), 300);
-  if (!getSettings().setupDone && !params.has('noguide') && !params.has('autostart')) {
-    showFirstRun({ getSettings, updateSetting, onDone: renderHome });
-  }
+  accepted.then(() => {
+    if (!getSettings().setupDone && !params.has('noguide') && !params.has('autostart')) {
+      showFirstRun({ getSettings, updateSetting, onDone: renderHome });
+    }
+  });
 };
 setTimeout(hideSplash, params.has('autostart') ? 0 : Math.max(0, 700 - performance.now()));
 
@@ -214,7 +239,10 @@ if ('serviceWorker' in navigator && (!isLocal || params.has('sw'))) {
   }).catch(() => {});
 }
 
-const auto = params.get('autostart');
-const autoMove = { quick: 'game:quick' }[auto] ?? auto;
-if (auto && move.knows(autoMove)) move.run(autoMove);
-else if (auto) focus.start(params.get('session') ?? 'game');
+// Direct links start a session only once the waiver is accepted.
+accepted.then(() => {
+  const auto = params.get('autostart');
+  const autoMove = { quick: 'game:quick' }[auto] ?? auto;
+  if (auto && move.knows(autoMove)) move.run(autoMove);
+  else if (auto) focus.start(params.get('session') ?? 'game');
+});

@@ -13,6 +13,7 @@ import { SPORT_DIRS, packFor, RIGHT_HANDED } from './cues/sport.js';
 import { DECISION_LABEL, DECISION_HINT, decisionsFor } from './decide.js';
 import { readableYards } from './render.js';
 import { SPORTS } from '../content/sports.js';
+import { moveSafety } from '../content/safety.js';
 import {
   TIMING, PACE_LABEL, coneSlots, timingSummary, suggestedRestSec, manualTooFast, farthestYards, drillMs, createTuneStore,
 } from './timing.js';
@@ -187,7 +188,7 @@ function renderSetup(el, s, ui = { open: new Set(), color: -1 }, variant = 'cust
         <h2 class="nav__title">${signals ? 'Signals Only' : 'Custom setup'}</h2>
         <p class="cset__sub">${signals ? 'No cones. Cut or shuffle the way the arrow points.' : 'Cognitive change of direction'}</p>
       </header>
-      <p class="notice">${icon('triangle-alert')}Use a clear, flat area. Warm up before high-speed cuts.</p>
+      ${moveSafety(s).map((n) => `<p class="notice">${icon('triangle-alert')}${n}</p>`).join('')}
 
       ${signals ? '' : group('Drill', `
         ${row('Drill type', seg('mode', s.mode, [['reactive', 'Reactive'], ['planned', 'Planned']], true), {

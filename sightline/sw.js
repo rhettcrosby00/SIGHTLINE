@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v5.1';
+const CACHE_VERSION = 'v5.2';
 const CACHE = `sightrep-${CACHE_VERSION}`;
 
 // Google Fonts (Archivo + Schibsted Grotesk) live in their own cache that
@@ -35,6 +35,7 @@ const ASSETS = [
   './js/plan.js',
   './js/presets.js',
   './js/brand.js',
+  './js/waiver.js',
   './js/eye/index.js',
   './js/eye/math.js',
   './js/eye/sim.js',
@@ -59,6 +60,7 @@ const ASSETS = [
   './js/content/eyes.js',
   './js/content/math.js',
   './js/content/reaction.js',
+  './js/content/safety.js',
   './js/content/scripts.js',
   './js/content/sports.js',
   './js/content/vision.js',

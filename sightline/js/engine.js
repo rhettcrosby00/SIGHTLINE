@@ -25,6 +25,8 @@
 
 import { keepAwake, allowSleep } from './lib/wakelock.js';
 import { cues, onInterrupt, resumeAudio, say } from './lib/audio.js';
+import { icon } from './lib/icons.js';
+import { drillSafety } from './content/safety.js';
 
 export const HOLD_TO_PAUSE_MS = 1000;
 export const AWAKE_TIP = 'Your screen may turn off by itself. Low Power Mode (or Battery Saver) can stop Sightrep keeping it on: turn it off, or set Auto-Lock to Never for now.';
@@ -45,6 +47,7 @@ export async function runSession(steps, settings, { session, speed = 1, autoRead
   const fill = $('progress-fill');
   const bar = fill.parentElement;
   const hudBlock = $('hud-block');
+  const hudSafety = $('hud-safety');   // the drill's safety notes (js/content/safety.js), always in view
   const hudTime = $('hud-time');
   const overlay = $('pause-overlay');
 
@@ -219,6 +222,9 @@ export async function runSession(steps, settings, { session, speed = 1, autoRead
       if (prevBlock && step.blockId !== prevBlock) cues.block();
       prevBlock = step.blockId;
       hudBlock.textContent = step.blockTitle;
+      const notes = drillSafety(step.id, { occlusion: !!session?.content?.occlusion, flash: settings?.display === 'flash' });
+      hudSafety.innerHTML = notes.map((n) => `<span>${icon('triangle-alert', { size: 14 })}${n}</span>`).join('');
+      hudSafety.hidden = !notes.length;
       stageEl.innerHTML = '';
       tick();
       activeMs = 0;

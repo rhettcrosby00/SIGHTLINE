@@ -17,7 +17,8 @@ Presets live in `js/presets.js` (FOCUS) and `MOVE_PRESETS` in `js/cone/config.js
 phone). Game Day stays short and calm and ends easy; Training (non-game days) is longer and
 harder, and each side shows this week's training days against 2–4 and a weekly streak
 (`js/lib/streak.js`, this phone only). Sightrep is a warm-up tool, not a medical, diagnostic or
-treatment tool. There are no accounts.
+treatment tool. There are no accounts. The first screen on every phone is the safety waiver
+(see "Safety waiver and safety notes").
 
 ## FOCUS
 
@@ -277,6 +278,31 @@ or a switch is never checked. `false` parks a feature: its code stays, off every
 - `sightrep.last.v2`: "Run last" for each side: a preset (`game:speed`), a FOCUS part or a MOVE setup (older saves upgraded by `js/migrate.js`)
 - `sightrep.install.v1`: finished sessions and "Not now" for the install card
 - `sightrep.variety.v1`, `sightrep.seen.v1` (drills run, for Auto instructions)
+- `sightrep.waiver.v1`: the accepted safety waiver: its version, the date and time (ISO), and both boxes
+
+## Safety waiver and safety notes
+
+- **One file holds every word:** `js/content/safety.js` has the waiver (six sections, the two
+  boxes, the button), the disclaimer, the three safety notes, which drills show which note, and
+  the waiver's `version`.
+- **First screen, every phone** (`js/waiver.js`). `index.html` starts with
+  `<html data-gate="waiver">`, which hides every other screen until the waiver is accepted; the
+  first-run setup and `?autostart` links wait for it. No back button, no decline, and the button
+  stays off until both boxes are ticked. "View full waiver" opens the text full screen.
+- **Shown again** when the version changes, when the saved acceptance is missing (data cleared),
+  or when saved data is blocked (acceptance then lasts for that visit only).
+- **To change the waiver:** edit the text in `js/content/safety.js`, update `effective`, and
+  raise `version` by one. Every phone shows the new one once.
+- **Safety notes**, on the how-to card and along the top while the drill runs: "Stop if you feel
+  dizzy." (Gaze Stabilization, Near-Far Focus); "Contains brief flashing visuals." (Peripheral
+  Flash, Target Capture, Quiet Eye, Perception Span; Smooth Pursuit, Saccade Jumps and Object
+  Tracking with Occlusion on; a MOVE run with Display: Flash). "Use a clear, flat area. Warm up
+  before high-speed cuts." is on the MOVE hub, Custom setup, Set out your cones and Partner mode.
+- **Links and disclaimer:** About → Safety waiver; Settings → Legal → Safety waiver. The
+  disclaimer is on home, About and the session summary. The marketing site (not built yet)
+  needs both in its footer.
+- **Accounts (later):** save acceptance on the account too, and check it at login (`TODO
+  accounts` in `js/waiver.js` and `js/main.js`).
 
 ## Randomness and variety
 
@@ -334,6 +360,7 @@ Saved data moved from `sightline.*` to `sightrep.*` keys in v5.0 (`renameSavedDa
 |---|---|
 | `js/main.js` | Home (two sides, Run last), Settings, About, offline support |
 | `js/brand.js` | The name, the tagline and the logo component |
+| `js/waiver.js`, `js/content/safety.js` | The safety waiver screen and its saved acceptance; every word of the waiver, disclaimer and safety notes |
 | `js/presets.js` | Quick / Standard / Game Speed, Run last keys, the Game Day / Training switch |
 | `js/guide.js`, `js/install.js` | First-run setup and How it works; the Add to Home Screen card |
 | `js/focus.js` | The FOCUS screen (readiness, presets, Advanced) and session flow |
@@ -365,7 +392,8 @@ Saved data moved from `sightline.*` to `sightrep.*` keys in v5.0 (`renameSavedDa
 - `?speed=20` fast-forwards time.
 - `?autostart=1` starts Game Ready; add `&session=regulate` (or `activate`, `challenge`,
   `vision`, `rehearse`, `extras`, `myroutine`, `training`) for one part; `?autostart=game:speed`
-  (any MOVE preset key, or `custom`, `signals`) starts a MOVE drill.
+  (any MOVE preset key, or `custom`, `signals`) starts a MOVE drill. On a phone that hasn't
+  accepted the safety waiver, the waiver comes first and the drill starts after.
 - `?autoready=1` skips the I'M READY taps on the how-to cards.
 - `?noguide=1` skips the first-run setup.
 - `?sw=1` turns on offline caching on localhost. It is off there by default so edits show

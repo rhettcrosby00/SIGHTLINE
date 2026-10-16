@@ -196,7 +196,7 @@ export const gaze = {
     await howTo(ctx, {
       kicker: KICKER,
       title: 'Gaze Stabilization',
-      rule: 'Keep your eyes locked on the letter while you turn your head with the beat. Say each new letter out loud. Go easy — stop if you feel dizzy.',
+      rule: 'Keep your eyes locked on the letter while you turn your head with the beat. Say each new letter out loud. Go easy.',
       demo: { html: `<div class="mini"><div class="mini__phone mini__phone--eyes mini__phone--gaze"><b class="mini__letter">K</b><i class="mini__head"></i></div>
         <p class="mini__cap">Head turns ← → · eyes stay on the letter</p></div>` },
     });
@@ -212,7 +212,6 @@ export const gaze = {
           <p class="gaze__letter" aria-live="polite"></p>
           <i class="gaze__beat gaze__beat--b"></i>
         </div>
-        <p class="gaze__note">Go easy. Stop if you feel dizzy.</p>
       </div>`;
     const root = el.firstElementChild;
     const dirEl = root.querySelector('.gaze__dir');

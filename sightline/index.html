@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-gate="waiver">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -63,6 +63,9 @@
     .splash.is-out { opacity: 0; pointer-events: none; }
     .splash__logo { width: min(56vw, 260px); height: auto; }
     @media (prefers-reduced-motion: reduce) { .splash { transition: none; } }
+    /* The safety waiver comes first: until it's accepted (js/main.js lifts the
+       gate), no other screen is shown or reachable, even before the app loads. */
+    :root[data-gate] .screen:not(#screen-waiver) { display: none !important; }
   </style>
 </head>
 <body>
@@ -71,6 +74,9 @@
     <img class="splash__logo on-dark" src="assets/logo/logo-stacked.svg" alt="Sightrep logo" width="582" height="340">
     <img class="splash__logo on-light" src="assets/logo/logo-stacked-light.svg" alt="Sightrep logo" width="582" height="340">
   </div>
+
+  <!-- The safety waiver: the first screen on every device until it's accepted (js/waiver.js) -->
+  <section id="screen-waiver" class="screen screen--waiver" aria-labelledby="waiver-title"></section>
 
   <!-- Home: the two sides -->
   <section id="screen-start" class="screen screen--home is-active" aria-labelledby="app-title">
@@ -125,7 +131,7 @@
       </article>
     </div>
 
-    <p class="home__foot">Visual reaction and cognitive warm-up. Not a medical or diagnostic tool. <span id="version"></span></p>
+    <p class="home__foot"><span id="disclaimer"></span> <span id="version"></span></p>
   </section>
 
   <!-- FOCUS: Game Day / Training, readiness, presets, Advanced (rendered by js/focus.js) -->
@@ -152,6 +158,12 @@
       <h2 id="settings-title" class="nav__title">Settings</h2>
     </header>
     <div id="settings-body" class="groups"></div>
+    <section class="group" aria-labelledby="legal-title">
+      <h3 id="legal-title" class="group__title">Legal</h3>
+      <div class="list">
+        <button id="btn-settings-waiver" class="list__row list__row--button" type="button"><span class="list__label">Safety waiver</span><i data-icon="chevron-right"></i></button>
+      </div>
+    </section>
     <div class="screen__foot">
       <button id="btn-settings-done" class="btn btn--primary btn--block" type="button">Done</button>
     </div>
@@ -232,9 +244,10 @@
       <div class="list">
         <button id="btn-about-guide" class="list__row list__row--button" type="button"><span class="list__label">How it works</span><i data-icon="chevron-right"></i></button>
         <button id="btn-reset-variety" class="list__row list__row--button" type="button"><span class="list__label">Reset variety</span><i data-icon="rotate-ccw"></i></button>
+        <button id="btn-about-waiver" class="list__row list__row--button" type="button"><span class="list__label">Safety waiver</span><i data-icon="chevron-right"></i></button>
       </div>
       <p id="variety-status" class="status" aria-live="polite"></p>
-      <p class="caption">A focus, reaction and readiness warm-up. Not a medical, vision or concussion assessment.</p>
+      <p id="about-disclaimer" class="caption"></p>
       <p id="about-version" class="caption"></p>
     </div>
   </section>
@@ -256,6 +269,7 @@
         <button id="btn-pause" class="hud__pause" type="button" aria-label="Pause"><i data-icon="pause" data-size="18"></i></button>
         <span class="hud__hold" aria-hidden="true">Hold to pause</span>
       </div>
+      <p id="hud-safety" class="hud__safety" hidden></p>
       <div id="eye-status" class="eye-status" hidden>
         <span class="cam-badge"><i aria-hidden="true"></i>Camera on · Eye Check (beta)</span>
         <span id="eye-note" class="eye-note" aria-live="polite"></span>

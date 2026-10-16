@@ -11,6 +11,7 @@ import { coneSlots, timingSummary, STYLE_LABEL } from './timing.js';
 import { PATTERNS } from './patterns.js';
 import { RIGHT_HANDED } from './cues/sport.js';
 import { icon, DIR_ICON } from '../lib/icons.js';
+import { SAFETY, moveSafety } from '../content/safety.js';
 
 export function layoutSvg(setup) {
   const W = 320;
@@ -106,6 +107,7 @@ export function renderLayout(el, setup, { preset = false, tune = 1 } = {}) {
           <h2 class="nav__title">Set out ${p.cones.length} cones</h2>
         </header>
         <p class="clay__how">${p.name}. Stand the phone up where you can see it from the start.</p>
+        <p class="notice">${icon('triangle-alert')}${SAFETY.move}</p>
         ${patternSvg(setup.pattern)}
         <p class="clay__how">${p.how} On GO, run it. Then walk back while the phone counts down to the next one.</p>
         <p class="timing__sum">${timingSummary(setup, tune)}</p>
@@ -123,6 +125,7 @@ export function renderLayout(el, setup, { preset = false, tune = 1 } = {}) {
         <h2 class="nav__title">Set out ${n} cones</h2>
       </header>
       <p class="clay__how">Place them around your start spot like this. Stand the phone up facing you, where you can see it from every cone.</p>
+      ${moveSafety(setup).map((n) => `<p class="notice">${icon('triangle-alert')}${n}</p>`).join('')}
       ${layoutSvg(setup)}
       <p class="clay__how">${{
         outback: setup.distanceMode === 'each' && !preset ? 'Each cone at the distance shown. Sprint out, plant, come back to the start.'
