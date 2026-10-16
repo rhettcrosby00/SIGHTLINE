@@ -154,8 +154,11 @@ export function accuracyLabel(error) {
 
 // ---- Smoothing ---------------------------------------------------------------
 // One Euro filter: steady when the eyes are still, quicker when they move.
-// Heavy settings, so feedback looks stable rather than jittery.
-export const SMOOTH = { minCutoff: 0.5, beta: 0.4, dCutoff: 1 };
+// Two settings: SMOOTH for "where are the eyes" feedback (Pursuit, Saccades,
+// Peripheral; responsive, still smoothed so it doesn't jitter) and CALM, much
+// heavier, for "are the eyes still" (Quiet Eye, drift), where lag doesn't matter.
+export const SMOOTH = { minCutoff: 1.0, beta: 0.7, dCutoff: 1 };
+export const CALM = { minCutoff: 0.5, beta: 0.4, dCutoff: 1 };
 function lowpass() {
   let y = null;
   return (x, a) => (y = y == null ? x : y + a * (x - y));
@@ -203,7 +206,7 @@ export function frameCheck(f, brightness = 128) {
 
 // Quietly pauses the eye features after a short run of bad frames and brings
 // them back after a short run of good ones (no flicker between the two).
-export function confidence({ dropMs = 600, backMs = 400 } = {}) {
+export function confidence({ dropMs = 600, backMs = 300 } = {}) {
   let ok = false;
   let since = null;
   return (t, good) => {
@@ -216,9 +219,9 @@ export function confidence({ dropMs = 600, backMs = 400 } = {}) {
 
 // ---- Indirect feedback --------------------------------------------------------
 // A yes/no state (in the zone, on track, eyes away) that only changes after it
-// has held for a moment, and never more than about 2.5 times a second, so
-// nothing on screen blinks (photosensitivity: at most 3 changes a second).
-export const FEEDBACK = { holdMs: 250, minGapMs: 400 };
+// has held for a moment, and never more than about 2.8 times a second, so
+// nothing on screen blinks (photosensitivity: under 3 changes a second).
+export const FEEDBACK = { holdMs: 150, minGapMs: 350 };
 export function settled({ holdMs = FEEDBACK.holdMs, minGapMs = FEEDBACK.minGapMs, initial = false } = {}) {
   let state = initial;
   let since = null;
@@ -375,8 +378,44 @@ export function driftWatch({ aspect = 2 } = {}) {
   };
 }
 
+// Which part of the phone runs the face tracker: the graphics chip (GPU) first,
+// the main processor (CPU) if the GPU fails, or if it's slow and the CPU turns
+// out faster. Decided from the first readings (often during calibration), then kept.
+export const DELEGATE = { warmup: 5, sample: 20, slowMs: 30 };
+export function delegatePicker() {
+  const times = { GPU: [], CPU: [] };
+  let current = 'GPU';
+  let settled = false;
+  return {
+    current: () => current,
+    // The GPU tracker broke: the CPU for good. Returns the delegate to switch to, or null.
+    failed() {
+      if (current !== 'GPU') return null;
+      current = 'CPU';
+      settled = true;
+      return 'CPU';
+    },
+    // One detection took `ms`. Returns the delegate to switch to, or null.
+    timing(ms) {
+      if (settled) return null;
+      const list = times[current];
+      list.push(ms);
+      if (list.length < DELEGATE.warmup + DELEGATE.sample) return null;
+      const typical = median(list.slice(DELEGATE.warmup));
+      if (current === 'GPU') {
+        if (typical < DELEGATE.slowMs) { settled = true; return null; }
+        current = 'CPU';   // slow on the GPU: see if the CPU does better
+        return 'CPU';
+      }
+      settled = true;
+      if (typical > median(times.GPU.slice(DELEGATE.warmup))) { current = 'GPU'; return 'GPU'; }
+      return null;
+    },
+  };
+}
+
 // Tracking rate: slower on older or busy phones; stop if the phone can't keep up.
-export const RATE = { fastMs: 33, slowMs: 66, slowAt: 40, stopAt: 110 };
+export const RATE = { fastMs: 33, slowMs: 66, slowAt: 40, stopAt: 110, slackMs: 8 };
 export function nextInterval(currentMs, avgDetectMs) {
   if (avgDetectMs >= RATE.stopAt) return null;   // the phone is running slow: stop
   if (avgDetectMs >= RATE.slowAt) return RATE.slowMs;

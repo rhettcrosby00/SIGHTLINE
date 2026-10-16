@@ -7,7 +7,8 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { test, assert } from './harness.js';
 import {
-  eyeFeatures, fitCalibration, predict, calibrationError, median, accuracyLabel, MODEL, oneEuro, gazeFilter, SMOOTH,
+  eyeFeatures, fitCalibration, predict, calibrationError, median, accuracyLabel, MODEL, oneEuro, gazeFilter, SMOOTH, CALM,
+  delegatePicker, DELEGATE,
   frameCheck, confidence, settled, FEEDBACK, steadyTracker, STEADY, quietRing, movedToward, SACCADE, sideOf,
   drillStats, heatGrid, driftWatch, DRIFT, nextInterval, RATE, gap,
 } from '../js/eye/math.js';
@@ -73,18 +74,37 @@ test('Calibration: five dots map the eyes to the screen; a bad one is caught', (
   assert(median([3, 1, 2]) === 2 && median([1, 2, 3, 4]) === 2.5, 'median');
 });
 
-test('Smoothing: heavy, so feedback is stable, but it still follows a real move', () => {
-  assert(SMOOTH.minCutoff <= 1, 'heavy');
-  const f = oneEuro();
-  const out = [];
-  for (let i = 0; i < 90; i++) out.push(f(i * 33, 0.5 + noise(0.08)));
-  const spread = Math.max(...out.slice(30)) - Math.min(...out.slice(30));
-  assert(spread < 0.04, `jitter ${spread.toFixed(3)} from ±0.04 noise`);
-  const g = gazeFilter();
+test('Smoothing: "where" feedback is quick but steady; "still?" (Quiet Eye) is steadier still', () => {
+  assert(SMOOTH.minCutoff > CALM.minCutoff && SMOOTH.beta > CALM.beta, 'two settings: responsive and calm');
+  const spreadOf = (opts) => {
+    const f = oneEuro(opts);
+    const out = [];
+    for (let i = 0; i < 120; i++) out.push(f(i * 33, 0.5 + noise(0.08)));
+    return Math.max(...out.slice(30)) - Math.min(...out.slice(30));
+  };
+  const quick = spreadOf(SMOOTH);
+  const calm = spreadOf(CALM);
+  assert(quick < 0.06, `responsive jitter ${quick.toFixed(3)} from ±0.04 noise`);
+  assert(calm < 0.04 && calm <= quick, `calm jitter ${calm.toFixed(3)}`);
+  // Following a smoothly moving target (like the Pursuit dot): how far behind is the estimate?
+  const behind = (opts) => {
+    const g = gazeFilter(opts);
+    let err = 0;
+    let n = 0;
+    for (let i = 0; i < 120; i++) {
+      const x = 0.5 + 0.3 * Math.sin((2 * Math.PI * 0.5 * i * 33) / 1000);
+      const p = g(i * 33, [x, 0.5]);
+      if (i > 30) { err += Math.abs(p[0] - x); n++; }
+    }
+    return err / n;
+  };
+  assert(behind(SMOOTH) < 0.05 && behind(SMOOTH) < behind(CALM) * 0.8, `responsive ${behind(SMOOTH).toFixed(3)} vs calm ${behind(CALM).toFixed(3)} behind`);
+  // A big jump still lands within a third of a second.
+  const g = gazeFilter(SMOOTH);
   let p;
   for (let i = 0; i < 30; i++) p = g(i * 33, [0.2, 0.5]);
-  for (let i = 30; i < 60; i++) p = g(i * 33, [0.8, 0.5]);
-  assert(p[0] > 0.7, `follows a move within a second: ${p[0].toFixed(2)}`);
+  for (let i = 30; i < 39; i++) p = g(i * 33, [0.8, 0.5]);
+  assert(p[0] > 0.7, `a jump: ${p[0].toFixed(2)} after 0.3 s`);
 });
 
 test('Confidence: tips for each problem; pauses quietly after bad frames, returns after good ones', () => {
@@ -100,18 +120,47 @@ test('Confidence: tips for each problem; pauses quietly after bad frames, return
   assert(!c(t + 900, true) && c(t + 1350, true), 'back after 0.4 s of good frames');
 });
 
-test('Feedback never blinks: at most about 2.5 changes a second, whatever the eyes do', () => {
-  assert(FEEDBACK.minGapMs >= 334, 'under 3 changes a second');
-  const s = settled();
-  let changes = 0;
-  let prev = false;
-  for (let t = 0; t < 10000; t += 16) {
-    const v = s(t, Math.floor(t / 50) % 2 === 0);   // input flipping 10 times a second
-    if (v !== prev) changes++;
-    prev = v;
+test('Feedback never blinks (under 3 changes a second, whatever the eyes do) yet answers quickly', () => {
+  assert(FEEDBACK.minGapMs > 1000 / 3, 'under 3 changes a second');
+  for (const flipMs of [40, 100, 160, 200, 260, 340, 500, 800]) {
+    const s = settled();
+    let changes = 0;
+    let prev = false;
+    for (let t = 0; t < 10000; t += 16) {
+      const v = s(t, Math.floor(t / flipMs) % 2 === 0);
+      if (v !== prev) changes++;
+      prev = v;
+    }
+    assert(changes / 10 < 3, `eyes flipping every ${flipMs} ms: ${changes / 10} changes a second`);
   }
-  assert(changes / 10 <= 2.5, `${changes / 10} changes a second`);
+  const s = settled();
+  let t = 0;
+  while (!s(t, true)) t += 16;
+  assert(t <= FEEDBACK.holdMs + 16 && FEEDBACK.holdMs <= 200, `a real change shows within ${t} ms`);
   assert(settled({ initial: true })(0, true) === true, 'can start on');
+});
+
+test('Speed: the graphics chip when it works and is faster; the main processor otherwise', () => {
+  const run = (gpu, cpu) => {
+    const p = delegatePicker();
+    const switches = [];
+    for (let i = 0; i < 60; i++) {
+      const to = p.timing(p.current() === 'GPU' ? gpu(i) : cpu(i));
+      if (to) switches.push(to);
+    }
+    return { now: p.current(), switches };
+  };
+  assert(run(() => 12, () => 25).now === 'GPU', 'a fast GPU stays');
+  assert(run((i) => (i < DELEGATE.warmup ? 200 : 12), () => 25).now === 'GPU', 'a slow first few frames (warming up) don’t count');
+  const slowGpu = run(() => 45, () => 20);
+  assert(slowGpu.now === 'CPU' && slowGpu.switches.join() === 'CPU', 'a slow GPU hands over to a faster CPU');
+  const bothSlow = run(() => 45, () => 70);
+  assert(bothSlow.now === 'GPU' && bothSlow.switches.join() === 'CPU,GPU', 'if the CPU is slower still, back to the GPU, once');
+  const broken = delegatePicker();
+  assert(broken.failed() === 'CPU' && broken.current() === 'CPU' && broken.failed() === null && broken.timing(500) === null, 'a GPU that breaks: the CPU, for good');
+  const idx = read('js/eye/index.js');
+  assert(/requestVideoFrameCallback/.test(idx) && /requestAnimationFrame\(tick\)/.test(idx), 'each new camera frame as it arrives, with a fallback');
+  assert(/fill\(tt, eye\.calm\(\), tgt\)/.test(read('js/stages/quieteye.js')), 'Quiet Eye judges stillness on the steadier estimate');
 });
 
 test('Quiet Eye ring: fills only while the eyes are steady on the target; resets when they move', () => {
@@ -169,6 +218,9 @@ test('Summary stats and one plain tip per drill; drift and slow phones are handl
   let flagged = false;
   for (let t = 0; t <= DRIFT.ms + 400; t += 33) flagged = drift(t, [0.9, 0.9], [0.5, 0.5], true);
   assert(flagged, 'steady looks far from the target suggest recalibrating');
+  // Frames arrive about every 33 ms with some jitter: none skipped at full speed, every other one when slowed.
+  const kept = (gap, interval) => { let last = -Infinity; let n = 0; for (let t = 0; t < 3000; t += gap + (n % 2 ? 1.5 : -1.5)) { if (t - last >= interval - RATE.slackMs) { last = t; n++; } } return n; };
+  assert(kept(33.3, RATE.fastMs) >= 88 && kept(33.3, RATE.slowMs) <= 46 && kept(16.7, RATE.fastMs) <= 92, `frames kept: ${kept(33.3, RATE.fastMs)}, ${kept(33.3, RATE.slowMs)}, ${kept(16.7, RATE.fastMs)}`);
   assert(nextInterval(RATE.fastMs, 10) === RATE.fastMs && nextInterval(RATE.fastMs, 50) === RATE.slowMs && nextInterval(RATE.slowMs, 200) === null, 'slower, then stop');
 });
 
@@ -201,6 +253,21 @@ function harness({ media, explainAnswer = true, readFrame } = {}) {
   return { eye, ctx, cam, notes };
 }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+test('The GPU tracker won’t start: the CPU one does, and Eye Check carries on', async () => {
+  const asked = [];
+  const h = harness();
+  const eye = createEyeCheck({
+    media: async () => h.cam.stream,
+    loadLandmarker: async (d) => { asked.push(d); if (d === 'GPU') throw new Error('no WebGL'); return { close() {} }; },
+    read: () => ({ f: look([0.5, 0.5], 0.01), brightness: 120 }),
+    ui: { explain: async () => true, preflight: async () => true, calibrate: async () => calSamples(0.01), seeGaze: async () => 'go', failed: async () => false, setRecalibrate() {}, status: { camera() {}, paused() {}, note() {}, flash() {}, engine: (e) => asked.push(`engine:${e}`) } },
+  });
+  const t = await eye.open(h.ctx, { drill: 'quieteye', title: 'Quiet Eye' });
+  assert(t && asked.join() === 'GPU,CPU,engine:CPU', asked.join());
+  t.close();
+  eye.dispose();
+});
 
 test('Camera declined or blocked: no eye features, the drill runs normally', async () => {
   const no = harness({ explainAnswer: false });

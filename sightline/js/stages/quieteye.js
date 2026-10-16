@@ -100,7 +100,7 @@ export const quietEye = {
           eye.expect(tgt);
           const fill = quietRing({ lockMs, aspect: innerHeight / innerWidth });
           stopRing = animate(now, (tt) => {
-            look = fill(tt, eye.gaze(), tgt);
+            look = fill(tt, eye.calm(), tgt);   // stillness: the steadier estimate
             best = Math.max(best, look.runMs);
             ring.style.strokeDashoffset = String(RING * (1 - look.progress));
             target.classList.toggle('is-eyes-on', look.on);
