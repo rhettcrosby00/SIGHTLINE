@@ -163,7 +163,8 @@ test('App icons, favicon, share picture and iPhone launch pictures show Sightrep
   assert(/<link rel="icon" href="icons\/icon\.svg" type="image\/svg\+xml">/.test(html) && /favicon-32\.png" sizes="32x32"/.test(html)
     && /favicon-16\.png" sizes="16x16"/.test(html) && /rel="apple-touch-icon" href="icons\/apple-touch-icon\.png"/.test(html), 'favicon and Apple icon links');
   assert(/<title>Sightrep logo<\/title>/.test(read('icons/icon.svg')), 'the tab icon is labeled');
-  assert(png('assets/share.png').join() === '1200,630' && meta('property', 'og:image') === 'assets/share.png'
+  assert(png('assets/share.png').join() === '1200,630' && meta('property', 'og:image') === 'https://app.sightrep.app/assets/share.png'
+    && meta('name', 'twitter:image') === meta('property', 'og:image') && meta('property', 'og:url') === 'https://app.sightrep.app/'
     && meta('name', 'twitter:card') === 'summary_large_image', 'share picture');
   const sizes = JSON.parse(read('splash/sizes.json'));
   assert(sizes.length >= 8, 'iPhone screen sizes');

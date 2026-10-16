@@ -240,6 +240,21 @@ a session). The version number shows at the bottom of the start screen.
   Settings → Environment Variables → `COACH_PIN`. The database address never appears in the app.
 - `/api/leaderboard?action=health` shows `{ db, coach }` (true/false only).
 
+## Web addresses
+
+| Address | What it is |
+|---|---|
+| https://app.sightrep.app | the app |
+| https://sightrep.app | the marketing site (for now, the app too) |
+| https://www.sightrep.app | permanent (301) redirect to sightrep.app |
+| sightline-psi.vercel.app | Vercel's own name for the project (preview links work as before) |
+
+DNS is on Cloudflare, every record **DNS only** (gray cloud): CNAMEs for `@`, `app` and `www` to
+the target Vercel shows under the project's **Settings → Domains**. Cloudflare Email Routing adds
+and locks its own MX, SPF and DKIM records (support@ and hello@ forward to the team inbox); leave
+them alone. `node ../tools/domains/check.mjs [version]` checks every address from outside: HTTPS
+certificates, redirects, the app version, and the email DNS (one SPF record, DMARC).
+
 ## Feature flags
 
 `js/features.js` holds switches for work in progress only. Add a new feature as

@@ -8,8 +8,10 @@ export const FEATURES = {
   partner: false,   // MOVE Partner mode (a coach's phone sends the cues), parked in v4.0
 };
 
-// The live site's address(es). Anything else (preview links, localhost) is a preview.
-const LIVE_HOSTS = ['sightline-psi.vercel.app'];
+// The live site's addresses. Anything else (preview links, localhost) is a preview.
+// app.sightrep.app is the app; sightrep.app the marketing site; the vercel.app
+// address is Vercel's own name for the project.
+const LIVE_HOSTS = ['app.sightrep.app', 'sightrep.app', 'sightline-psi.vercel.app'];
 
 export function isOn(name, { host = globalThis.location?.hostname ?? '', search = globalThis.location?.search ?? '' } = {}) {
   const v = FEATURES[name];
