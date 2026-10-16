@@ -27,7 +27,7 @@ import { keepAwake, allowSleep } from './lib/wakelock.js';
 import { cues, onInterrupt, resumeAudio, say } from './lib/audio.js';
 
 export const HOLD_TO_PAUSE_MS = 1000;
-export const AWAKE_TIP = 'Your screen may turn off by itself. Low Power Mode (or Battery Saver) can stop Sightline keeping it on: turn it off, or set Auto-Lock to Never for now.';
+export const AWAKE_TIP = 'Your screen may turn off by itself. Low Power Mode (or Battery Saver) can stop Sightrep keeping it on: turn it off, or set Auto-Lock to Never for now.';
 export const PAUSE_WHY = {
   hidden: 'You left the app or the screen locked.',
   sound: 'Something took over the sound, like a call or an alarm.',

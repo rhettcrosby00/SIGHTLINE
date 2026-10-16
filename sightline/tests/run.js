@@ -16,6 +16,7 @@ import './design.js';
 import './sides.js';
 import './foolproof.js';
 import './eyecheck.js';
+import './brand.js';
 import './deadcode.js';
 
 process.exit((await report()) ? 1 : 0);

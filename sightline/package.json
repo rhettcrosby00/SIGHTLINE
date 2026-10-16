@@ -1,8 +1,8 @@
 {
-  "name": "sightline",
+  "name": "sightrep",
   "private": true,
   "type": "module",
-  "description": "Sightline: a pre-game visual reaction and cognitive warm-up. Static site; one serverless function for the leaderboard.",
+  "description": "Sightrep: a pre-game visual reaction and cognitive warm-up. Static site; one serverless function for the leaderboard.",
   "scripts": {
     "test": "node tests/run.js"
   },

@@ -5,7 +5,7 @@ import { SPORT_PACKS, SPORT_DIRS } from './cues/sport.js';
 import { PATTERN_IDS } from './patterns.js';
 
 // Nine cone colors, each with a shape so color-blind athletes have a backup cue.
-// Red, blue, green and yellow match the rest of Sightline.
+// Red, blue, green and yellow match the rest of Sightrep.
 export const CONE_COLORS = [
   { id: 'red',    label: 'RED',    hex: '#ff4d2e', ink: '#000', shape: '▲' },
   { id: 'blue',   label: 'BLUE',   hex: '#2f7bff', ink: '#fff', shape: '●' },

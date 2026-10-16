@@ -4,7 +4,7 @@
 // If storage isn't available everything still works; sessions are just
 // random within themselves.
 
-const KEY = 'sightline.variety.v1';
+const KEY = 'sightrep.variety.v1';
 const KEEP_SESSIONS = 4;
 
 function defaultStorage() {

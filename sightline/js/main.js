@@ -10,7 +10,7 @@ import { setMusicMode } from './lib/audio.js';
 import { hydrateIcons } from './lib/icons.js';
 import { showGuide, showFirstRun } from './guide.js';
 import { createVariety } from './lib/variety.js';
-import { createLastRuns } from './migrate.js';
+import { createLastRuns, renameSavedData } from './migrate.js';
 import { initFocus } from './focus.js';
 import { initMove } from './cone/ui.js';
 import { createTrainingLog, WEEK_GOAL } from './lib/streak.js';
@@ -18,9 +18,14 @@ import { initLeaderboard } from './score/ui.js';
 import { initRoutineBuilder } from './myroutine-ui.js';
 import { initInstall } from './install.js';
 import { parseRunKey } from './presets.js';
+import { BRAND } from './brand.js';
+
+// Sightline is now Sightrep: move this phone's saved data to the new keys
+// before anything below reads it.
+renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '4.2';
+export const APP_VERSION = '5.0';
 
 const $ = (id) => document.getElementById(id);
 
@@ -43,6 +48,7 @@ function show(name, { back = false } = {}) {
 }
 
 hydrateIcons();
+$('brand-tagline').textContent = BRAND.tagline;   // one place to change it: js/brand.js
 
 // Dev aids: ?speed=20 fast-forwards; ?autostart=1 starts Game Ready (or
 // ?autostart=1&session=activate a one-part session, ?autostart=game:speed |

@@ -5,12 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0A0B08" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#F5F6F0" media="(prefers-color-scheme: light)">
-  <meta name="description" content="Sightline: a pre-game visual reaction and cognitive warm-up.">
+  <meta name="description" content="Sightrep. Reps for your eyes. A pre-game visual reaction and focus warm-up for athletes.">
+  <!-- Link previews (texts, social). Name and tagline match js/brand.js (tests/brand.js checks).
+       The share image and web address join these once the logo and domain are set. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sightrep">
+  <meta property="og:title" content="Sightrep">
+  <meta property="og:description" content="Reps for your eyes. A pre-game visual reaction and focus warm-up for athletes.">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Sightrep">
+  <meta name="twitter:description" content="Reps for your eyes. A pre-game visual reaction and focus warm-up for athletes.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Sightline">
-  <title>Sightline</title>
+  <meta name="apple-mobile-web-app-title" content="Sightrep">
+  <title>Sightrep</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
@@ -18,7 +27,7 @@
   <!-- Apply the saved appearance before first paint (no flash of the wrong theme). -->
   <script>
     try {
-      var a = JSON.parse(localStorage.getItem('sightline.settings.v1') || '{}').appearance;
+      var a = JSON.parse(localStorage.getItem('sightrep.settings.v1') || localStorage.getItem('sightline.settings.v1') || '{}').appearance;   // the old key until js/migrate.js moves it
       if (a === 'light' || a === 'dark' || a === 'outdoor') document.documentElement.dataset.appearance = a;
     } catch (e) { /* storage blocked: follow the phone */ }
   </script>
@@ -34,26 +43,23 @@
     .splash { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 28px; background: var(--bg, #0A0B08); transition: opacity .25s ease; }
     .splash.is-out { opacity: 0; pointer-events: none; }
-    .splash img { display: block; height: auto; }
-    .splash__mark { width: min(36vw, 168px); }
-    .splash__word { width: min(64vw, 320px); }
+    .splash__word { font-size: min(12vw, 3.25rem); }
     @media (prefers-reduced-motion: reduce) { .splash { transition: none; } }
   </style>
 </head>
 <body>
+  <!-- The wordmark is text until the Sightrep logo files arrive (js/brand.js). -->
   <div id="splash" class="splash" role="presentation">
-    <img class="splash__mark on-dark" src="assets/logo/logo-mark.svg" alt="Sightline logo" width="272" height="242">
-    <img class="splash__mark on-light" src="assets/logo/logo-mark-mono-dark.svg" alt="Sightline logo" width="272" height="242">
-    <img class="splash__word on-dark" src="assets/logo/logo-wordmark.svg" alt="" width="807" height="123">
-    <img class="splash__word on-light" src="assets/logo/logo-wordmark-mono-dark.svg" alt="" width="807" height="123">
+    <p class="wordmark splash__word" aria-label="Sightrep">Sight<span>rep</span></p>
   </div>
 
   <!-- Home: the two sides -->
   <section id="screen-start" class="screen screen--home is-active" aria-labelledby="app-title">
-    <h1 id="app-title" class="visually-hidden">Sightline</h1>
     <header class="home__top">
-      <img class="home__logo on-dark" src="assets/logo/logo-horizontal.svg" alt="Sightline logo" width="1182" height="242">
-      <img class="home__logo on-light" src="assets/logo/logo-horizontal-mono-dark.svg" alt="Sightline logo" width="1182" height="242">
+      <div class="home__brand">
+        <h1 id="app-title" class="wordmark home__word" aria-label="Sightrep">Sight<span>rep</span></h1>
+        <p id="brand-tagline" class="home__tagline">Reps for your eyes.</p>
+      </div>
       <div class="home__nav">
         <button id="btn-board" class="icon-btn" type="button" aria-label="Leaderboard"><i data-icon="trophy" data-size="22"></i></button>
         <button id="btn-settings" class="icon-btn" type="button" aria-label="Settings"><i data-icon="settings-2" data-size="22"></i></button>
@@ -131,9 +137,9 @@
       <button id="btn-about-back" class="nav__back" type="button"><i data-icon="chevron-left" data-size="22"></i>Home</button>
     </header>
     <div class="about">
-      <img class="about__logo on-dark" src="assets/logo/logo-mark.svg" alt="Sightline logo" width="272" height="242">
-      <img class="about__logo on-light" src="assets/logo/logo-mark-mono-dark.svg" alt="Sightline logo" width="272" height="242">
-      <h2 id="about-title" class="screen-title">About Sightline</h2>
+      <img class="about__logo on-dark" src="assets/logo/logo-mark.svg" alt="Sightrep logo" width="272" height="242">
+      <img class="about__logo on-light" src="assets/logo/logo-mark-mono-dark.svg" alt="Sightrep logo" width="272" height="242">
+      <h2 id="about-title" class="screen-title">About Sightrep</h2>
       <p class="about__lead">A short focus and reaction warm-up with two sides. Pick the one that fits where you are.</p>
 
       <section class="about__side" data-side="focus">
@@ -174,9 +180,9 @@
           <li><b>Short beats long on game day.</b> Long, demanding mental work (usually 30+ minutes) causes mental fatigue that can slow decisions and reactions. That's why Game Ready never runs past 10 minutes.</li>
           <li><b>Screen drills mostly get better on the screen.</b> Gains carry over to the field only modestly. Drills that look like your sport and use real movement carry over better.</li>
           <li><b>Breathing, routines, quiet eye, imagery and self-talk</b> have the strongest evidence of anything here.</li>
-          <li><b>No flashing screens.</b> Nothing in Sightline flashes the whole screen, and anything that blinks stays under 3 changes a second.</li>
+          <li><b>No flashing screens.</b> Nothing in Sightrep flashes the whole screen, and anything that blinks stays under 3 changes a second.</li>
           <li><b>Real gains take repetition:</b> most studies used 2–4 sessions a week for 4 weeks or more. One session is a warm-up, not a training program.</li>
-          <li><b>Honest limits.</b> Sightline is a focus, reaction and readiness warm-up. It isn't a vision, concussion or medical assessment, and it can't promise better games. If you have vision problems or symptoms, see an eye care professional or your athletic trainer.</li>
+          <li><b>Honest limits.</b> Sightrep is a focus, reaction and readiness warm-up. It isn't a vision, concussion or medical assessment, and it can't promise better games. If you have vision problems or symptoms, see an eye care professional or your athletic trainer.</li>
         </ul>
         <h3 class="group__title">Sources</h3>
         <ol class="about__sources">

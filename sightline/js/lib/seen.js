@@ -2,7 +2,7 @@
 // full how-to the first few times, then just the rule). Device only; with
 // storage blocked every drill just counts as new.
 
-const KEY = 'sightline.seen.v1';
+const KEY = 'sightrep.seen.v1';
 
 function defaultStorage() {
   try { return globalThis.localStorage ?? null; } catch { return null; }

@@ -203,7 +203,7 @@ export function tuneKey(setup) {
   return setup.style === 'conetocone' ? `conetocone|${setup.cueType}|${yards}` : `outback|${yards}`;
 }
 
-const TUNE_KEY = 'sightline.tune.v1';
+const TUNE_KEY = 'sightrep.tune.v1';
 export function createTuneStore(storage = (() => { try { return globalThis.localStorage ?? null; } catch { return null; } })()) {
   const read = () => { try { return JSON.parse(storage?.getItem(TUNE_KEY) || '{}') || {}; } catch { return {}; } };
   return {

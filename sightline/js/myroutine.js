@@ -32,7 +32,7 @@ export function cleanRoutine(raw = {}) {
   return r;
 }
 
-const KEY = 'sightline.routine.v1';
+const KEY = 'sightrep.routine.v1';
 function defaultStorage() {
   try { return globalThis.localStorage ?? null; } catch { return null; }
 }

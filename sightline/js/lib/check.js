@@ -83,7 +83,7 @@ export function compare(rtMs, history = []) {
 }
 
 // The last 10 checks, on this phone only. With storage blocked: this visit only.
-const KEY = 'sightline.check.v1';
+const KEY = 'sightrep.check.v1';
 function defaultStorage() {
   try { return globalThis.localStorage ?? null; } catch { return null; }
 }

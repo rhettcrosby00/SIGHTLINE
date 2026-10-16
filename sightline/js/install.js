@@ -6,7 +6,7 @@
 
 import { icon } from './lib/icons.js';
 
-const KEY = 'sightline.install.v1';
+const KEY = 'sightrep.install.v1';
 export const SNOOZE_DAYS = 7;
 
 export function shouldOfferInstall({ installed, sessions, snoozedUntil = 0, now = Date.now() }) {
@@ -34,8 +34,8 @@ export function initInstall(storage = globalThis.localStorage) {
       if (!slot) return;
       if (!shouldOfferInstall({ installed: installed(), sessions: visit.sessions, snoozedUntil: visit.snoozedUntil })) { slot.innerHTML = ''; return; }
       slot.innerHTML = `
-        <section class="install-card" aria-label="Add Sightline to your home screen">
-          <p class="install-card__title">${icon('download')}Add Sightline to your home screen</p>
+        <section class="install-card" aria-label="Add Sightrep to your home screen">
+          <p class="install-card__title">${icon('download')}Add Sightrep to your home screen</p>
           <p class="install-card__why">Keeps your progress safe (iPhone can clear website data after about a week unused) and works with no signal.</p>
           <ol class="install-card__steps">${iphone ? IPHONE + ANDROID : ANDROID + IPHONE}</ol>
           <div class="cdone__row">

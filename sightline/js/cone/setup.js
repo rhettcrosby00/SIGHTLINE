@@ -21,8 +21,8 @@ import { isMusicMode } from '../lib/audio.js';
 
 // Each variant: where it's saved and how a saved setup is cleaned up.
 const VARIANTS = {
-  custom: { key: 'sightline.cone.v1', normalize },
-  signals: { key: 'sightline.signals.v1', normalize: normalizeSignals },
+  custom: { key: 'sightrep.cone.v1', normalize },
+  signals: { key: 'sightrep.signals.v1', normalize: normalizeSignals },
 };
 
 function loadSetup(variant = 'custom') {
