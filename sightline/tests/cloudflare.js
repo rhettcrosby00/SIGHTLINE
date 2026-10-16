@@ -70,16 +70,19 @@ test('The build serves exactly the app: everything it needs, nothing private', (
 test('Database setup: forgiving about paste slips, and the health check says what is wrong (never the address)', async () => {
   const { databaseUrl, databaseProblem } = await import('../api/_lib/service.js');
   const real = 'postgresql://user:secret-pass@ep-example-123.us-east-2.aws.neon.tech/neondb?sslmode=require';
-  for (const pasted of [real, ` ${real} `, `"${real}"`, `'${real}'`, `DATABASE_URL=${real}`, `DATABASE_URL="${real}"`]) {
+  const block = `# Recommended for most uses\nDATABASE_URL=${real}\n\n# For uses requiring a connection without pgbouncer\nDATABASE_URL_UNPOOLED=postgresql://user:x@ep-other.neon.tech/neondb\nPGHOST=ep-example-123.neon.tech`;
+  for (const pasted of [real, ` ${real} `, `"${real}"`, `'${real}'`, `DATABASE_URL=${real}`, `DATABASE_URL="${real}"`, block]) {
     assert(databaseUrl({ DATABASE_URL: pasted }) === real, `not cleaned: ${pasted.slice(0, 20)}`);
   }
   assert(databaseUrl({ POSTGRES_URL: real }) === real && databaseUrl({}) === '', 'POSTGRES_URL works too; empty when unset');
   assert(databaseProblem('') === 'DATABASE_URL isn’t set', 'not set');
-  assert(databaseProblem('ep-example.neon.tech') === 'DATABASE_URL doesn’t look like a database address', 'not an address');
+  assert(databaseProblem('ep-example.neon.tech') === 'DATABASE_URL is only part of the database address', 'only the host');
+  assert(databaseProblem('••••••••') === 'DATABASE_URL is hidden dots: copy the real value', 'masked');
+  assert(databaseProblem('abc123') === 'DATABASE_URL doesn’t look like a database address', 'something else');
   assert(databaseProblem(real) === null, 'a good address is fine');
   assert(databaseProblem(real, new Error('password authentication failed for user "user"')) === 'the database refused the password', 'password');
   const wrong = await call('leaderboard', { query: '?action=health', env: { DATABASE_URL: 'https://example.com' } });
-  assert(wrong.body.db === false && wrong.body.problem === 'DATABASE_URL doesn’t look like a database address', JSON.stringify(wrong.body));
+  assert(wrong.body.db === false && wrong.body.problem === 'DATABASE_URL is a web address, not the database address', JSON.stringify(wrong.body));
   assert(!JSON.stringify(wrong.body).includes('example.com'), 'the health check never repeats the address');
   const fine = await call('leaderboard', { query: '?action=health' });
   assert(!('problem' in fine.body), 'no problem line when connected');

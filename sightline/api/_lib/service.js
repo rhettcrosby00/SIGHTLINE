@@ -24,17 +24,23 @@ const SIDES = { focus: ['focus'], move: ['move'], all: ['focus', 'move'] };
 const FOCUS_IDS = FOCUS_SESSIONS.map((s) => s.id);
 const LENGTHS = ['quick', 'standard', 'full'];
 
-// The database address from the hosting settings, forgiving common paste slips
-// (spaces, quotes, a leading "DATABASE_URL="). Empty when it isn't set.
+// The database address from the hosting settings, forgiving paste slips: spaces,
+// quotes, a leading "DATABASE_URL=", or a whole pasted block of settings (the
+// first database address in it is used). Empty when it isn't set.
 export function databaseUrl(env = {}) {
-  return String(env.DATABASE_URL || env.POSTGRES_URL || '').trim()
-    .replace(/^(DATABASE_URL|POSTGRES_URL)\s*=\s*/, '').replace(/^["']|["']$/g, '').trim();
+  const raw = String(env.DATABASE_URL || env.POSTGRES_URL || '');
+  return /postgres(?:ql)?:\/\/[^\s"']+/.exec(raw)?.[0] ?? raw.trim();
 }
 
 // Why the database isn't connected, in words safe to show (never the address).
 export function databaseProblem(url, err) {
   if (!url) return 'DATABASE_URL isn’t set';
-  if (!/^postgres(ql)?:\/\/[^/\s]+@[^/\s]+\/\S+/.test(url)) return 'DATABASE_URL doesn’t look like a database address';
+  if (!/^postgres(ql)?:\/\/[^/\s]+@[^/\s]+\/\S+/.test(url)) {
+    if (/^[•*●·\s]+$/.test(url)) return 'DATABASE_URL is hidden dots: copy the real value';
+    if (/^https?:/i.test(url)) return 'DATABASE_URL is a web address, not the database address';
+    if (/neon\.tech/i.test(url)) return 'DATABASE_URL is only part of the database address';
+    return 'DATABASE_URL doesn’t look like a database address';
+  }
   if (!err) return null;
   if (/password|auth/i.test(err.message ?? '')) return 'the database refused the password';
   if (/ENOTFOUND|fetch failed|getaddrinfo|network/i.test(err.message ?? '')) return 'couldn’t reach the database';
