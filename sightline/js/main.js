@@ -18,14 +18,14 @@ import { initLeaderboard } from './score/ui.js';
 import { initRoutineBuilder } from './myroutine-ui.js';
 import { initInstall } from './install.js';
 import { parseRunKey } from './presets.js';
-import { BRAND, hydrateLogos } from './brand.js';
+import { BRAND, APP_URL, movedFrom, hydrateLogos } from './brand.js';
 
 // Sightline is now Sightrep: move this phone's saved data to the new keys
 // before anything below reads it.
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '5.0';
+export const APP_VERSION = '5.1';
 
 const $ = (id) => document.getElementById(id);
 
@@ -49,6 +49,9 @@ function show(name, { back = false } = {}) {
 
 hydrateIcons();
 hydrateLogos();   // home and About (js/brand.js)
+// Opened at the old address: point to the new one (?moved=1 shows it anywhere, for checking).
+$('moved').hidden = !(movedFrom(location.hostname) || new URLSearchParams(location.search).has('moved'));
+$('moved-link').href = APP_URL;
 $('brand-tagline').textContent = BRAND.tagline;   // one place to change it: js/brand.js
 
 // Dev aids: ?speed=20 fast-forwards; ?autostart=1 starts Game Ready (or

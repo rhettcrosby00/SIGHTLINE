@@ -4,7 +4,7 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { test, assert } from './harness.js';
-import { BRAND, logo, LOGO_DIR, LOGO_SIZE } from '../js/brand.js';
+import { BRAND, logo, LOGO_DIR, LOGO_SIZE, APP_URL, OLD_HOSTS, movedFrom } from '../js/brand.js';
 import { renameSavedData, OLD_PREFIX, PREFIX } from '../js/migrate.js';
 
 const root = new URL('../', import.meta.url);
@@ -41,7 +41,8 @@ const INTERNAL = [
   ['js/migrate.js', /sightline\./g],                          // moving old saved data
   ['index.html', /'sightline\.settings\.v1'/g],                 // the theme before the move runs
   ['sw.js', /'sightline-v1'|'sightline-'/g],                    // clearing the old offline caches
-  ['js/features.js', /sightline-psi\.vercel\.app/g],            // today's web address (until the domain switch)
+  ['js/features.js', /sightline-psi\.vercel\.app/g],            // Vercel's own address for the project
+  ['js/brand.js', /'sightline-psi\.vercel\.app'/g],             // the old address, to point it at the new one
   ['api/_lib/partner.js', /'sightline'/g], ['api/_lib/service.js', /'sightline'/g],   // a server-side default, never shown
   ['README.md', /sightline-psi\.vercel\.app|`sightline\.\*`|sightline\.\*|sightline\.…|Sightline became Sightrep|Sightline/g],   // notes for developers
 ];
@@ -209,4 +210,18 @@ test('The maskable app icon isn’t clipped on rounded phone icons', async () =>
     if (Math.max(px[i], px[i + 1], px[i + 2]) > 60) far = Math.max(far, Math.hypot(x - w / 2, y - h / 2));
   }
   assert(far > w * 0.2 && far <= w * 0.4, `the logo reaches ${(far / w * 100).toFixed(0)}% from the center (safe: 40%)`);
+});
+
+test('The old address says "Sightrep has a new home" (and only the old address)', () => {
+  assert(APP_URL === 'https://app.sightrep.app/' && OLD_HOSTS.join() === 'sightline-psi.vercel.app', 'addresses');
+  assert(movedFrom('sightline-psi.vercel.app') && movedFrom('SIGHTLINE-PSI.vercel.app'), 'the old address');
+  for (const host of ['app.sightrep.app', 'sightrep.app', 'www.sightrep.app', 'sightline-git-feature-x-crosby-aos.vercel.app', 'localhost', '', undefined]) {
+    assert(!movedFrom(host), `shown on ${host}`);
+  }
+  const card = /<section id="moved" class="moved"[^>]*hidden>[\s\S]*?<\/section>/.exec(html)?.[0];
+  assert(card, 'hidden until the app decides');
+  assert(card.includes(`href="${APP_URL}"`) && /target="_blank" rel="noopener"/.test(card), 'a button to the new address (opens Safari from an installed app)');
+  assert(/Your settings start fresh there; your leaderboard scores are safe\./.test(card) && /same leaderboard name/.test(card), 'says what carries over');
+  const main = read('js/main.js');
+  assert(/\$\('moved'\)\.hidden = !\(movedFrom\(location\.hostname\) \|\| new URLSearchParams\(location\.search\)\.has\('moved'\)\);/.test(main), 'shown only by movedFrom (or ?moved=1 to check it)');
 });

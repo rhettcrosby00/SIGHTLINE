@@ -247,7 +247,7 @@ a session). The version number shows at the bottom of the start screen.
 | https://app.sightrep.app | the app |
 | https://sightrep.app | the marketing site (for now, the app too) |
 | https://www.sightrep.app | permanent (301) redirect to sightrep.app |
-| sightline-psi.vercel.app | Vercel's own name for the project (preview links work as before) |
+| sightline-psi.vercel.app | Vercel's own name for the project (preview links work as before). Opened there, home shows "Sightrep has a new home" with a button to app.sightrep.app (`movedFrom` in `js/brand.js`); plan: a permanent redirect to app.sightrep.app about two weeks after 5.0. |
 
 DNS is on Cloudflare, every record **DNS only** (gray cloud): CNAMEs for `@`, `app` and `www` to
 the target Vercel shows under the project's **Settings → Domains**. Cloudflare Email Routing adds
