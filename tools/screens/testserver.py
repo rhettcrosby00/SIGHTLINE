@@ -21,12 +21,14 @@ class H(http.server.SimpleHTTPRequestHandler):
             cone = q.pop('cone', '')
             last = q.pop('last', '')     # {"focus": ..., "move": ...} (Run last)
             name = q.pop('name', '')     # the remembered leaderboard name
+            legacy = q.pop('legacy', '')  # save under the old sightline.* keys (checks the move to sightrep.*)
             html = open(APP + '/index.html', encoding='utf-8').read()
-            inject = f"<script>localStorage.setItem('sightline.settings.v1', JSON.stringify({json.dumps(q)}));</script>"
-            if cone: inject += "<script>localStorage.setItem('sightline.cone.v1', " + json.dumps(cone) + ");</script>"
-            if last: inject += "<script>localStorage.setItem('sightline.last.v2', " + json.dumps(last) + ");</script>"
-            if name: inject += "<script>localStorage.setItem('sightline.name.v1', " + json.dumps(json.dumps(name)) + ");</script>"
+            inject = f"<script>localStorage.setItem('sightrep.settings.v1', JSON.stringify({json.dumps(q)}));</script>"
+            if cone: inject += "<script>localStorage.setItem('sightrep.cone.v1', " + json.dumps(cone) + ");</script>"
+            if last: inject += "<script>localStorage.setItem('sightrep.last.v2', " + json.dumps(last) + ");</script>"
+            if name: inject += "<script>localStorage.setItem('sightrep.name.v1', " + json.dumps(json.dumps(name)) + ");</script>"
             if nostorage: inject += "<script>Object.defineProperty(window, 'localStorage', { get() { throw new Error('storage blocked'); } });</script>"
+            if legacy: inject = inject.replace("'sightrep.", "'sightline.")
             html = html.replace('<head>', '<head>' + inject, 1)
             b = html.encode()
             self.send_response(200); self.send_header('Content-Type','text/html'); self.send_header('Content-Length',str(len(b))); self.end_headers(); self.wfile.write(b); return

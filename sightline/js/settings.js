@@ -9,7 +9,7 @@ import { GET_SET_S } from './cone/config.js';
 import { isOn } from './features.js';
 import { esc } from './lib/text.js';
 
-const STORAGE_KEY = 'sightline.settings.v1';
+const STORAGE_KEY = 'sightrep.settings.v1';
 const GET_SET = Array.from({ length: GET_SET_S[1] - GET_SET_S[0] + 1 }, (_, i) => String(GET_SET_S[0] + i));
 
 // Every choice the Settings screen offers.

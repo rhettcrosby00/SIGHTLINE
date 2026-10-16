@@ -38,7 +38,7 @@ export function streakOf(days, today = new Date()) {
   return { thisWeek, streak };
 }
 
-const KEY = 'sightline.training.v1';
+const KEY = 'sightrep.training.v1';
 function defaultStorage() {
   try { return globalThis.localStorage ?? null; } catch { return null; }
 }

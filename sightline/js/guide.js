@@ -45,7 +45,7 @@ const SIDES = `
 
 // getSettings / updateSetting from js/settings.js; onDone() when finished or skipped.
 export function showFirstRun({ getSettings, updateSetting, onDone = () => {} }) {
-  const el = overlay('Set up Sightline');
+  const el = overlay('Set up Sightrep');
   const s = getSettings();
   const pick = { sport: s.sport, position: s.position, cue: s.cue, name: lastName.get() };
   let step = 1;
@@ -63,7 +63,7 @@ export function showFirstRun({ getSettings, updateSetting, onDone = () => {} }) 
 
   const render = () => {
     if (step === 1) {
-      el.innerHTML = card({ step: 1, of: 3, title: 'Welcome to Sightline', body: `${SIDES}
+      el.innerHTML = card({ step: 1, of: 3, title: 'Welcome to Sightrep', body: `${SIDES}
         <p class="guide__muted">Three quick questions (about 30 seconds), all changeable later in Settings.</p>`, next: 'Set up' });
     } else if (step === 2) {
       const sp = sportById[pick.sport] ?? sportById.general;
@@ -151,7 +151,7 @@ const PANELS = [
 ];
 
 export function showGuide() {
-  const el = overlay('How Sightline works');
+  const el = overlay('How Sightrep works');
   let i = 0;
   const render = () => {
     const last = i === PANELS.length - 1;

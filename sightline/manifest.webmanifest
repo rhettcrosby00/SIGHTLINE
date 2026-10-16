@@ -1,7 +1,7 @@
 {
-  "name": "Sightline — Game Ready warm-up",
-  "short_name": "Sightline",
-  "description": "A pre-game visual reaction and cognitive warm-up.",
+  "name": "Sightrep",
+  "short_name": "Sightrep",
+  "description": "Reps for your eyes. A pre-game visual reaction and focus warm-up for athletes.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -24,11 +24,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
     }
   ]
 }

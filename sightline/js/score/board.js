@@ -4,8 +4,8 @@
 // this phone and posts when the connection comes back.
 
 const API = '/api/leaderboard';
-const QUEUE_KEY = 'sightline.lbqueue.v1';
-const NAME_KEY = 'sightline.name.v1';
+const QUEUE_KEY = 'sightrep.lbqueue.v1';
+const NAME_KEY = 'sightrep.name.v1';
 
 const store = {
   get(k, fallback) { try { return JSON.parse(localStorage.getItem(k) ?? 'null') ?? fallback; } catch { return fallback; } },

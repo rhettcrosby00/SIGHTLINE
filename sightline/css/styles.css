@@ -1,4 +1,4 @@
-/* Sightline styles. Every value comes from css/tokens.css. */
+/* Sightrep styles. Every value comes from css/tokens.css. */
 
 /* ---------- Base ---------- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -18,10 +18,6 @@ body {
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; touch-action: manipulation; text-align: inherit; }
 :focus-visible { outline: 2px solid var(--side-text); outline-offset: 3px; }
 .icon { flex: none; display: block; }
-.visually-hidden {
-  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-}
 
 /* Logo versions: white+lime on dark, black on light/outdoor */
 .on-light { display: none !important; }
@@ -88,8 +84,11 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .icon-btn:active { background: var(--raised); }
 
 /* ---------- Home ---------- */
-.home__top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.home__logo { height: 26px; width: auto; }
+.home__top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+/* The wordmark, as text until the Sightrep logo files arrive: "rep" in the accent. */
+.home__brand { display: grid; gap: 6px; padding-top: var(--space-1); }
+.home__logo .logo { height: 34px; width: auto; }
+.home__tagline { color: var(--muted); font-size: 0.9375rem; font-weight: 600; }
 .home__nav { display: flex; margin-right: calc(-1 * var(--space-2)); }
 .banner__btn {
   width: 100%; min-height: var(--tap); display: flex; align-items: center; justify-content: center; gap: var(--space-2);
@@ -193,7 +192,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .list__row--button .icon { color: var(--muted); }
 
 .about { display: grid; gap: var(--space-5); }
-.about__logo { width: 64px; height: auto; }
+.about__logo .logo { width: 150px; height: auto; }
 .about__lead { font-size: var(--text-title); line-height: 1.3; font-weight: 600; max-width: 30ch; }
 .about__text { color: var(--muted); max-width: 60ch; }
 .about__text b { color: var(--text); font-weight: 600; }
@@ -255,7 +254,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .head__value { margin-top: var(--space-1); font-weight: 700; font-size: var(--text-title); line-height: 1.15; }
 .head__value small { color: var(--muted); font-size: var(--text-caption); font-weight: 600; text-transform: uppercase; }
 .sum__top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.sum__logo { width: 32px; height: auto; }
+.sum__logo { width: 34px; height: auto; }
+.lb-nav { position: relative; }
+.lb-title__logo { position: absolute; right: 0; top: 6px; width: 34px; height: auto; }
 
 /* ---------- First-run guide (bottom sheet) ---------- */
 .guide { position: fixed; inset: 0; z-index: 10; display: grid; align-items: end; background: var(--scrim); }

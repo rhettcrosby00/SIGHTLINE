@@ -1,16 +1,45 @@
-// Saved-data upgrades for the FOCUS / MOVE split (v2.0) and the presets
-// (v4.0). Nothing an athlete saved before the update is lost:
-//   sightline.settings.v1  FOCUS options + theme + cue word (same key; the old
+// Saved-data upgrades: the rename to Sightrep (v5.0), the FOCUS / MOVE split
+// (v2.0) and the presets (v4.0). Nothing an athlete saved before the update is lost:
+//   sightline.*            → sightrep.* (every key, once: renameSavedData, below)
+//   sightrep.settings.v1  FOCUS options + theme + cue word (same key; the old
 //                          Tap/Cones "mode" is simply dropped, see settings.js)
-//   sightline.cone.v1      MOVE custom setup, distance included (unchanged)
-//   sightline.last.v1      → sightline.last.v2, below
+//   sightrep.cone.v1      MOVE custom setup, distance included (unchanged)
+//   sightrep.last.v1      → sightrep.last.v2, below
 // Pure helpers plus a small store, so the tests can check the upgrade.
 
 import { FOCUS_SESSIONS } from './plan.js';
 import { parseRunKey } from './presets.js';
 
-export const LAST_KEY = 'sightline.last.v2';
-export const OLD_LAST_KEY = 'sightline.last.v1';
+// v5.0: Sightline became Sightrep. Every key the app saved as "sightline.…"
+// moves to "sightrep.…" before anything reads it (main.js runs this first), so
+// settings, My Routine, drill levels, setups and the leaderboard name all carry
+// over. A key already saved under the new name wins. The old key is removed
+// only once the new one is safely written. Returns how many moved.
+export const OLD_PREFIX = 'sightline.';
+export const PREFIX = 'sightrep.';
+export function renameSavedData(storage = safeStorage()) {
+  let moved = 0;
+  let keys = [];
+  try {
+    for (let i = 0; i < storage.length; i++) keys.push(storage.key(i));
+  } catch {
+    return 0;   // storage blocked: nothing saved, nothing to move
+  }
+  for (const key of keys.filter((k) => k?.startsWith(OLD_PREFIX))) {
+    try {
+      const to = PREFIX + key.slice(OLD_PREFIX.length);
+      if (storage.getItem(to) === null) {
+        storage.setItem(to, storage.getItem(key));
+        moved++;
+      }
+      if (storage.getItem(to) !== null) storage.removeItem(key);
+    } catch { /* full or blocked: the old key stays, so nothing is lost */ }
+  }
+  return moved;
+}
+
+export const LAST_KEY = 'sightrep.last.v2';
+export const OLD_LAST_KEY = 'sightrep.last.v1';
 export const MOVE_RUN_IDS = ['custom', 'signals'];
 // Single FOCUS parts (the main sessions run as presets now).
 const FOCUS_IDS = FOCUS_SESSIONS.map((s) => s.id).filter((id) => id !== 'game' && id !== 'training');

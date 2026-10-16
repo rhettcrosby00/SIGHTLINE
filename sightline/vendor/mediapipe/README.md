@@ -1,8 +1,8 @@
 # MediaPipe Face Landmarker (Eye Check beta)
 
-Served by Sightline itself so the camera frames never go to another server, and
+Served by Sightrep itself so the camera frames never go to another server, and
 loaded only when an athlete turns Eye Check on (`js/eye/index.js`). The service
-worker saves these on first use in their own cache (`sightline-eye-v1`).
+worker saves these on first use in their own cache (`sightrep-eye-v1`).
 
 | File | From | SHA-256 |
 |---|---|---|

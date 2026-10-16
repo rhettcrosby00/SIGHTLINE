@@ -325,9 +325,9 @@ test('Privacy: no video or image is saved or sent; Eye Check talks to no server'
   assert((idx.match(/getImageData/g) ?? []).length === 1 && /getImageData\(0, 0, 16, 12\)/.test(idx) && /clearRect\(0, 0, 16, 12\)/.test(idx), 'only a 16 × 12 brightness reading, then cleared');
   const bundle = read('vendor/mediapipe/vision_bundle.mjs');
   assert(!/https?:\/\//.test(bundle), 'the face tracker has no web addresses');
-  assert(/VENDOR = new URL\('\.\.\/\.\.\/vendor\/mediapipe\/', import\.meta\.url\)/.test(idx), 'loaded from Sightline itself');
+  assert(/VENDOR = new URL\('\.\.\/\.\.\/vendor\/mediapipe\/', import\.meta\.url\)/.test(idx), 'loaded from Sightrep itself');
   const sw = read('sw.js');
-  assert(!sw.includes("'./vendor/mediapipe/") && /EYE_CACHE = 'sightline-eye-v1'/.test(sw), 'not precached for everyone; saved on first use');
+  assert(!sw.includes("'./vendor/mediapipe/") && /EYE_CACHE = 'sightrep-eye-v1'/.test(sw), 'not precached for everyone; saved on first use');
 });
 
 test('Eye data never reaches scoring or the leaderboard', () => {

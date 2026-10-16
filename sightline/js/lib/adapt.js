@@ -34,7 +34,7 @@ export function createLevel(saved, difficulty = 'normal', { training = false } =
 // a + (b − a) × level, for turning a level into a drill's numbers.
 export const lerp = (a, b, level) => a + (b - a) * level;
 
-const KEY = 'sightline.levels.v1';
+const KEY = 'sightrep.levels.v1';
 function defaultStorage() {
   try { return globalThis.localStorage ?? null; } catch { return null; }
 }

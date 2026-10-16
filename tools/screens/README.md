@@ -1,6 +1,6 @@
 # Screen checks
 
-Headless Chrome screenshots of Sightline at exact phone sizes (iPhone SE 375×667 and
+Headless Chrome screenshots of Sightrep at exact phone sizes (iPhone SE 375×667 and
 Pro Max 430×932) in light, dark and outdoor, each in a fresh browser. Every shot also lists
 layout problems: sideways scrolling, text that spills, tap targets under 48 px, overlapping
 buttons, and expected text that's missing. Nothing here is served by Vercel.

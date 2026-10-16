@@ -1,4 +1,4 @@
-# Sightline
+# Sightrep
 
 A pre-game visual reaction and cognitive warm-up for athletes. Two sides, each opening with
 three presets, so starting anything takes two taps from home (the side, then the preset) and
@@ -16,7 +16,7 @@ Presets live in `js/presets.js` (FOCUS) and `MOVE_PRESETS` in `js/cone/config.js
 **Game Day or Training** is a switch at the top of each side (one setting, remembered on the
 phone). Game Day stays short and calm and ends easy; Training (non-game days) is longer and
 harder, and each side shows this week's training days against 2–4 and a weekly streak
-(`js/lib/streak.js`, this phone only). Sightline is a warm-up tool, not a medical, diagnostic or
+(`js/lib/streak.js`, this phone only). Sightrep is a warm-up tool, not a medical, diagnostic or
 treatment tool. There are no accounts.
 
 ## FOCUS
@@ -74,7 +74,7 @@ down and the countdown gives time to get to the start.
 Saccade Jumps and Smooth Pursuit. Never in MOVE or Gaze Stabilization.
 
 - **How**: MediaPipe Face Landmarker (iris landmarks, eye blendshapes, head pose) runs on the
-  phone from `vendor/mediapipe/` (served by Sightline, saved on first use). A 10-second,
+  phone from `vendor/mediapipe/` (served by Sightrep, saved on first use). A 10-second,
   five-dot calibration (center and corners) fits a small model from those to the screen
   (`js/eye/math.js`); live tips first (face in view, light, phone at arm's length,
   sunglasses). The gaze is smoothed (One Euro filter) and treated as a general direction:
@@ -161,7 +161,7 @@ distance, rep style (Out and back, First step, Cone to cone) and pace.
   Low Power Mode or Battery Saver refusing it, or the lock dropped), a tip says to turn those off
   or set Auto-Lock to Never. A web app can't see Low Power Mode itself.
 - **Install** (`js/install.js`): after the first finished session, the summary shows how to add
-  Sightline to the home screen (iPhone: Share → Add to Home Screen; Android: ⋮ → Install app, or
+  Sightrep to the home screen (iPhone: Share → Add to Home Screen; Android: ⋮ → Install app, or
   Chrome's own Install button). Safari can clear a website's saved data after about 7 days
   without a visit; home-screen apps keep it. "Not now" hides it for a week.
 - **Offline**: every file is precached (`sw.js`); scores wait on the phone and post later, and
@@ -240,6 +240,21 @@ a session). The version number shows at the bottom of the start screen.
   Settings → Environment Variables → `COACH_PIN`. The database address never appears in the app.
 - `/api/leaderboard?action=health` shows `{ db, coach }` (true/false only).
 
+## Web addresses
+
+| Address | What it is |
+|---|---|
+| https://app.sightrep.app | the app |
+| https://sightrep.app | the marketing site (for now, the app too) |
+| https://www.sightrep.app | permanent (301) redirect to sightrep.app |
+| sightline-psi.vercel.app | Vercel's own name for the project (preview links work as before) |
+
+DNS is on Cloudflare, every record **DNS only** (gray cloud): CNAMEs for `@`, `app` and `www` to
+the target Vercel shows under the project's **Settings → Domains**. Cloudflare Email Routing adds
+and locks its own MX, SPF and DKIM records (support@ and hello@ forward to the team inbox); leave
+them alone. `node ../tools/domains/check.mjs [version]` checks every address from outside: HTTPS
+certificates, redirects, the app version, and the email DNS (one SPF record, DMARC).
+
 ## Feature flags
 
 `js/features.js` holds switches for work in progress only. Add a new feature as
@@ -251,17 +266,17 @@ or a switch is never checked. `false` parks a feature: its code stays, off every
 
 ## Saved on the phone
 
-- `sightline.settings.v1`: the last preset's length and difficulty, instructions, theme, cue word, sport and position, Sounds, music mode, contrast, occlusion, Focus Check, Game Day or Training, the MOVE countdown, whether the first-run setup is done
-- `sightline.routine.v1`: My Routine (breath, imagery line, quiet-eye seconds)
-- `sightline.levels.v1`: each drill's adaptive difficulty level
-- `sightline.check.v1`: the last 10 Focus Check times
-- `sightline.training.v1`: training days (last 120 days), for the weekly streak
-- `sightline.cone.v1` / `sightline.signals.v1`: MOVE custom setup / Signals Only setup
-- `sightline.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
-- `sightline.name.v1`, `sightline.lbqueue.v1`: last leaderboard name; scores waiting to post
-- `sightline.last.v2`: "Run last" for each side: a preset (`game:speed`), a FOCUS part or a MOVE setup (older saves upgraded by `js/migrate.js`)
-- `sightline.install.v1`: finished sessions and "Not now" for the install card
-- `sightline.variety.v1`, `sightline.seen.v1` (drills run, for Auto instructions)
+- `sightrep.settings.v1`: the last preset's length and difficulty, instructions, theme, cue word, sport and position, Sounds, music mode, contrast, occlusion, Focus Check, Game Day or Training, the MOVE countdown, whether the first-run setup is done
+- `sightrep.routine.v1`: My Routine (breath, imagery line, quiet-eye seconds)
+- `sightrep.levels.v1`: each drill's adaptive difficulty level
+- `sightrep.check.v1`: the last 10 Focus Check times
+- `sightrep.training.v1`: training days (last 120 days), for the weekly streak
+- `sightrep.cone.v1` / `sightrep.signals.v1`: MOVE custom setup / Signals Only setup
+- `sightrep.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
+- `sightrep.name.v1`, `sightrep.lbqueue.v1`: last leaderboard name; scores waiting to post
+- `sightrep.last.v2`: "Run last" for each side: a preset (`game:speed`), a FOCUS part or a MOVE setup (older saves upgraded by `js/migrate.js`)
+- `sightrep.install.v1`: finished sessions and "Not now" for the install card
+- `sightrep.variety.v1`, `sightrep.seen.v1` (drills run, for Auto instructions)
 
 ## Randomness and variety
 
@@ -292,20 +307,33 @@ Screen checks (every screen at iPhone SE and Pro Max sizes, light, dark and outd
 layout problems listed) live outside the app in `../tools/screens/`; see its README. The `eye`
 set runs Eye Check with Chrome's fake camera, the real face tracker and `?eyesim`.
 
-## Logo files
+## Name, tagline and logo
 
-`assets/logo/` holds the original brand sheet (`sightline-brand-sheet.webp`) and SVGs traced
-from it:
-- `logo-mark`, `logo-horizontal` and `logo-wordmark` are for dark backgrounds.
-- The `-mono-dark` versions are for light backgrounds.
+The name and tagline live in `js/brand.js` (`BRAND`); `index.html` and `manifest.webmanifest`
+repeat them for link previews and the home-screen icon, and `tests/brand.js` checks they agree.
 
-If the designer provides the original vector files, replace these and regenerate the icons.
+The logo (traced from the brand board, approved 2026-10-16) is one component, `logo()` in
+`js/brand.js`, used on Home (full logo), About (stacked), the summary and the leaderboard
+(icon); the splash in `index.html` uses the same files. Every logo shows the dark version on dark
+screens and the light one (black + deep lime #3F5C00) on light and outdoor. All files are made
+from two masters by `tools/brand/make.py` (run `python3 tools/brand/make.py` from the repo root),
+so swapping the logo is one change: replace the masters and run it.
+
+- `assets/logo/logo-icon.svg`, `logo-wordmark.svg`: the masters (lime #B7FF00 and white)
+- `logo-{icon,wordmark,horizontal,stacked}{,-light,-white,-black}.svg`: every version
+- `logo-reticle(-light).svg`: the browser tab icon (no SR: it's unreadable at 16–32 px)
+- `icons/`: app icons 192 / 512 / maskable 512 (inside the safe circle), Apple 180, favicon SVG + 32 / 16
+- `assets/share.png`: link previews (1200 × 630, logo + tagline)
+- `splash/`: iPhone launch pictures, one per screen size (linked in `index.html`)
+
+Saved data moved from `sightline.*` to `sightrep.*` keys in v5.0 (`renameSavedData` in `js/migrate.js`).
 
 ## Where things live
 
 | File | What it does |
 |---|---|
 | `js/main.js` | Home (two sides, Run last), Settings, About, offline support |
+| `js/brand.js` | The name, the tagline and the logo component |
 | `js/presets.js` | Quick / Standard / Game Speed, Run last keys, the Game Day / Training switch |
 | `js/guide.js`, `js/install.js` | First-run setup and How it works; the Add to Home Screen card |
 | `js/focus.js` | The FOCUS screen (readiness, presets, Advanced) and session flow |
@@ -345,7 +373,7 @@ If the designer provides the original vector files, replace these and regenerate
 
 ## Research and sources
 
-Sightline is a focus, reaction and readiness warm-up. It isn't a vision, concussion or medical
+Sightrep is a focus, reaction and readiness warm-up. It isn't a vision, concussion or medical
 assessment. The design follows these findings: short game-day sessions, sport-like and
 movement-based drills over generic brain games, and the strongest evidence for breathing,
 routines, quiet eye, imagery and self-talk. Real gains take repetition (2–4 sessions a week for

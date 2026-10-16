@@ -1,4 +1,4 @@
-// Settings every shot starts from (sightline.settings.v1), plus the shots.
+// Settings every shot starts from (sightrep.settings.v1), plus the shots.
 // A shot: { name, set?, cone?, last?, player?, firstRun?, params?, steps?, expect?, combos? }
 //   last: Run last ({ focus, move }); player: the remembered leaderboard name;
 //   firstRun: show the first-run setup (otherwise ?noguide=1 skips it)
@@ -15,7 +15,13 @@ const MOVE_QUICK = [['click', '#btn-move'], ['click', '[data-run="game:quick"]']
 
 export const SHOTS = [
   // Home: two choices only, each with Run last once something has run.
-  { name: 'home', expect: ['#btn-focus-open:not([hidden])', '#btn-move-open:not([hidden])', 'Choose a preset'] },
+  { name: 'home', expect: ['#btn-focus-open:not([hidden])', '#btn-move-open:not([hidden])', 'Choose a preset', 'Reps for your eyes.', 'js:document.title === "Sightrep"', 'js:!/sightline/i.test(document.body.innerText)'] },
+  // A phone with Sightline-era saved data: everything carries over under the new keys.
+  { name: 'home-migrated', params: 'legacy=1', set: { appearance: 'dark', cue: 'EYES UP' }, last: { focus: 'game:standard', move: 'game:speed' }, player: 'Jordan',
+    expect: ['Run last', 'Standard · 8 min', 'js:document.documentElement.dataset.appearance === JSON.parse(localStorage.getItem("sightrep.settings.v1")).appearance', 'js:JSON.parse(localStorage.getItem("sightrep.name.v1")) === "Jordan"',
+      'js:JSON.parse(localStorage.getItem("sightrep.settings.v1")).cue === "EYES UP"', 'js:!Object.keys(localStorage).some((k) => k.startsWith("sightline."))'], combos: 'few' },
+  // The splash (put back from index.html after the app has started, to see it).
+  { name: 'splash', steps: [['eval', "fetch('index.html').then((r) => r.text()).then((t) => document.body.insertAdjacentHTML('afterbegin', /<div id=\"splash\"[\\s\\S]*?<\\/div>/.exec(t)[0]))"], ['wait', 600]], expect: ['#splash .splash__logo'] },
   { name: 'home-last', last: LAST, expect: ['Run last', 'Standard · 8 min', 'Game Speed · 5 min', '#btn-focus-open[hidden]'] },
   { name: 'home-last-long', last: { focus: 'training:speed', move: 'training:speed' }, expect: ['Game Speed · Training · 15 min'], combos: 'few' },
   // Each side: Game Day / Training, presets, Advanced.
@@ -37,7 +43,7 @@ export const SHOTS = [
   // Auto-pause when the app is left.
   { name: 'auto-pause', steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-session.is-active'], ['wait', 500], ['eval', "window.dispatchEvent(new Event('pagehide'))"], ['wait', 300]], expect: ['You left the app or the screen locked.', 'Resume'] },
   // Finishing: the score saves on its own under the remembered name; install card; Next: Move.
-  { name: 'focus-done', player: 'Jordan', params: `${FAST}&only=colorcall`, steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-done.is-active', 90000], ['waitFor', '.lb-inline__line .link-btn', 15000], ['wait', 300]], expect: ['Next: Move', 'for Jordan', 'Add Sightline to your home screen'] },
+  { name: 'focus-done', player: 'Jordan', params: `${FAST}&only=colorcall`, steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-done.is-active', 90000], ['waitFor', '.lb-inline__line .link-btn', 15000], ['wait', 300]], expect: ['Next: Move', 'for Jordan', 'Add Sightrep to your home screen'] },
   { name: 'focus-done-end', player: 'Jordan', params: `${FAST}&only=colorcall`, steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-done.is-active', 90000], ['waitFor', '.lb-inline__line .link-btn', 15000], ['scrollEnd']], combos: 'few' },
   { name: 'focus-done-first', params: `${FAST}&only=colorcall`, steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-name.is-active', 90000], ['wait', 1200]], expect: ['Your name'], combos: 'few' },
   { name: 'move-done', player: 'Jordan', params: FAST, steps: [['click', '#btn-move'], ['click', '[data-run="game:quick"]'], ['waitFor', '#screen-cone-done.is-active', 90000], ['waitFor', '.lb-inline__line .link-btn', 15000], ['wait', 300]], expect: ['Quick complete', 'for Jordan', 'How was the pace?'] },
@@ -50,7 +56,7 @@ export const SHOTS = [
   // Focus Check: Training only.
   { name: 'check', set: { day: 'training', focusCheck: 'on' }, steps: [['click', '#btn-focus'], ['click', '[data-preset="standard"]'], ['waitFor', '.fc-intro', 8000], ['wait', 300]], expect: ['Focus Check', 'About 30 seconds'], combos: 'few' },
   // First-run setup, step by step.
-  { name: 'first-run-1', firstRun: true, steps: [['waitFor', '.guide__card', 8000]], expect: ['Welcome to Sightline', 'Set up'] },
+  { name: 'first-run-1', firstRun: true, steps: [['waitFor', '.guide__card', 8000]], expect: ['Welcome to Sightrep', 'Set up'] },
   { name: 'first-run-2', firstRun: true, steps: [['click', '.guide__next']], expect: ['Your sport and cue word', 'Your cue word', 'ATTACK'] },
   { name: 'first-run-3', firstRun: true, steps: [['click', '.guide__next'], ['click', '.guide__next']], expect: ['Your leaderboard name'] },
 ];

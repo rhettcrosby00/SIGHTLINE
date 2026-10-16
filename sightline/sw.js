@@ -3,19 +3,19 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v4.2';
-const CACHE = `sightline-${CACHE_VERSION}`;
+const CACHE_VERSION = 'v5.0';
+const CACHE = `sightrep-${CACHE_VERSION}`;
 
 // Google Fonts (Archivo + Schibsted Grotesk) live in their own cache that
 // survives app updates. Keep FONT_CSS identical to the <link> in index.html.
-const FONT_CACHE = 'sightline-fonts-v1';
+const FONT_CACHE = 'sightrep-fonts-v1';
 const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap';
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 // Eye Check (beta) only: MediaPipe face tracking (about 15 MB) is saved on
 // first use, in its own cache that survives app updates, and never precached
 // (most phones never need it).
-const EYE_CACHE = 'sightline-eye-v1';
+const EYE_CACHE = 'sightrep-eye-v1';
 const EYE_PATH = '/vendor/mediapipe/';
 
 const ASSETS = [
@@ -34,6 +34,7 @@ const ASSETS = [
   './js/myroutine.js',
   './js/plan.js',
   './js/presets.js',
+  './js/brand.js',
   './js/eye/index.js',
   './js/eye/math.js',
   './js/eye/sim.js',
@@ -98,17 +99,18 @@ const ASSETS = [
   './js/cone/cues/number.js',
   './js/cone/cues/sport.js',
   './icons/apple-touch-icon.png',
+  './icons/favicon-16.png',
   './icons/favicon-32.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',
   './icons/icon.svg',
-  './assets/logo/logo-horizontal-mono-dark.svg',
   './assets/logo/logo-horizontal.svg',
-  './assets/logo/logo-mark-mono-dark.svg',
-  './assets/logo/logo-mark.svg',
-  './assets/logo/logo-wordmark-mono-dark.svg',
-  './assets/logo/logo-wordmark.svg',
+  './assets/logo/logo-horizontal-light.svg',
+  './assets/logo/logo-icon.svg',
+  './assets/logo/logo-icon-light.svg',
+  './assets/logo/logo-stacked.svg',
+  './assets/logo/logo-stacked-light.svg',
 ];
 
 self.addEventListener('install', (e) => {
@@ -116,7 +118,7 @@ self.addEventListener('install', (e) => {
   // have no banner, so when replacing v1 take over right away (one time).
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS))
     .then(() => cacheFonts().catch(() => {}))   // offline fonts are a bonus, never a blocker
-    .then(() => caches.has('sightline-v1'))
+    .then(() => caches.has('sightline-v1'))   // the v1 cache kept the app's old name
     .then((fromV1) => { if (fromV1) self.skipWaiting(); }));
 });
 
@@ -138,7 +140,7 @@ self.addEventListener('message', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k.startsWith('sightline-') && k !== CACHE && k !== FONT_CACHE && k !== EYE_CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => (k.startsWith('sightrep-') || k.startsWith('sightline-')) && k !== CACHE && k !== FONT_CACHE && k !== EYE_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });

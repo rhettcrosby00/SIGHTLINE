@@ -3,7 +3,7 @@
 // ?eyesim (a pretend face, js/eye/sim.js) so calibration, drill feedback and
 // the summary can be seen. Every shot spies on the camera and the network:
 //   CAMERA_OFF  every camera stream the app opened has ended
-//   PRIVATE     only GETs to Sightline itself, plus the score upload (with no eye data in it)
+//   PRIVATE     only GETs to Sightrep itself, plus the score upload (with no eye data in it)
 // Same shot format as main.mjs.
 import { BASE as MAIN } from './main.mjs';
 

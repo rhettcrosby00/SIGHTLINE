@@ -7,11 +7,11 @@
 // and time, plus a row per drill.
 
 import { esc } from '../lib/text.js';
+import { logo } from '../brand.js';
 import { STATE_LABELS } from './readiness.js';
 
-// Small logo mark for result screens (white+lime on dark, black on light/outdoor).
-export const SUM_LOGO = `<img class="sum__logo on-dark" src="assets/logo/logo-mark.svg" alt="Sightline logo" width="272" height="242">
-  <img class="sum__logo on-light" src="assets/logo/logo-mark-mono-dark.svg" alt="Sightline logo" width="272" height="242">`;
+// The small logo for result screens (js/brand.js: the dark version on dark, the light one on light and outdoor).
+export const SUM_LOGO = logo('icon', { cls: 'sum__logo' });
 
 const DONE = '<span class="row__val--done">Done</span>';
 const REACTION_DRILLS = new Set(['colorcall', 'gonogo', 'stroop', 'peripheral', 'capture']);
@@ -93,7 +93,7 @@ export function renderSummary(el, { title, results, settings, totalMs, readiness
       <div class="tiles">${tiles}</div>
       ${note ? `<p class="sum__note">${note}</p>` : ''}
       <ul class="sum__rows">${rows}</ul>
-      <p class="sum__foot">Results aren’t saved — each session stands alone. Sightline is a warm-up, not a medical or diagnostic tool.</p>
+      <p class="sum__foot">Results aren’t saved — each session stands alone. Sightrep is a warm-up, not a medical or diagnostic tool.</p>
       ${seed != null ? `<p class="sum__seed">Session code ${seed}</p>` : ''}
     </div>`;
 }

@@ -4,7 +4,7 @@
 // (Settings → Eye Check, off by default).
 //
 // Privacy: frames go straight from the camera into MediaPipe Face Landmarker
-// (vendor/mediapipe/, served by Sightline itself) on the phone. No video or
+// (vendor/mediapipe/, served by Sightrep itself) on the phone. No video or
 // image is recorded, saved or sent anywhere. Only a handful of numbers per
 // frame (an estimated gaze point) are kept, in memory, for this session's
 // summary, and dropped when the summary closes.
@@ -32,7 +32,7 @@ import {
 } from './ui.js';
 
 const VENDOR = new URL('../../vendor/mediapipe/', import.meta.url).href;
-// A tiny module that only loads with WebAssembly SIMD (the build Sightline ships).
+// A tiny module that only loads with WebAssembly SIMD (the build Sightrep ships).
 const SIMD_TEST = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11]);
 
 export const EYE_DRILLS = ['quieteye', 'peripheral', 'saccades', 'pursuit'];
