@@ -1,4 +1,0 @@
-{
-  "buildCommand": "node tests/run.js",
-  "outputDirectory": "."
-}

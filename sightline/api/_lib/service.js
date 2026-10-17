@@ -24,6 +24,31 @@ const SIDES = { focus: ['focus'], move: ['move'], all: ['focus', 'move'] };
 const FOCUS_IDS = FOCUS_SESSIONS.map((s) => s.id);
 const LENGTHS = ['quick', 'standard', 'full'];
 
+// The database address from the hosting settings, forgiving paste slips: spaces,
+// quotes, a leading "DATABASE_URL=", or a whole pasted block of settings (the
+// first database address in it is used). Empty when it isn't set.
+export function databaseUrl(env = {}) {
+  const raw = String(env.DATABASE_URL || env.POSTGRES_URL || '');
+  return /postgres(?:ql)?:\/\/[^\s"']+/.exec(raw)?.[0] ?? raw.trim();
+}
+
+// Why the database isn't connected, in words safe to show (never the address).
+export function databaseProblem(url, err) {
+  if (!url) return 'DATABASE_URL isn’t set';
+  if (!/^postgres(ql)?:\/\/[^/\s]+@[^/\s]+\/\S+/.test(url)) {
+    if (/^[•*●·\s]+$/.test(url)) return 'DATABASE_URL is hidden dots: copy the real value';
+    if (/[•*●·]{4,}/.test(url)) return 'DATABASE_URL was copied while hidden: click Show secret, then copy';
+    if (/\n/.test(url.trim())) return 'DATABASE_URL is a block of settings without the database address in it';
+    if (/^https?:/i.test(url)) return 'DATABASE_URL is a web address, not the database address';
+    if (/neon\.tech/i.test(url)) return 'DATABASE_URL is only part of the database address';
+    return 'DATABASE_URL doesn’t look like a database address';
+  }
+  if (!err) return null;
+  if (/password|auth/i.test(err.message ?? '')) return 'the database refused the password';
+  if (/ENOTFOUND|fetch failed|getaddrinfo|network/i.test(err.message ?? '')) return 'couldn’t reach the database';
+  return `the database didn’t answer (${err.name || 'error'})`;
+}
+
 export class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
@@ -79,7 +104,7 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
   }
 
   function checkToken(token) {
-    if (!tokenKey) fail(403, 'Coach tools are off. Add COACH_PIN in Vercel to turn them on.');
+    if (!tokenKey) fail(403, 'Coach tools are off. Add COACH_PIN in the hosting settings to turn them on.');
     const [exp, mac] = String(token ?? '').split('.');
     const ok = exp && mac && mac.length === 64 && timingSafeEqual(Buffer.from(mac, 'hex'), Buffer.from(sign(exp), 'hex'));
     if (!ok || Number(exp) < now()) fail(401, 'Enter the coach PIN again.');
@@ -136,7 +161,7 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
 
     // Coach: check the PIN and hand back a 30-minute token.
     async unlock({ pin: tried } = {}, ip = 'unknown') {
-      if (!pinHash) fail(403, 'Coach tools are off. Add COACH_PIN in Vercel to turn them on.');
+      if (!pinHash) fail(403, 'Coach tools are off. Add COACH_PIN in the hosting settings to turn them on.');
       if (await store.hit(`pin:${ip}`, LIMITS.pinWindowS, { peek: true }) >= LIMITS.pinTries) fail(429, 'Too many wrong PINs. Wait 15 minutes.');
       if (!timingSafeEqual(sha(`${secret}:${tried ?? ''}`), pinHash)) {
         await store.hit(`pin:${ip}`, LIMITS.pinWindowS);

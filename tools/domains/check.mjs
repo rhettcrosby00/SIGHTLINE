@@ -1,6 +1,7 @@
 // Checks every Sightrep web address from the outside: HTTPS works, redirects
-// are permanent and land on the right page, the app is the one we expect, and
-// email DNS is right (Cloudflare forwarding, exactly one SPF record, DMARC).
+// are permanent and land on the right page, the app is served by Cloudflare
+// Pages and is the version we expect, the server is connected, and email DNS
+// is right (Cloudflare forwarding, exactly one SPF record, DMARC).
 // usage: node tools/domains/check.mjs [expected app version]
 import { resolveMx, resolveTxt } from 'node:dns/promises';
 import { connect } from 'node:tls';
@@ -11,7 +12,7 @@ const ok = (name, pass, detail = '') => results.push({ name, pass, detail });
 
 async function head(url) {
   const res = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(15000) });
-  return { status: res.status, location: res.headers.get('location') };
+  return { status: res.status, location: res.headers.get('location'), server: res.headers.get('server'), vercel: res.headers.has('x-vercel-id') };
 }
 function cert(host) {
   return new Promise((resolve) => {
@@ -25,22 +26,26 @@ function cert(host) {
 }
 
 const OPTIONAL = process.env.GETSIGHTREP ? ['getsightrep.com', 'www.getsightrep.com'] : [];
-// Each address: what it should do.
+// Each address: what it should do. One app address (app.sightrep.app), so a
+// phone's saved data and its key live in one place; sightrep.app points there
+// until the marketing site exists.
+const APP = 'https://app.sightrep.app/';
 const SITES = [
-  { url: 'https://app.sightrep.app/', expect: 200 },
-  { url: 'https://sightrep.app/', expect: 200 },
-  { url: 'https://www.sightrep.app/', expect: [301, 308], to: 'https://sightrep.app/' },
-  { url: 'http://app.sightrep.app/', expect: [301, 308], to: 'https://app.sightrep.app/' },
-  { url: 'http://sightrep.app/', expect: [301, 308], to: 'https://sightrep.app/' },
-  ...OPTIONAL.map((h) => ({ url: `https://${h}/`, expect: [301, 308], to: 'https://sightrep.app/' })),
+  { url: APP, expect: 200, cloudflare: true },
+  { url: 'https://sightrep.app/', expect: [301, 308], to: APP },
+  { url: 'https://www.sightrep.app/', expect: [301, 308], to: APP },
+  { url: 'http://app.sightrep.app/', expect: [301, 308], to: APP },
+  { url: 'http://sightrep.app/', expect: [301, 308], to: ['https://sightrep.app/', APP] },
+  ...OPTIONAL.map((h) => ({ url: `https://${h}/`, expect: [301, 308], to: APP })),
 ];
 
 for (const s of SITES) {
   try {
     const r = await head(s.url);
     const codes = [].concat(s.expect);
-    const lands = !s.to || (r.location && new URL(r.location, s.url).href === s.to);
-    ok(`${s.url} → ${s.to ?? 'page'}`, codes.includes(r.status) && lands, `${r.status}${r.location ? ` → ${r.location}` : ''}`);
+    const lands = !s.to || (r.location && [].concat(s.to).includes(new URL(r.location, s.url).href));
+    ok(`${s.url} → ${[].concat(s.to ?? 'page')[0]}`, codes.includes(r.status) && lands, `${r.status}${r.location ? ` → ${r.location}` : ''}`);
+    if (s.cloudflare) ok(`${s.url} is served by Cloudflare Pages`, r.server === 'cloudflare' && !r.vercel, `server: ${r.server}${r.vercel ? ', still Vercel' : ''}`);
   } catch (e) {
     ok(s.url, false, e.message);
   }
@@ -54,6 +59,8 @@ if (want) {
   const v = /APP_VERSION = '([\d.]+)'/.exec(js)?.[1];
   ok(`app.sightrep.app runs version ${want}`, v === want, `found ${v}`);
 }
+const health = await fetch(`${APP}api/leaderboard?action=health`, { cache: 'no-store' }).then((r) => r.json()).catch((e) => ({ error: e.message }));
+ok('Leaderboard server connected (database and coach PIN)', health.db === true && health.coach === true, JSON.stringify(health));
 const mx = (await resolveMx('sightrep.app').catch(() => [])).map((m) => m.exchange);
 ok('Email: Cloudflare forwarding (MX)', mx.length > 0 && mx.every((m) => m.endsWith('mx.cloudflare.net')), mx.join(', '));
 const spf = (await resolveTxt('sightrep.app').catch(() => [])).map((t) => t.join('')).filter((t) => t.startsWith('v=spf1'));

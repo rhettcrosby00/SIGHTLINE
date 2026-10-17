@@ -1,0 +1,8 @@
+# Cloudflare Pages settings for Sightrep. The dashboard shows these but can't
+# change them. Build command (set in the dashboard): npm run build
+# Database address and coach PIN: Cloudflare → the project → Settings →
+# Variables and Secrets (DATABASE_URL, COACH_PIN), never in this file.
+name = "sightrep"
+pages_build_output_dir = "./dist"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]   # node:crypto for the coach PIN and Partner codes

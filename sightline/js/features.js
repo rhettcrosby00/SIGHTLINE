@@ -1,4 +1,4 @@
-// Feature flags. 'preview' = on for Vercel preview links and local testing,
+// Feature flags. 'preview' = on for preview links and local testing,
 // off on the live site until approved. Set to true to turn on everywhere.
 
 export const FEATURES = {
@@ -10,11 +10,13 @@ export const FEATURES = {
 
 // The live site's addresses. Anything else (preview links, localhost) is a preview.
 // app.sightrep.app is the app; sightrep.app the marketing site; the vercel.app
-// address is Vercel's own name for the project.
+// address is the old one. On Cloudflare Pages, <project>.pages.dev is the live
+// site and <branch>.<project>.pages.dev a preview.
 const LIVE_HOSTS = ['app.sightrep.app', 'sightrep.app', 'sightline-psi.vercel.app'];
+const live = (host) => LIVE_HOSTS.includes(host) || /^[^.]+\.pages\.dev$/.test(host);
 
 export function isOn(name, { host = globalThis.location?.hostname ?? '', search = globalThis.location?.search ?? '' } = {}) {
   const v = FEATURES[name];
-  if (v === 'preview') return !LIVE_HOSTS.includes(host) || new URLSearchParams(search).has(name);
+  if (v === 'preview') return !live(host) || new URLSearchParams(search).has(name);
   return !!v;
 }
