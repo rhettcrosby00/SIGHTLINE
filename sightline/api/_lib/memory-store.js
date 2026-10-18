@@ -6,6 +6,7 @@ export function memoryStore({ now = () => Date.now() } = {}) {
   let nextId = 1;
   const meta = new Map();
   const hits = new Map();
+  const licenses = new Map();   // key hash → { hash, device, boundAt, moves }
 
   const latestName = (list) => list.reduce((a, b) => (b.at >= a.at ? b : a)).name;
   const groups = (list) => {
@@ -79,5 +80,11 @@ export function memoryStore({ now = () => Date.now() } = {}) {
     async getMeta(k) { return meta.get(k) ?? null; },
     hitCount: () => hits.size,   // for the tests
     async setMeta(k, v) { meta.set(k, v); },
+
+    // License keys: which phone each key is on (by hash).
+    async getLicense(hash) { const r = licenses.get(hash); return r ? { ...r, moves: [...r.moves] } : null; },
+    async putLicense(rec) { licenses.set(rec.hash, { ...rec, moves: [...rec.moves] }); },
+    async resetLicense(hash) { return licenses.delete(hash); },
+    licenseRows: () => [...licenses.values()],   // for the tests
   };
 }

@@ -5,29 +5,16 @@
 //   GET  ?action=health        → { db, coach } (true/false only, no secrets)
 //   POST { action: 'submit', name, side, score, settings, clientId }
 //   POST { action: 'unlock', pin }                  → { token }
-//   POST { action: 'admin', token, task, … }        → coach tools (task: scores, rename, remove-name, remove-score, reset-week, reset-all)
+//   POST { action: 'admin', token, task, … }        → coach tools (task: scores, rename, remove-name, remove-score, reset-week, reset-all, reset-key)
 // The database address (DATABASE_URL) and COACH_PIN live in Cloudflare's
 // project settings (env). LB_MEMORY=1 runs it without a database (local testing only).
 
-import { createService, HttpError, databaseUrl, databaseProblem } from './_lib/service.js';
+import { createService, HttpError, databaseUrl } from './_lib/service.js';
+import { openStore, storeProblem } from './_lib/open-store.js';
 
-let ready = null;
-let readyFor = null;
-let problem = null;   // why the database isn't connected (shown by the health check)
-function service(env) {
-  const url = databaseUrl(env);
-  const key = [url, env.LB_MEMORY, env.COACH_PIN].join('|');
-  if (key !== readyFor) { readyFor = key; ready = null; }
-  ready ??= (async () => {
-    let store;
-    if (!url && env.LB_MEMORY === '1') store = (await import('./_lib/memory-store.js')).memoryStore();
-    else if ((problem = databaseProblem(url))) return null;
-    else store = (await import('./_lib/sql-store.js')).sqlStore(url);
-    await store.init();
-    problem = null;
-    return createService(store, { pin: env.COACH_PIN || '', secret: url || 'local' });
-  })().catch((err) => { problem = databaseProblem(url, err); ready = null; throw err; });
-  return ready;
+async function service(env) {
+  const store = await openStore(env);
+  return store && createService(store, { pin: env.COACH_PIN || '', secret: databaseUrl(env) || 'local' });
 }
 
 // One request: { method, query, body, ip } and the project settings → { status, body }.
@@ -35,7 +22,7 @@ export async function handle({ method, query = {}, body = {}, ip = 'unknown' }, 
   try {
     const svc = await service(env).catch(() => null);
     if (method === 'GET' && query.action === 'health') {
-      return { status: 200, body: { db: !!svc, coach: !!env.COACH_PIN, ...(svc ? {} : { problem }) } };
+      return { status: 200, body: { db: !!svc, coach: !!env.COACH_PIN, ...(svc ? {} : { problem: storeProblem() }) } };
     }
     if (!svc) return { status: 503, body: { error: 'The leaderboard isn’t connected yet.' } };
 

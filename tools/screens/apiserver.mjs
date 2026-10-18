@@ -3,7 +3,7 @@
 // in-memory storage (no database) on :5176. Coach PIN for local testing: 2468.
 import http from 'node:http';
 const { onRequest } = await import(new URL('../../sightline/functions/api/[name].js', import.meta.url));
-const env = { LB_MEMORY: '1', COACH_PIN: '2468' };
+const env = { LB_MEMORY: '1', COACH_PIN: '2468', TEST_KEYS: '1' };   // test keys (TEST-OK-…) work locally
 http.createServer(async (req, res) => {
   let raw = '';
   for await (const chunk of req) raw += chunk;

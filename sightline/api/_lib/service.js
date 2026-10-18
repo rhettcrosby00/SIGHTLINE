@@ -9,6 +9,8 @@ import { normalize } from '../../js/cone/config.js';
 import { FOCUS_SESSIONS } from '../../js/plan.js';
 import { focusCap, moveCap } from '../../js/score/scoring.js';
 import { cleanName, nameKey, nameProblem } from '../../js/score/names.js';
+import { cleanKey } from '../../js/license.js';
+import { keyHash } from './keys.js';
 
 export const LIMITS = {
   submitPerWindow: 60,     // score posts per network (a whole team on one school Wi-Fi)…
@@ -172,7 +174,7 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
     },
 
     // Coach tools. Each needs a token from unlock().
-    async admin({ token, action, name, to, id, confirm } = {}) {
+    async admin({ token, action, name, to, id, confirm, key } = {}) {
       checkToken(token);
       if (action === 'scores') {
         if (!name) fail(400, 'Pick a player.');
@@ -195,6 +197,11 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
       if (action === 'reset-all') {
         if (confirm !== 'RESET ALL') fail(400, 'Type RESET ALL to confirm.');
         await store.removeAll();
+        return { ok: true };
+      }
+      if (action === 'reset-key') {   // a lost or reset phone: the key unlocks the next phone it's entered on
+        if (!cleanKey(key)) fail(400, 'Type or paste the key.');
+        if (!await store.resetLicense(keyHash(key))) fail(404, 'No phone uses that key yet.');
         return { ok: true };
       }
       fail(400, 'Unknown coach action.');

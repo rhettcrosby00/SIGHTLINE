@@ -23,6 +23,7 @@ class H(http.server.SimpleHTTPRequestHandler):
             name = q.pop('name', '')     # the remembered leaderboard name
             legacy = q.pop('legacy', '')  # save under the old sightline.* keys (checks the move to sightrep.*)
             waiver = q.pop('waiver', '')  # the safety waiver: accepted (this version) unless waiver=0 (a fresh device) or waiver=old (the previous version)
+            lic = q.pop('license', '')    # Sightrep Pro key: unlocked (checked just now) unless license=0 (none), locked (moved to another phone) or old (last good check 40 days ago)
             html = open(APP + '/index.html', encoding='utf-8').read()
             inject = f"<script>localStorage.setItem('sightrep.settings.v1', JSON.stringify({json.dumps(q)}));</script>"
             if cone: inject += "<script>localStorage.setItem('sightrep.cone.v1', " + json.dumps(cone) + ");</script>"
@@ -30,6 +31,10 @@ class H(http.server.SimpleHTTPRequestHandler):
             if name: inject += "<script>localStorage.setItem('sightrep.name.v1', " + json.dumps(json.dumps(name)) + ");</script>"
             if nostorage: inject += "<script>Object.defineProperty(window, 'localStorage', { get() { throw new Error('storage blocked'); } });</script>"
             if legacy: inject = inject.replace("'sightrep.", "'sightline.")
+            if lic != '0':
+                state, age = ('locked' if lic == 'locked' else 'ok'), (40 if lic == 'old' else 0)
+                inject = ("<script>localStorage.setItem('sightrep.device.v1', 'seed-phone-0001');"
+                          "localStorage.setItem('sightrep.license.v1', JSON.stringify({ key: 'TEST-OK-SEED" + lic.upper().replace('LOCKED', '').replace('OLD', '9') + "', state: '" + state + "', reason: 'moved', checkedAt: Date.now() - " + str(age) + " * 86400000 }));</script>") + inject
             if waiver != '0':
                 current = int(re.search(r'version: (\d+)', open(APP + '/js/content/safety.js', encoding='utf-8').read()).group(1))
                 rec = {'version': current - 1 if waiver == 'old' else current, 'acceptedAt': '2026-10-16T12:00:00.000Z', 'risks': True, 'age': True}

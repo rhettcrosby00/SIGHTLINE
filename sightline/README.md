@@ -298,6 +298,32 @@ or a switch is never checked. `false` parks a feature: its code stays, off every
 - `sightrep.install.v1`: finished sessions and "Not now" for the install card
 - `sightrep.variety.v1`, `sightrep.seen.v1` (drills run, for Auto instructions)
 - `sightrep.waiver.v1`: the accepted safety waiver: its version, the date and time (ISO), and both boxes
+- `sightrep.license.v1`, `sightrep.device.v1`: the Sightrep key on this phone (and when the server last called it good, or why it's locked); this phone's random ID
+
+## Sightrep Pro: the key that unlocks the app
+
+Behind the `pro` feature flag (on for previews, off live until approved).
+
+- **Buying:** athletes buy on Gumroad. Gumroad is the merchant of record, so it handles card
+  details and sales tax, and it emails the license key. The listed price is $35.50, so $30
+  reaches us after Gumroad's fees; all the wording, the price and the store link are in
+  `js/content/pro.js`.
+- **Unlocking:** after the safety waiver, a phone with no good key sees only the unlock screen
+  (`js/unlock.js`). It offers Buy on Gumroad, or a box to enter a key. The first-run setup and
+  `?autostart` links wait for it.
+- **One phone at a time:** the server (`api/license.js`, `api/_lib/license.js`) asks Gumroad's
+  public license check whether a key is real and not refunded (`GUMROAD_PRODUCT_ID` in
+  Cloudflare's settings; it never counts a use). The database (`lb_licenses`) records which phone
+  each key is on, by a hash of the key, never the key itself.
+- **Moving phones:** entering the key on another phone moves it there, at most 3 times in 30
+  days. The old phone locks at its next check.
+- **Checks:** once a day when online (`js/license.js`). With no signal, the app keeps working for
+  30 days after the last good check. A lock only happens on the home screen, never mid-session.
+- **Coach tools → Keys → Free a key:** for a lost or reset phone; the key then unlocks the next
+  phone it's entered on.
+- **Test keys:** `TEST-OK-anything` unlocks and `TEST-REFUNDED-anything` is refused. They work only
+  on preview builds (`build.mjs` marks them in `api/_lib/build-info.js` from Cloudflare's branch
+  name) and in local runs, never on the live site.
 
 ## Safety waiver and safety notes
 
@@ -381,6 +407,7 @@ Saved data moved from `sightline.*` to `sightrep.*` keys in v5.0 (`renameSavedDa
 | `functions/api/[name].js`, `api/` | The server on Cloudflare Pages: the entry point, and the leaderboard and Partner handlers |
 | `build.mjs`, `wrangler.toml` | What the site serves (`dist/`), and the Cloudflare Pages settings |
 | `js/brand.js` | The name, the tagline and the logo component |
+| `js/license.js`, `js/unlock.js`, `js/content/pro.js`, `api/license.js` | Sightrep Pro: the key on this phone, the unlock screen, its wording and price, the key check |
 | `js/waiver.js`, `js/content/safety.js` | The safety waiver screen and its saved acceptance; every word of the waiver, disclaimer and safety notes |
 | `js/presets.js` | Quick / Standard / Game Speed, Run last keys, the Game Day / Training switch |
 | `js/guide.js`, `js/install.js` | First-run setup and How it works; the Add to Home Screen card |

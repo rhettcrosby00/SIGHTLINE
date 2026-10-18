@@ -61,7 +61,9 @@ export const SHOTS = [
   { name: 'waiver-new-version', params: 'waiver=old', expect: ONLY_WAIVER, combos: 'few' },
   // Saved data blocked: the waiver every visit; accepting still lets this visit go on.
   { name: 'waiver-no-storage', params: 'nostorage=1', expect: ONLY_WAIVER, combos: 'few' },
-  { name: 'waiver-no-storage-accepted', params: 'nostorage=1', steps: ACCEPT, expect: ['#screen-start.is-active', 'Choose a preset'], combos: 'few' },
+  // With Sightrep Pro on (previews), blocked storage also means entering the key each visit: the unlock screen next.
+  { name: 'waiver-no-storage-accepted', params: 'nostorage=1', steps: [ACCEPT[0], ACCEPT[1], ACCEPT[2], ['waitFor', '#screen-unlock.is-active', 8000]],
+    expect: ['#screen-unlock.is-active', 'js:!!document.querySelector("#unlock-key")'], combos: 'few' },
 
   // ---- Safety notes, always on the screen they belong to ----
   { name: 'safety-move-hub', steps: [['click', '#btn-move']], expect: [SAFETY.move, 'brightness all the way up'] },

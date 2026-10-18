@@ -19,6 +19,7 @@ import './eyecheck.js';
 import './brand.js';
 import './waiver.js';
 import './cloudflare.js';
+import './license.js';
 import './deadcode.js';
 
 process.exit((await report()) ? 1 : 0);

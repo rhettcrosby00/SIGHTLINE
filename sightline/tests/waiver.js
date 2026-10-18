@@ -111,14 +111,19 @@ test('Cleared, blocked or damaged saved data shows the waiver again', () => {
 test('Nothing is reachable before the waiver is accepted', () => {
   assert(/^<!doctype html>\s*<html lang="en" data-gate="waiver">/i.test(html), 'the page starts gated');
   const head = html.slice(0, html.indexOf('</head>'));
-  assert(/:root\[data-gate\] \.screen:not\(#screen-waiver\) \{ display: none !important; \}/.test(head),
-    'the gate hides every other screen, in the page itself (before any file loads)');
+  assert(/:root\[data-gate\] \.screen:not\(#screen-waiver\):not\(#screen-unlock\) \{ display: none !important; \}/.test(head),
+    'the gate hides every other screen (all but the waiver and the unlock screen), in the page itself (before any file loads)');
   const first = html.indexOf('<section id="screen-');
   assert(html.indexOf('<section id="screen-waiver"') === first, 'the waiver is the first screen in the page');
   // main.js: the gate lifts only once accepted; the first-run setup and direct links wait.
-  assert(/const accepted = waiver\.needed\(\)\s*\? \(show\('waiver'\), showWaiver\(\$\('screen-waiver'\)\)\.then\(\(checks\) => \{\s*waiver\.accept\(checks\);\s*document\.documentElement\.removeAttribute\('data-gate'\);/.test(main),
-    'waiver first; the gate lifts only after accept()');
-  assert((main.match(/removeAttribute\('data-gate'\)/g) ?? []).length === 2, 'and nowhere else');
+  const gate = /const accepted = \(async \(\) => \{([^]*?)\n\}\)\(\);/.exec(main)?.[1] ?? '';
+  const at = (code) => gate.indexOf(code);
+  assert(at("if (waiver.needed())") >= 0 && at("waiver.accept(await showWaiver($('screen-waiver')))") > at("if (waiver.needed())"),
+    'the waiver first, accepted before anything goes on');
+  assert(at('await unlockScreen(') > at('waiver.accept(') && at("document.documentElement.removeAttribute('data-gate')") > at('await unlockScreen('),
+    'then the key (Sightrep Pro); the gate lifts only after both');
+  assert((main.match(/removeAttribute\('data-gate'\)/g) ?? []).length === 2 && /async function lockIfDue\(\) \{[^]*?await unlockScreen\(reason\);\s*document\.documentElement\.removeAttribute\('data-gate'\);/.test(main),
+    'and nowhere else (the other: after a locked phone is unlocked again)');
   assert(main.indexOf('const accepted') < main.indexOf('initFocus('), 'decided before either side is set up');
   assert(/accepted\.then\(\(\) => \{\s*if \(!getSettings\(\)\.setupDone[^}]*showFirstRun\(/.test(main) && main.split('showFirstRun(').length === 2,
     'the first-run setup waits for it');
