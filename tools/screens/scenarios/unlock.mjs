@@ -24,7 +24,7 @@ export const SHOTS = [
   { name: 'unlock-after-waiver', params: `waiver=0&${NO_KEY}`,
     steps: [['click', '[data-check="risks"]'], ['click', '[data-check="age"]'], ['click', '[data-act="agree"]'], ['waitFor', '#screen-unlock.is-active', 8000], ['wait', 300]],
     expect: [...ONLY_UNLOCK, 'js:!!localStorage.getItem("sightrep.waiver.v1")'], combos: 'few' },
-  { name: 'unlock', params: NO_KEY, expect: [...ONLY_UNLOCK, PRO.price, PRO.buy, PRO.keyLabel, PRO.previewHint, 'js:document.querySelector("#screen-unlock .btn--primary").disabled'] },
+  { name: 'unlock', params: NO_KEY, expect: [...ONLY_UNLOCK, PRO.price, PRO.buy, PRO.keyLabel, PRO.previewHint, `#screen-unlock a.btn--primary[href="${PRO.buyUrl}"][target="_blank"]`] },
   { name: 'unlock-end', params: NO_KEY, steps: [['scrollEnd']], expect: [PRO.help], combos: 'few' },
   { name: 'unlock-empty', params: NO_KEY, steps: [UNLOCK, ['wait', 300]], expect: [...ONLY_UNLOCK, PRO.errors.empty], combos: 'few' },
   { name: 'unlock-wrong', params: NO_KEY, steps: [['type', '#unlock-key', 'TEST-WRONG-123'], UNLOCK, ['wait', 900]], expect: [...ONLY_UNLOCK, PRO.errors.invalid], combos: 'few' },

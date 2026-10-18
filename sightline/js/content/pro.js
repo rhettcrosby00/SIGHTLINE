@@ -14,7 +14,7 @@ export const PRO = {
   price: '$35.50',
   priceNote: '($30 + $5.50 payment fees), plus sales tax where it applies. One time, for this phone.',
   buy: 'Buy on Gumroad',
-  buyUrl: '',   // the Gumroad product page, once the store is set up
+  buyUrl: 'https://crosby91.gumroad.com/l/sightrep',   // the Gumroad product page
   soon: 'The store opens soon.',
   keyLabel: 'Already bought? Enter your key',
   keyPlaceholder: 'Paste your key',
