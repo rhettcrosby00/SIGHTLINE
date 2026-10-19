@@ -6,7 +6,7 @@
 //   POST { action: 'submit', name, side, score, settings, clientId }
 //   POST { action: 'unlock', pin }                  → { token }
 //   POST { action: 'admin', token, task, … }        → coach tools (task: scores, rename, remove-name, remove-score, reset-week, reset-all, reset-key,
-//                                                     reviews, review-approve, review-reject, review-remove)
+//                                                     reviews, review-approve, review-reject, review-connected, review-remove)
 // The database address (DATABASE_URL) and COACH_PIN live in Cloudflare's
 // project settings (env). LB_MEMORY=1 runs it without a database (local testing only).
 

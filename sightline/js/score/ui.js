@@ -329,7 +329,9 @@ export function initLeaderboard({ show, getSettings }) {
         <span class="lb-review__stars" role="img" aria-label="${r.stars} of 5 stars">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span>
         <p class="lb-review__text">${esc(r.text)}</p>
         <p class="setting__hint">${esc(r.name)} · ${esc(r.sport)} · ${new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+        ${r.connected ? '<p class="lb-review__tag">Got it free or knows the team</p>' : ''}
         <div class="lb-review__acts">${buttons}</div>
+        <button type="button" class="link-btn" data-act="review-connected" data-id="${r.id}" data-on="${r.connected ? '' : '1'}">${r.connected ? 'Take off the “Got it free” label' : 'Add the “Got it free” label'}</button>
       </li>`;
     const { pending, approved } = s.reviews;
     coachEl.innerHTML = `${head}
@@ -337,6 +339,7 @@ export function initLeaderboard({ show, getSettings }) {
         <div class="setting setting--stack">
           <span class="setting__label">Waiting for you (${pending.length})</span>
           <p class="setting__hint">Approve every honest review, good or bad. Reject only spam, abuse, or reviews not about Sightrep.</p>
+          <p class="setting__hint">If a reviewer got Sightrep free or knows you (like a teammate) and didn’t tick the box, add the “Got it free” label.</p>
           ${pending.length ? `<ul class="lb-reviews">${pending.map((r) => review(r, `
             <button type="button" class="btn btn--secondary" data-act="review-approve" data-id="${r.id}">Approve</button>
             <button type="button" class="btn btn--secondary" data-act="review-reject" data-id="${r.id}">Reject</button>`)).join('')}</ul>`
@@ -451,6 +454,10 @@ export function initLeaderboard({ show, getSettings }) {
     if (b.dataset.act === 'reset-all') await coachDo('reset-all', { confirm: typed('all') }, 'Every score is removed.');
     if (b.dataset.act === 'review-approve') await coachDo('review-approve', { id: Number(b.dataset.id) }, 'Approved. It’s on the website now.');
     if (b.dataset.act === 'review-reject') await coachDo('review-reject', { id: Number(b.dataset.id) }, 'Rejected. It won’t show.');
+    if (b.dataset.act === 'review-connected') {
+      const on = b.dataset.on === '1';
+      await coachDo('review-connected', { id: Number(b.dataset.id), on }, on ? 'Label added. The review now says “Got it free or knows the team.”' : 'Label taken off.');
+    }
     if (b.dataset.act === 'review-remove') await coachDo('review-remove', { id: Number(b.dataset.id) }, 'Removed from the website.');
     if (b.dataset.act === 'reset-key') {
       await coachDo('reset-key', { key: coachEl.querySelector('#lb-key').value }, 'That key is free. It unlocks the next phone it’s entered on.');

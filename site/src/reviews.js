@@ -43,6 +43,7 @@
       reviews.forEach((r, i) => {
         const li = el('li', 'review');
         li.append(stars(r.stars), el('blockquote', null, `“${r.text}”`), el('p', 'review__who', `${r.name} · ${r.sport}`));
+        if (r.connected) li.append(el('p', 'review__tag', 'Got it free or knows the team'));
         li.hidden = i >= SHOWN;
         list.append(li);
       });
@@ -82,6 +83,7 @@
         name: f.namedItem('name').value.trim(),
         sport: f.namedItem('sport').value.trim(),
         text: f.namedItem('text').value.trim(),
+        connected: f.namedItem('connected').checked,   // got it free or knows the team: the review says so
         consent: f.namedItem('consent').checked,
         age: f.namedItem('age').checked,
         website: f.namedItem('website').value,   // the hidden spam trap; people leave it empty

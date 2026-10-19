@@ -38,6 +38,8 @@ export function sqlStore(url) {
         status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
         created_at timestamptz not null default now(),
         decided_at timestamptz)`;
+      // 6.3: the reviewer got Sightrep free or knows the team (shown on the review, FTC rule).
+      await sql`alter table site_reviews add column if not exists connected boolean not null default false`;
     },
 
     async hit(bucket, windowS, { peek = false } = {}) {
@@ -132,15 +134,15 @@ export function sqlStore(url) {
         values (${hash}, ${device}, ${new Date(boundAt).toISOString()}::timestamptz, ${JSON.stringify(moves)}::jsonb)
         on conflict (key_hash) do update set device = excluded.device, bound_at = excluded.bound_at, moves = excluded.moves`;
     },
-    async addReview({ name, sport, stars, text, at }) {
-      const rows = await sql`insert into site_reviews (name, sport, stars, body, created_at)
-        values (${name}, ${sport}, ${stars}, ${text}, ${at.toISOString()}::timestamptz) returning id`;
+    async addReview({ name, sport, stars, text, connected = false, at }) {
+      const rows = await sql`insert into site_reviews (name, sport, stars, body, connected, created_at)
+        values (${name}, ${sport}, ${stars}, ${text}, ${connected}, ${at.toISOString()}::timestamptz) returning id`;
       return Number(rows[0].id);
     },
     async reviewsBy(status, limit = 100) {
-      const rows = await sql`select id, name, sport, stars, body, status, created_at, decided_at from site_reviews
+      const rows = await sql`select id, name, sport, stars, body, connected, status, created_at, decided_at from site_reviews
         where status = ${status} order by created_at desc, id desc limit ${limit}`;
-      return rows.map((r) => ({ id: Number(r.id), name: r.name, sport: r.sport, stars: r.stars, text: r.body, status: r.status,
+      return rows.map((r) => ({ id: Number(r.id), name: r.name, sport: r.sport, stars: r.stars, text: r.body, connected: r.connected === true, status: r.status,
         at: new Date(r.created_at).toISOString(), decidedAt: r.decided_at ? new Date(r.decided_at).toISOString() : null }));
     },
     async reviewStats() {
@@ -149,6 +151,10 @@ export function sqlStore(url) {
     },
     async setReviewStatus(id, status, at = new Date()) {
       const rows = await sql`update site_reviews set status = ${status}, decided_at = ${at.toISOString()}::timestamptz where id = ${id}::bigint returning id`;
+      return rows.length > 0;
+    },
+    async setReviewConnected(id, connected) {
+      const rows = await sql`update site_reviews set connected = ${connected} where id = ${id}::bigint returning id`;
       return rows.length > 0;
     },
     async removeReview(id) {

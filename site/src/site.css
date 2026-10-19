@@ -105,6 +105,7 @@ b { font-weight: 600; }
 .review { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; display: grid; gap: 10px; align-content: start; }
 .review blockquote { font-size: 1.125rem; line-height: 1.5; color: var(--text); overflow-wrap: anywhere; }
 .review__who { color: var(--muted); font-weight: 600; font-size: 0.9375rem; overflow-wrap: anywhere; }
+.review__tag { justify-self: start; padding: 3px 10px; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); color: var(--text); font-size: 0.875rem; font-weight: 600; }
 .stars { color: var(--lime); font-size: 1.125rem; letter-spacing: 0.12em; line-height: 1; }
 .reviews__acts { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
 @media (min-width: 900px) { .reviews__list { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); } }
@@ -127,6 +128,7 @@ textarea.rform__input { resize: vertical; min-height: 140px; }
 .rform__stars label:has(input:focus-visible) { outline: 2px solid var(--lime); outline-offset: 2px; }
 .rform__check { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: start; min-height: 48px; color: var(--text); cursor: pointer; }
 .rform__check input { width: 24px; height: 24px; margin-top: 1px; accent-color: var(--lime); }
+.rform__note { padding-left: 40px; margin-top: -8px; }
 .rform__trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .rform__msg { min-height: 1.55em; color: var(--muted); font-weight: 600; }
 .rform__msg.is-bad { color: var(--p-red-400); }

@@ -1,7 +1,7 @@
 // Reviews API, served at /api/reviews (functions/api/[name].js), called by
 // the website (sightrep.app), so it answers that site's cross-origin requests.
 //   GET  ?action=list                                → { reviews, count, average }
-//   POST { action: 'submit', name, sport, stars, text, consent, age, website } → { ok }
+//   POST { action: 'submit', name, sport, stars, text, connected, consent, age, website } → { ok }
 // Approving happens in Coach tools (the leaderboard's admin, coach PIN).
 
 import { openStore } from './_lib/open-store.js';

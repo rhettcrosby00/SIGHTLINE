@@ -54,7 +54,33 @@ test('Reviews: new ones wait as pending; only approved ones show, newest first, 
   const out = await reviews.list();
   assert(out.reviews.map((r) => r.name).join() === 'Ava,Jordan', out.reviews.map((r) => r.name).join());
   assert(out.count === 2 && out.average === 4.5, `${out.count} reviews, average ${out.average}`);
-  assert(Object.keys(out.reviews[0]).sort().join() === 'at,name,sport,stars,text', 'the website gets only what it shows');
+  assert(Object.keys(out.reviews[0]).sort().join() === 'at,connected,name,sport,stars,text', 'the website gets only what it shows');
+});
+
+test('Reviews: "got it free or knows the team" is kept and shown; the owner can add it', async () => {
+  const store = memoryStore();
+  const reviews = createReviews(store);
+  await reviews.submit({ ...GOOD, name: 'Ava', connected: true }, 'ip-1');
+  await reviews.submit({ ...GOOD, name: 'Sam', connected: 'yes' }, 'ip-2');
+  await reviews.submit({ ...GOOD, name: 'Jordan' }, 'ip-3');
+  const svc = createService(store, { pin: '2468' });
+  let status = 0;
+  await svc.admin({ action: 'review-connected', id: 1, on: true }).catch((err) => { status = err.status; });
+  assert(status === 401, 'only with the coach PIN');
+  const { token } = await svc.unlock({ pin: '2468' });
+  for (const r of (await svc.admin({ token, action: 'reviews' })).pending) await svc.admin({ token, action: 'review-approve', id: r.id });
+  const flag = async () => Object.fromEntries((await reviews.list()).reviews.map((r) => [r.name, r.connected]));
+  let now = await flag();
+  assert(now.Ava === true && now.Sam === false && now.Jordan === false, `the box, and only a real tick: ${JSON.stringify(now)}`);
+  const jordan = (await svc.admin({ token, action: 'reviews' })).approved.find((r) => r.name === 'Jordan');
+  await svc.admin({ token, action: 'review-connected', id: jordan.id, on: true });
+  now = await flag();
+  assert(now.Jordan === true, 'the owner added the label');
+  await svc.admin({ token, action: 'review-connected', id: jordan.id, on: false });
+  assert((await flag()).Jordan === false, 'and can take it off');
+  status = 0;
+  await svc.admin({ token, action: 'review-connected', id: 999, on: true }).catch((err) => { status = err.status; });
+  assert(status === 404, 'a review that is gone says so');
 });
 
 test('Reviews: the spam trap saves nothing; 3 per hour per network', async () => {
@@ -133,12 +159,14 @@ test('Reviews: through Cloudflare’s entry point, a sent review is saved but no
 test('Reviews: the website’s form sends what the server checks, as text only, to the right address', () => {
   const form = read('../site/src/review.html');
   const fields = [...form.matchAll(/\bname="(\w+)"/g)].map((m) => m[1]);
-  for (const f of ['stars', 'name', 'sport', 'text', 'consent', 'age', 'website']) assert(fields.includes(f), `the form has no ${f} field`);
+  for (const f of ['stars', 'name', 'sport', 'text', 'connected', 'consent', 'age', 'website']) assert(fields.includes(f), `the form has no ${f} field`);
+  assert(/name="connected"[^>]*>\s*<span>I got Sightrep free/.test(form), 'the got-it-free box, in plain words');
   assert(/maxlength="400"/.test(form) && /maxlength="20"/.test(form) && /maxlength="40"/.test(form), 'the form’s limits match the server');
   assert(form.includes('OK to show my first name, sport and review on sightrep.app') && form.includes('16 or older'), 'both boxes, in plain words');
   const js = read('../site/src/reviews.js');
   for (const a of ["'/api/reviews'", '.sightrep.pages.dev/api/reviews', "'https://app.sightrep.app/api/reviews'"]) assert(js.includes(a), `reviews.js has no ${a}`);
   assert(!/innerHTML|insertAdjacentHTML|outerHTML/.test(js), 'reviews go on the page as text, never HTML');
+  assert(/connected: f\.namedItem\('connected'\)\.checked/.test(js) && /if \(r\.connected\)[^\n]*'Got it free or knows the team'/.test(js), 'the box is sent and the label shown');
   const home = read('../site/src/index.html');
   assert(home.indexOf('data-reviews') < home.indexOf('sides-title'), 'reviews come right after the top of the page');
   assert(home.includes('href="/review"'), 'the home page links to the form');
@@ -147,7 +175,8 @@ test('Reviews: the website’s form sends what the server checks, as text only, 
 test('Reviews: Coach tools show the honest-reviews rule; the database keeps no email', () => {
   const ui = read('js/score/ui.js');
   assert(ui.includes('Approve every honest review, good or bad. Reject only spam, abuse, or reviews not about Sightrep.'), 'the FTC rule sits beside the buttons');
-  for (const a of ['review-approve', 'review-reject', 'review-remove']) assert(ui.includes(`data-act="${a}"`), `no ${a} button`);
+  for (const a of ['review-approve', 'review-reject', 'review-remove', 'review-connected']) assert(ui.includes(`data-act="${a}"`), `no ${a} button`);
+  assert(ui.includes('Got it free or knows the team'), 'Coach tools show the same label as the website');
   const sql = read('api/_lib/sql-store.js');
   const table = sql.slice(sql.indexOf('create table if not exists site_reviews'), sql.indexOf(')`;', sql.indexOf('site_reviews')));
   assert(table && !/email|ip|device|key/i.test(table.replace(/primary key/, '')), 'no email, IP, device or key in the reviews table');
