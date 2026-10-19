@@ -4,6 +4,9 @@
 //   the waiver and disclaimer: ../sightline/js/content/safety.js
 //   the price and store link:  ../sightline/js/content/pro.js
 //   the logo and icons:        ../sightline/assets/logo, ../sightline/icons
+// Reviews: src/reviews.json, real quotes only, each with the athlete's
+// permission: [{ "quote": "…", "name": "Jordan", "sport": "Wide receiver",
+// "permission": true }]. With none, the section isn't shown at all.
 // Then it checks the result; any problem stops the build (nothing goes live).
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync, readdirSync } from 'node:fs';
 import { WAIVER, DISCLAIMER } from '../sightline/js/content/safety.js';
@@ -14,7 +17,23 @@ const app = new URL('../sightline/', import.meta.url);
 const out = new URL('dist/', here);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+const reviews = JSON.parse(readFileSync(new URL('src/reviews.json', here), 'utf8'));
+const reviewProblems = reviews.flatMap((r, i) => [
+  !(typeof r.quote === 'string' && r.quote.length >= 10 && r.quote.length <= 300) && `review ${i + 1}: the quote must be 10 to 300 characters`,
+  !/^[A-Z][A-Za-z'’-]{1,20}$/.test(r.name ?? '') && `review ${i + 1}: first name only (one word), like "Jordan"`,
+  !(typeof r.sport === 'string' && r.sport.trim() && r.sport.length <= 40) && `review ${i + 1}: add the sport or position`,
+  r.permission !== true && `review ${i + 1}: needs "permission": true (the athlete said it's OK to quote them)`,
+]).filter(Boolean);
+const reviewsSection = reviews.length ? `<section class="band reviews" aria-labelledby="reviews-title">
+  <h2 id="reviews-title" class="title">What athletes say</h2>
+  <ul class="reviews__list">
+    ${reviews.map((r) => `<li class="review"><blockquote>“${esc(r.quote.trim().replace(/^["“]|["”]$/g, ''))}”</blockquote><p class="review__who">${esc(r.name)} · ${esc(r.sport.trim())}</p></li>`).join('\n    ')}
+  </ul>
+</section>
+` : '';
+
 const fill = (html) => html
+  .replaceAll('{{REVIEWS}}', reviewsSection)
   .replaceAll('{{BUY_URL}}', esc(PRO.buyUrl))
   .replaceAll('{{PRICE}}', esc(PRO.price))
   .replaceAll('{{PRICE_NOTE}}', esc(`${PRO.priceNote.replace(/^\(|\)/g, '').replace(/\. One time, for this phone\.$/, '.')}`))
@@ -41,7 +60,7 @@ const head = ({ title, description, path }) => `<!doctype html>
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/site.css">
 </head>
 <body>
@@ -116,7 +135,7 @@ for (const f of ['logo-horizontal.svg']) cpSync(new URL(`assets/logo/${f}`, app)
 for (const f of ['icon.svg', 'favicon-32.png', 'favicon-16.png', 'apple-touch-icon.png']) cpSync(new URL(`icons/${f}`, app), new URL(`icons/${f}`, out));
 
 // ---- Checks: any problem stops the build ----
-const problems = [];
+const problems = [...reviewProblems];
 for (const [name, html] of Object.entries(pages)) {
   if (/\{\{|\}\}/.test(html)) problems.push(`${name}: a {{placeholder}} wasn't filled`);
   if (!html.includes(esc(DISCLAIMER))) problems.push(`${name}: the disclaimer is missing`);
