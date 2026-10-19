@@ -1,0 +1,9 @@
+{
+  "name": "sightrep-site",
+  "private": true,
+  "type": "module",
+  "description": "sightrep.app: the Sightrep marketing site (plain pages, built from the app's own wording).",
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}
