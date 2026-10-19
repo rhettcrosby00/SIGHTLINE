@@ -6,7 +6,6 @@ export const FEATURES = {
   // 'preview' while they're being built; set them to true once approved.
   // false = parked: the code stays, but it's off everywhere.
   partner: false,   // MOVE Partner mode (a coach's phone sends the cues), parked in v4.0
-  pro: 'preview',   // Sightrep Pro: a Gumroad key unlocks the app (js/unlock.js), being built
 };
 
 // The live site's addresses. Anything else (preview links, localhost) is a preview.

@@ -11,7 +11,6 @@ import { icon } from '../lib/icons.js';
 import { buzz } from '../lib/audio.js';
 import { esc } from '../lib/text.js';
 import { logo } from '../brand.js';
-import { isOn } from '../features.js';
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Number(n).toLocaleString('en-US');
@@ -348,14 +347,14 @@ export function initLeaderboard({ show, getSettings }) {
             : '<p class="setting__hint">No scores.</p>'}
         </div>` : ''}
       </div></section>
-      ${isOn('pro') ? `<section class="group"><h3 class="group__title">Keys</h3><div class="group__rows">
+      <section class="group"><h3 class="group__title">Keys</h3><div class="group__rows">
         <div class="setting setting--stack">
           <label class="setting__label" for="lb-key">Free a key for a new phone</label>
           <p class="setting__hint">For a lost or reset phone. The key then unlocks the next phone it’s entered on.</p>
           <input id="lb-key" class="lbn__input" autocomplete="off" autocapitalize="characters" spellcheck="false">
           <button type="button" class="btn btn--secondary btn--block" data-act="reset-key">Free this key</button>
         </div>
-      </div></section>` : ''}
+      </div></section>
       <section class="group"><h3 class="group__title">Boards</h3><div class="group__rows">
         ${confirmRow('week', 'Reset this week', 'RESET WEEK', 'reset-week')}
         ${confirmRow('all', 'Reset everything', 'RESET ALL', 'reset-all')}

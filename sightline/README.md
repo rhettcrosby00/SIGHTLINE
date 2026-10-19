@@ -302,7 +302,7 @@ or a switch is never checked. `false` parks a feature: its code stays, off every
 
 ## Sightrep Pro: the key that unlocks the app
 
-Behind the `pro` feature flag (on for previews, off live until approved).
+On for everyone since 6.0.
 
 - **Buying:** athletes buy on Gumroad. Gumroad is the merchant of record, so it handles card
   details and sales tax, and it emails the license key. The listed price is $35.50, so $30

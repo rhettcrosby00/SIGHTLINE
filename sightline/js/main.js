@@ -24,14 +24,14 @@ import { DISCLAIMER } from './content/safety.js';
 import { createLicense } from './license.js';
 import { showUnlock } from './unlock.js';
 import { PRO } from './content/pro.js';
-import { isOn, isLiveHost } from './features.js';
+import { isLiveHost } from './features.js';
 
 // Sightline is now Sightrep: move this phone's saved data to the new keys
 // before anything below reads it.
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '5.4';
+export const APP_VERSION = '6.0';
 
 const $ = (id) => document.getElementById(id);
 
@@ -58,13 +58,12 @@ hydrateLogos();   // home and About (js/brand.js)
 
 // ---- First the safety waiver (js/waiver.js), then the key (js/unlock.js) ----
 // index.html starts with <html data-gate="waiver">, which hides every other
-// screen until both are done: the waiver accepted (this version), and, with
-// Sightrep Pro on, a key that unlocks this phone. Everything that can open by
+// screen until both are done: the waiver accepted (this version), and a key
+// that unlocks this phone (sold on Gumroad). Everything that can open by
 // itself (the first-run setup, the ?autostart direct links) waits for `accepted`.
 // TODO accounts: once athletes sign in, also save acceptance on the account
 // and check it at login (js/waiver.js).
 const waiver = createWaiverStore();
-const pro = isOn('pro');
 const license = createLicense();
 async function unlockScreen(reason) {
   document.documentElement.dataset.gate = 'unlock';
@@ -79,8 +78,8 @@ const accepted = (async () => {
     waiver.accept(await showWaiver($('screen-waiver')));
   }
   // Last good check over 30 days ago: check now, before asking for the key again.
-  if (pro && license.lockedFor() === 'expired') await license.recheck({ force: true });
-  if (pro && license.needed()) {
+  if (license.lockedFor() === 'expired') await license.recheck({ force: true });
+  if (license.needed()) {
     gated = true;
     await unlockScreen(license.lockedFor());
   }
@@ -100,7 +99,7 @@ async function lockIfDue() {
   document.documentElement.removeAttribute('data-gate');
   show('start');
 }
-if (pro) accepted.then(() => license.recheck()).then((reason) => { lockReason = reason; lockIfDue(); });
+accepted.then(() => license.recheck()).then((reason) => { lockReason = reason; lockIfDue(); });
 $('btn-about-waiver').addEventListener('click', () => showFullWaiver());
 $('btn-settings-waiver').addEventListener('click', () => showFullWaiver());
 $('disclaimer').textContent = DISCLAIMER;
@@ -140,8 +139,6 @@ const getSettings = initSettings({
   onChange: (s) => { setMusicMode(s.music === 'on'); renderHome(); },
 });
 function renderLicense() {
-  $('license-group').hidden = !pro;
-  if (!pro) return;
   $('license-title').textContent = PRO.settings.title;
   $('license-status').textContent = license.last4() ? `${PRO.settings.on} · ${PRO.settings.key(license.last4())}` : PRO.settings.on;
   $('license-hint').textContent = PRO.settings.move;

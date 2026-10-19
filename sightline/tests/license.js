@@ -1,4 +1,4 @@
-// Sightrep Pro (v5.4, behind the 'pro' flag), run by tests/run.js: a Gumroad
+// Sightrep Pro (v6.0, on for everyone), run by tests/run.js: a Gumroad
 // key unlocks the app on one phone at a time. The phone side (js/license.js),
 // the server rules (api/_lib/license.js), Gumroad's answers, test keys only on
 // preview builds, the wording and price in one file, and the startup order:
@@ -15,7 +15,7 @@ import { PREVIEW_BUILD } from '../api/_lib/build-info.js';
 import { markBuild } from '../build.mjs';
 import { onRequest } from '../functions/api/[name].js';
 import { PRO } from '../js/content/pro.js';
-import { FEATURES, isOn, isLiveHost } from '../js/features.js';
+import { FEATURES, isLiveHost } from '../js/features.js';
 
 const root = new URL('../', import.meta.url);
 const read = (p) => readFileSync(new URL(p, root), 'utf8');
@@ -51,7 +51,7 @@ test('Price and wording: one file, $30 reaches us after Gumroad’s fees, every 
   for (const r of ['moved', 'refunded', 'invalid', 'expired']) assert(PRO.locked[r], `no lock words for ${r}`);
   assert(PRO.errors.moves.includes(`${KEYS.moves} times in ${KEYS.moveDays} days`), 'the moves limit matches the server');
   assert(PRO.buyUrl === '' || /^https:\/\/[\w-]+\.gumroad\.com\/l\/[\w-]+$/.test(PRO.buyUrl), `store link: ${PRO.buyUrl}`);
-  if (FEATURES.pro === true) assert(PRO.buyUrl, 'going live needs the Gumroad store link');
+  assert(/^https:\/\/crosby91\.gumroad\.com\/l\/sightrep$/.test(PRO.buyUrl), 'Buy on Gumroad goes to the store');
   assert(!/cone/i.test(JSON.stringify(PRO)), 'no MOVE cone words (the unlock screen is shared)');
 });
 
@@ -233,11 +233,12 @@ test('/api/license through Cloudflare’s entry point', async () => {
 
 test('Startup: waiver, then the key, then the app; locks only on the home screen', () => {
   const main = read('js/main.js');
-  assert(FEATURES.pro === 'preview' && isOn('pro', { host: 'feature-unlock.sightrep.pages.dev' }) && !isOn('pro', { host: 'app.sightrep.app' }),
-    'on for previews, off on the live site until approved');
+  assert(!('pro' in FEATURES), 'on everywhere: no switch left (approved for 6.0)');
   assert(isLiveHost('sightrep.pages.dev') && !isLiveHost('feature-unlock.sightrep.pages.dev'), 'live and preview addresses');
-  assert(/if \(pro && license\.needed\(\)\) \{\s*gated = true;\s*await unlockScreen\(license\.lockedFor\(\)\);/.test(main), 'the unlock screen when there’s no good key');
-  assert(/if \(pro && license\.lockedFor\(\) === 'expired'\) await license\.recheck\(\{ force: true \}\);/.test(main), 'a phone offline for 30 days checks first, before asking again');
+  assert(/if \(license\.needed\(\)\) \{\s*gated = true;\s*await unlockScreen\(license\.lockedFor\(\)\);/.test(main), 'the unlock screen when there’s no good key');
+  assert(/if \(license\.lockedFor\(\) === 'expired'\) await license\.recheck\(\{ force: true \}\);/.test(main), 'a phone offline for 30 days checks first, before asking again');
+  assert(/^accepted\.then\(\(\) => license\.recheck\(\)\)/m.test(main), 'the daily check runs on every phone');
+  assert(!/id="license-group"[^>]*hidden/.test(read('index.html')), 'Settings always shows the license row');
   assert(/if \(!lockReason \|\| !\$\('screen-start'\)\.classList\.contains\('is-active'\)\) return;/.test(main)
     && /onHome = \(\) => \{ renderHome\(\); lockIfDue\(\); \};/.test(main), 'a lock waits for the home screen (never mid-session)');
   const unlock = read('js/unlock.js');
