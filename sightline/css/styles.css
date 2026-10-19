@@ -154,7 +154,16 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .unlock__input { font-size: 1rem; letter-spacing: 0.02em; user-select: text; -webkit-user-select: text; }
 .unlock__row { display: grid; grid-template-columns: 1fr auto; gap: var(--space-2); }
 .unlock__paste { padding-inline: var(--space-4); }
-.unlock__key--first { border-top: 0; padding-top: 0; }
+/* Buyer version (js/unlock.js): one big Paste your key; typing it is behind a small link */
+.unlock__go { margin-top: var(--space-2); }
+.unlock__more { justify-self: start; align-self: flex-start; }
+.unlock__more[aria-expanded="true"] { display: none; }
+.unlock__key[hidden] { display: none; }
+/* Computer to phone (js/handoff.js): the QR code, dark on white whatever the theme */
+.handoff { display: grid; justify-items: center; gap: var(--space-2); }
+.handoff[hidden] { display: none; }
+.handoff__code { width: min(240px, 70vw); padding: var(--space-2); border-radius: var(--radius-m); background: var(--p-white); color: var(--p-ink-950); }
+.handoff__code .qr { display: block; width: 100%; height: auto; }
 .unlock__help { color: var(--muted); font-size: 0.9375rem; line-height: 1.4; }
 
 /* ---------- Home ---------- */
@@ -660,6 +669,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .lb-select { width: 100%; min-height: 56px; padding: 0 var(--space-3); border-radius: var(--radius-m); border: var(--line-w) solid var(--line); background: var(--surface); color: var(--text); font: 600 var(--text-body) var(--font-body); }
 .lb-scores { list-style: none; }
 .lb-scores li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--space-3); min-height: var(--tap); border-bottom: var(--line-w) solid var(--line); font-variant-numeric: tabular-nums; }
+.lb-steps li { grid-template-columns: 1fr auto; }
 .lb-reviews { list-style: none; }
 .lb-review { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-bottom: var(--line-w) solid var(--line); }
 .lb-review__stars { color: var(--accent-text); font-size: 1.125rem; letter-spacing: 0.1em; }
@@ -930,6 +940,42 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 @keyframes ins-pulse { 50% { box-shadow: 0 0 0 5px var(--side); } }
 @media (prefers-reduced-motion: reduce) { .ins-hit { animation: none; } }
 .banner--install { display: flex; align-items: center; gap: var(--space-1); }
+
+/* First-time setup (js/onboarding.js): one screen per step, big buttons at the bottom */
+.screen--onboard { gap: var(--space-3); }
+.screen--onboard .screen-title { font-size: clamp(2rem, 9.6vw, 2.75rem); }
+.screen--onboard .ob__title--sm { font-size: var(--text-title); }
+.ob__field .lbn__hint:empty { display: none; }
+.ob__head { display: flex; align-items: center; justify-content: space-between; min-height: var(--tap); }
+.ob__head .nav__back { margin-left: calc(-1 * var(--space-2)); }
+.ob__progress { color: var(--side-text); font-weight: 700; font-size: var(--text-label); }
+.ob__body { display: grid; gap: var(--space-2); align-content: start; }
+.ob__body--center { flex: 1; align-content: center; justify-items: center; text-align: center; }
+.ob__lead { color: var(--muted); line-height: 1.4; }
+.ob__title--sm { font-size: var(--text-title); }
+.ob__foot { display: grid; gap: var(--space-2); justify-items: stretch; }
+.ob__skip { justify-self: center; }
+.ob__field { display: grid; gap: var(--space-2); border: 0; min-width: 0; }
+.ob__field legend { padding: 0; margin-bottom: var(--space-2); }
+.ob__position { min-height: 48px; }
+.ob__tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.ob__tile { min-height: 48px; padding: var(--space-1) var(--space-2); text-align: center; border-radius: var(--radius-m); border: var(--line-w) solid var(--line); background: var(--surface); color: var(--text); font-weight: 600; font-size: 0.9375rem; line-height: 1.15; }
+.ob__tile[aria-checked="true"] { background: var(--side); color: var(--side-ink); border-color: var(--accent-border); }
+:root[data-appearance="outdoor"] .ob__tile { border-color: var(--line-strong); }
+.ob__check { width: 88px; height: 88px; }
+.ob__check circle { fill: none; stroke: var(--side); stroke-width: 4; }
+.ob__check path { fill: none; stroke: var(--side-text); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: ob-check 0.6s var(--ease-out) 0.15s forwards; }
+@keyframes ob-check { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .ob__check path { animation: none; stroke-dashoffset: 0; } }
+/* Step 4: the install steps, compact so they fit an iPhone SE */
+.ins-steps--compact { gap: var(--space-3); }
+.ins-steps--compact .ins-step p { font-size: 0.9375rem; }
+.ins-steps--compact .ins-art { padding: 4px var(--space-2); font-size: 0.8125rem; }
+.ins-steps--compact .ins-row, .ins-steps--compact .ins-dialog__top, .ins-steps--compact .ins-dialog__btns, .ins-steps--compact .ins-dialog__app { padding: 4px 0; }
+.ins-steps--compact .ins-dialog__app img { width: 24px; height: 24px; }
+.ob__install .ins-note { font-size: 0.875rem; }
+.ins-copykey { justify-self: start; }
+.sum__next { margin-top: var(--space-3); color: var(--muted); line-height: 1.4; }
 .banner--install .banner__btn { flex: 1; }
 
 

@@ -27,6 +27,7 @@ import { runFocusCheck, showCheckResult } from './stages/focuscheck.js';
 import { createEyeCheck } from './eye/index.js';
 import { simulatedEye } from './eye/sim.js';
 import { renderEyeSummary } from './eye/ui.js';
+import { FIRST } from './content/firstrun.js';
 
 const $ = (id) => document.getElementById(id);
 // Whole minutes, or halves under 2 minutes ("1.5 min").
@@ -71,7 +72,7 @@ export function initFocus({
 
   function renderHub() {
     const day = getSettings().day;
-    const parts = FOCUS_SESSIONS.filter((s) => s.id !== 'game' && s.id !== 'training' && !s.extra && !s.timedByRoutine);
+    const parts = FOCUS_SESSIONS.filter((s) => s.id !== 'game' && s.id !== 'training' && !s.extra && !s.timedByRoutine && !s.first);
     const row = (s) => `
           <button type="button" class="hub-row" data-run="${s.id}">
             <span class="hub-row__text"><strong>${s.title}</strong><small>${s.short}</small></span>
@@ -187,7 +188,8 @@ export function initFocus({
     if (opts.length) updateSetting('length', opts.length);
     if (opts.difficulty) updateSetting('difficulty', opts.difficulty);
     const settings = getSettings();
-    onRun(opts.key ?? meta.id);
+    if (meta.first) settings.guide = 'full';   // the first session: every example and practice
+    else onRun(opts.key ?? meta.id);
     // Focus Check (Training only, if on): noticeably slower than usual offers the lighter (Quick) version.
     const bookend = meta.training && settings.focusCheck === 'on' && !dev.autoReady;
     const checked = { before: null, after: null };
@@ -227,6 +229,7 @@ export function initFocus({
     const totalMs = steps.reduce((a, s) => a + s.durationMs + (s.introMs ?? 0), 0);   // instructions included
     renderSummary($('summary'), { title: meta.title, results, settings, totalMs, readiness: { before: state }, checked, seed: session.seed });
     stopReplays = renderEyeSummary($('summary').querySelector('.sum'), eyeRecordings);
+    if (meta.first) $('summary').insertAdjacentHTML('beforeend', `<p class="sum__next">${FIRST.firstDone}</p>`);
     afterSession({ key: opts.key ?? meta.id });
     if (leaderboard && !meta.unscored) await leaderboard.afterSession(focusEntry(meta, session, settings), { slot: $('summary-board') });
     show('done');

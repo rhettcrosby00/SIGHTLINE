@@ -161,6 +161,26 @@ distance, rep style (Out and back, First step, Cone to cone) and pace.
 - **Screen awake** (`js/lib/wakelock.js`): if the phone won't keep the screen on (no support,
   Low Power Mode or Battery Saver refusing it, or the lock dropped), a tip says to turn those off
   or set Auto-Lock to Never. A web app can't see Low Power Mode itself.
+- **A buyer's first minute** (6.5, `js/onboarding.js`, words in `js/content/firstrun.js`): the
+  Gumroad page has Copy (next to the key) and **Start Sightrep** (`app.sightrep.app/?start`). That
+  opens the buyer version of the unlock screen: one big **Paste your key** (typing it is behind
+  "Have a license key? Enter it here"). Then the guided setup, with "Step n of 4" and Back on every
+  step after the waiver: 1 the safety waiver, 2 You're in (moves on after 1.5 s), 3 Make it yours
+  (sport tiles, position, leaderboard name; Skip for now), 4 Home screen (the install steps,
+  compact; skipped in the home-screen app), then "Let's try it. 3 minutes." **Start** runs the
+  First session (box breathing, then Color Call with its example and practice; unscored, on no
+  menu) or "Explore on my own" goes home. Progress is saved after every step
+  (`sightrep.onboard.v1`) and resumes there; finished steps never repeat; phones set up before
+  6.5 never see it. The key now comes before the waiver (a waiver accepted elsewhere comes back
+  with the key); nothing in the app is reachable until both are done.
+  - **Computer to phone** (`js/handoff.js`, `js/lib/qr.js`): "Start Sightrep" opened on a
+    computer says Sightrep works best on a phone. Paste your key there and a QR code appears; the
+    phone's camera opens Sightrep unlocked. The key is encrypted on the computer (AES-GCM) with a
+    secret that only the QR link carries after the `#` (browsers never send that part), so the
+    server keeps only a scrambled copy it can't read (`lb_handoffs`), for 10 minutes, once.
+    "Continue on this computer" unlocks the computer instead.
+  - **Step totals:** each setup step reached is counted once per phone, as that day's total
+    (`lb_funnel`: day, step, count; nothing else). Coach tools → First-time setup (last 30 days).
 - **Install** (`js/install.js`, 6.4): right after a key first unlocks a phone, a full screen shows
   how to put Sightrep on the home screen, for that phone and browser only: iPhone Safari (Share →
   Add to Home Screen → Add), iPhone Chrome (its Share button), Android and computers with Chrome or
@@ -327,6 +347,7 @@ or a switch is never checked. `false` parks a feature: its code stays, off every
 - `sightrep.name.v1`, `sightrep.lbqueue.v1`: last leaderboard name; scores waiting to post
 - `sightrep.last.v2`: "Run last" for each side: a preset (`game:speed`), a FOCUS part or a MOVE setup (older saves upgraded by `js/migrate.js`)
 - `sightrep.install.v2`: the home-screen steps: new, later (and reminders shown), or added
+- `sightrep.onboard.v1`: where this phone is in the first-time setup, and which steps it has counted
 - `sightrep.backup.v1`: a fingerprint of the setup last saved with the key (to skip repeats)
 - `sightrep.variety.v1`, `sightrep.seen.v1` (drills run, for Auto instructions)
 - `sightrep.waiver.v1`: the accepted safety waiver: its version, the date and time (ISO), and both boxes

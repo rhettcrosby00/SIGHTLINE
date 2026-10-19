@@ -2,6 +2,9 @@
 //   POST { action: 'activate', key, device, app?, restore? } → { ok: true, moved, free, data? } | { ok: false, reason }
 //   POST { action: 'check', key, device }    → { ok: true } | { ok: false, reason }
 //   POST { action: 'save', key, device, data } → { ok: true } | { ok: false, reason } (the setup saved with the key)
+//   POST { action: 'verify', key }           → { ok: true } | { ok: false, reason } (real and paid for; binds nothing)
+//   POST { action: 'handoff-put', id, blob } → { ok: true }   (a computer's QR code: the key, encrypted, 10 minutes)
+//   POST { action: 'handoff-take', id }      → { ok: true, blob } | { ok: false, reason: 'expired' } (once)
 //   reason: invalid | refunded | moved | installed | moves | busy (api/_lib/license.js)
 // Gumroad checks each key (GUMROAD_PRODUCT_ID in the project settings); the
 // database keeps which phone each key is on. Test keys work only on preview
@@ -16,13 +19,14 @@ import { PREVIEW_BUILD } from './_lib/build-info.js';
 // deps (tests only): a stand-in fetch for Gumroad, and the clock.
 export async function handle({ method, body = {}, ip = 'unknown' }, env = {}, deps = {}) {
   try {
-    if (method !== 'POST' || !['activate', 'check', 'save'].includes(body.action)) return { status: 404, body: { error: 'Not found.' } };
+    const ACTIONS = { activate: 'activate', check: 'check', save: 'save', verify: 'verify', 'handoff-put': 'handoffPut', 'handoff-take': 'handoffTake' };
+    if (method !== 'POST' || !ACTIONS[body.action]) return { status: 404, body: { error: 'Not found.' } };
     const store = await openStore(env).catch(() => null);
     if (!store) return { status: 503, body: { error: 'The server isn’t connected yet.' } };
     const testKeys = PREVIEW_BUILD || env.TEST_KEYS === '1';
     const verify = (key) => gumroadVerify(key, { productId: env.GUMROAD_PRODUCT_ID, testKeys, fetch: deps.fetch });
     const keys = createLicensing(store, { verify, now: deps.now });
-    return { status: 200, body: await keys[body.action](body, ip) };
+    return { status: 200, body: await keys[ACTIONS[body.action]](body, ip) };
   } catch (err) {
     if (err instanceof HttpError) return { status: err.status, body: { error: err.message } };
     return { status: 500, body: { error: 'Something went wrong. Try again.' } };

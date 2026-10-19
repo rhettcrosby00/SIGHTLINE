@@ -169,9 +169,7 @@ test('Cues read from far away: presets use colors, arrows or numbers; one digit 
   assert(css.includes(`font-size: min(${NUMBER_SIZE.two[0]}vw, ${NUMBER_SIZE.two[1]}dvh)`), 'CSS matches NUMBER_SIZE.two');
 });
 
-test('First-run setup: about 30 seconds, skippable, once per phone', () => {
+test('First-time setup is remembered (the steps themselves: tests/onboarding.js)', () => {
   assert(DEFAULTS.setupDone === false && parseSettings({ setupDone: true }).setupDone === true && parseSettings({ setupDone: 'yes' }).setupDone === false, 'remembered');
-  const guide = read('js/guide.js');
-  assert(/of: 3/.test(guide) && /Skip/.test(guide) && /setupDone', true/.test(guide), 'three short steps, Skip on each, then never again');
-  assert(/!getSettings\(\)\.setupDone && !params\.has\('noguide'\)/.test(read('js/main.js')), 'shown on first open');
+  assert(!/showFirstRun/.test(read('js/guide.js') + read('js/main.js')), 'the old three-card setup is gone (js/onboarding.js replaced it)');
 });

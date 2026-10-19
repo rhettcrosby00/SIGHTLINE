@@ -12,8 +12,8 @@ export const BASE = { length: 'standard', difficulty: 'normal', sound: 'off', gu
 const NO_KEY = 'license=0';
 const typeKey = (prefix) => ['eval', `const i = document.querySelector('#unlock-key'); i.value = '${prefix}' + Math.random().toString(36).slice(2, 10).toUpperCase(); i.dispatchEvent(new Event('input', { bubbles: true }))`];
 const UNLOCK = ['click', '#screen-unlock [data-act="unlock"]'];
-// A first unlock shows the home-screen steps (js/install.js); "I've added it" goes on to the app.
-const PAST_INSTALL = [['waitFor', '#screen-install.is-active', 8000], ['click', '[data-install="added"]']];
+// (A first unlock's setup steps are skipped here, ?noguide; they're checked in scenarios/first-run.mjs.)
+const PAST_INSTALL = [];
 const ONLY_UNLOCK = [
   '#screen-unlock.is-active', 'js:document.documentElement.dataset.gate === "unlock"',
   'js:[...document.querySelectorAll(".screen")].filter((s) => getComputedStyle(s).display !== "none").map((s) => s.id).join() === "screen-unlock"',
@@ -23,9 +23,10 @@ const SAVED = 'js:(() => { const r = JSON.parse(localStorage.getItem("sightrep.l
 
 export const SHOTS = [
   // ---- A phone with no key ----
-  { name: 'unlock-after-waiver', params: `waiver=0&${NO_KEY}`,
-    steps: [['click', '[data-check="risks"]'], ['click', '[data-check="age"]'], ['click', '[data-act="agree"]'], ['waitFor', '#screen-unlock.is-active', 8000], ['wait', 300]],
-    expect: [...ONLY_UNLOCK, 'js:!!localStorage.getItem("sightrep.waiver.v1")'], combos: 'few' },
+  // A brand-new phone: the key first (6.5), then the waiver.
+  { name: 'unlock-first', params: `waiver=0&${NO_KEY}`, steps: [['wait', 600]], expect: [...ONLY_UNLOCK, 'js:!localStorage.getItem("sightrep.waiver.v1")'], combos: 'few' },
+  { name: 'unlock-then-waiver', params: `waiver=0&${NO_KEY}`, steps: [typeKey('TEST-OK-'), UNLOCK, ['waitFor', '#screen-waiver.is-active', 8000], ['wait', 300]],
+    expect: ['#screen-waiver.is-active', 'js:document.documentElement.dataset.gate === "waiver"', SAVED], combos: 'few' },
   { name: 'unlock', params: NO_KEY, expect: [...ONLY_UNLOCK, PRO.price, PRO.buy, PRO.keyLabel, PRO.previewHint, `#screen-unlock a.btn--primary[href="${PRO.buyUrl}"][target="_blank"]`] },
   { name: 'unlock-end', params: NO_KEY, steps: [['scrollEnd']], expect: [PRO.help], combos: 'few' },
   { name: 'unlock-empty', params: NO_KEY, steps: [UNLOCK, ['wait', 300]], expect: [...ONLY_UNLOCK, PRO.errors.empty], combos: 'few' },

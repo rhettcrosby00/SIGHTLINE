@@ -11,6 +11,7 @@ import { focusCap, moveCap } from '../../js/score/scoring.js';
 import { cleanName, nameKey, nameProblem } from '../../js/score/names.js';
 import { cleanKey } from '../../js/license.js';
 import { keyHash } from './keys.js';
+import { SETUP_STEPS } from '../../js/content/firstrun.js';
 
 export const LIMITS = {
   submitPerWindow: 60,     // score posts per network (a whole team on one school Wi-Fi)…
@@ -162,6 +163,15 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
     names: () => store.names(),
 
     // Coach: check the PIN and hand back a 30-minute token.
+    // A first-time setup step reached on some phone (js/onboarding.js): add 1 to today's total.
+    // Totals only: nothing about the phone or person is kept with it.
+    async step({ step } = {}, ip = 'unknown') {
+      if (!Object.hasOwn(SETUP_STEPS, step)) fail(400, 'Unknown step.');
+      if (await store.hit(`step:${ip}`, 600) > 60) return { ok: true };   // plenty for a team on one Wi-Fi; more is ignored
+      await store.countStep(step, now());
+      return { ok: true };
+    },
+
     async unlock({ pin: tried } = {}, ip = 'unknown') {
       if (!pinHash) fail(403, 'Coach tools are off. Add COACH_PIN in the hosting settings to turn them on.');
       if (await store.hit(`pin:${ip}`, LIMITS.pinWindowS, { peek: true }) >= LIMITS.pinTries) fail(429, 'Too many wrong PINs. Wait 15 minutes.');
@@ -186,6 +196,10 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
       if (action === 'review-connected') {   // add (or take off) "Got it free or knows the team"
         if (!await store.setReviewConnected(Number(id), on === true)) fail(404, 'That review is gone.');
         return { ok: true };
+      }
+      if (action === 'setup-steps') {   // the last 30 days, in the order of the setup
+        const totals = await store.stepTotals(now() - 30 * 86400000);
+        return { steps: Object.entries(SETUP_STEPS).map(([step, label]) => ({ step, label, count: totals[step] ?? 0 })) };
       }
       if (action === 'review-remove') {
         if (!await store.removeReview(Number(id))) fail(404, 'That review is gone.');

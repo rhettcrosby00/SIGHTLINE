@@ -8,6 +8,8 @@ export function memoryStore({ now = () => Date.now() } = {}) {
   const hits = new Map();
   const licenses = new Map();   // key hash → { hash, device, boundAt, moves, appMove }
   const keyData = new Map();    // key hash → the setup saved with the key (js/backup.js)
+  const handoffs = new Map();   // id hash → { blob, expiresAt }
+  const funnel = new Map();     // "day|step" → count
   let reviews = [];             // { id, name, sport, stars, text, connected, status, at, decidedAt }
   let nextReview = 1;
 
@@ -87,6 +89,21 @@ export function memoryStore({ now = () => Date.now() } = {}) {
     // License keys: which phone each key is on (by hash).
     async getLicense(hash) { const r = licenses.get(hash); return r ? { ...r, moves: [...r.moves], appMove: r.appMove ? { ...r.appMove } : null } : null; },
     async putLicense(rec) { licenses.set(rec.hash, { ...rec, moves: [...rec.moves], appMove: rec.appMove ? { ...rec.appMove } : null }); },
+    async putHandoff(hash, blob, expiresAt) { handoffs.set(hash, { blob, expiresAt }); },
+    async takeHandoff(hash, at = now()) {
+      const h = handoffs.get(hash);
+      handoffs.delete(hash);
+      return h && h.expiresAt > at ? h.blob : null;
+    },
+    handoffRows: () => [...handoffs.entries()],   // for the tests
+    async countStep(step, at = now()) { const k = `${new Date(at).toISOString().slice(0, 10)}|${step}`; funnel.set(k, (funnel.get(k) ?? 0) + 1); },
+    async stepTotals(sinceAt) {
+      const since = new Date(sinceAt).toISOString().slice(0, 10);
+      const out = {};
+      for (const [k, n] of funnel) { const [day, step] = k.split('|'); if (day >= since) out[step] = (out[step] ?? 0) + n; }
+      return out;
+    },
+    funnelRows: () => [...funnel.entries()],   // for the tests
     async getKeyData(hash) { return keyData.has(hash) ? JSON.parse(keyData.get(hash)) : null; },
     async putKeyData(hash, data) { keyData.set(hash, JSON.stringify(data)); },
     async resetLicense(hash) { return licenses.delete(hash); },

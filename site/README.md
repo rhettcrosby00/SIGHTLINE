@@ -12,6 +12,8 @@ pictures of the app's own install screen), Safety waiver, Privacy, Terms and a n
 - **Checks:** `build.mjs` stops the build if a page is missing the footer links or the
   disclaimer, a link points nowhere, the Buy buttons don't go to the store, or the waiver
   differs from the app's.
+- **How it works** (home): Buy → Copy and Start Sightrep on the Gumroad page → Paste your key →
+  Sightrep walks you through the rest (the app's first-time setup, `../sightline/js/onboarding.js`).
 - **Reviews:** "What athletes say", right under the top of the home page, and the form at
   `/review`. `src/reviews.js` (the site's only script) loads the approved reviews from the app's
   server (`https://app.sightrep.app/api/reviews`; on a preview, the app preview of the same

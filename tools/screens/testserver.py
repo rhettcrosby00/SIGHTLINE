@@ -51,7 +51,8 @@ def _proxy(self):
     n = int(self.headers.get('Content-Length') or 0)
     body = self.rfile.read(n) if n else None
     req = urllib.request.Request('http://localhost:5176' + self.path, data=body, method=self.command,
-        headers={'Content-Type': self.headers.get('Content-Type', 'application/json'), 'X-Forwarded-For': '127.0.0.1'})
+        # X-Test-Network: a shot's made-up network, so the server's per-network limits don't add up across shots
+        headers={'Content-Type': self.headers.get('Content-Type', 'application/json'), 'X-Forwarded-For': self.headers.get('X-Test-Network', '127.0.0.1')})
     try:
         r = urllib.request.urlopen(req); status = r.status; data = r.read()
     except urllib.error.HTTPError as e:

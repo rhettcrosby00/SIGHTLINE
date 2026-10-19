@@ -85,6 +85,9 @@ export const FOCUS_SESSIONS = [
   { id: 'rehearse', title: 'Rehearse only', short: 'Cue word, visualization, My Routine', check: 'before', minutes: [1.5, 1.5, 2] },
   { id: 'extras', title: 'Extras', short: 'Optional: Stroop, math, memory, head turns, object tracking', minutes: [4, 6, 8], extra: true },
   { id: 'myroutine', title: 'My Routine', short: 'Your 20–40 second pre-performance routine', minutes: [0.5, 0.5, 0.5], unscored: true, timedByRoutine: true },
+  // The end of the first-time setup (js/onboarding.js): breathing, then Color Call with its
+  // example and practice first. Not on any menu, and not on the leaderboard.
+  { id: 'first', title: 'First session', short: 'Breathing, then Color Call with a practice round', minutes: [3, 3, 3], unscored: true, first: true },
 ];
 export const sessionById = Object.fromEntries(FOCUS_SESSIONS.map((s) => [s.id, s]));
 export const GAME_DAY_MAX_MIN = 10;
@@ -159,6 +162,7 @@ function drillsFor(sessionId, length, rng, avoid, state, routineS) {
     return [...shuffled(rng, calmPool, avoid.regulate).map((d) => step(d.id)), step('lockin')];
   }
   if (sessionId === 'rehearse') return [step('visualize'), step('myroutine', null, routineS)];
+  if (sessionId === 'first') return [step('settle'), step('colorcall')];
   if (sessionId === 'myroutine') return [step('myroutine', null, routineS)];
   return shuffled(rng, available(sessionId), avoid[sessionId]).map((d) => step(d.id));
 }

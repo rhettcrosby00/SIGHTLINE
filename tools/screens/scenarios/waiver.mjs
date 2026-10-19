@@ -1,5 +1,6 @@
 // The safety waiver (v5.2) in a real browser: `node tools/screens/cdp.mjs waiver`.
-// A fresh phone gets it first, nothing else is reachable, the button waits for
+// A fresh phone gets it right after the key (6.5: the key first, so a waiver accepted on another
+// phone can come back with it), nothing else is reachable, the button waits for
 // both boxes, a direct drill link waits for it, it's remembered after closing
 // the app, and it comes back for a new version or when saved data is gone.
 // Then the safety notes and waiver links on the screens they belong to.
@@ -21,6 +22,10 @@ const ONLY_WAIVER = [
 const SAVED = `js:(() => { const r = JSON.parse(localStorage.getItem("sightrep.waiver.v1")); return r.version === ${WAIVER.version}
   && r.risks === true && r.age === true && Math.abs(Date.parse(r.acceptedAt) - Date.now()) < 120000; })()`;
 const DRILL = (session, only, extra = '') => `autostart=1&session=${session}&only=${only}${extra}`;
+// Each shot is its own phone on its own made-up network (the server limits key tries per network).
+const NETWORK = "if (!sessionStorage.net) sessionStorage.net = '10.' + [1, 2, 3].map(() => Math.floor(Math.random() * 250)).join('.'); { const f = window.fetch; window.fetch = (u, o = {}) => f(u, { ...o, headers: { ...(o.headers || {}), 'X-Test-Network': sessionStorage.net } }); }";
+const typeKey = ['eval', "const i = document.querySelector('#unlock-key'); i.value = 'TEST-OK-' + Math.random().toString(36).slice(2, 10).toUpperCase();"];
+const KEY_THEN_WAIVER = [typeKey, ['click', '#screen-unlock [data-act="unlock"]'], ['waitFor', '#screen-waiver.is-active', 8000], ['wait', 300]];
 const READY = [['waitFor', '.btn-ready', 15000], ['click', '.btn-ready'], ['waitFor', '#hud-safety:not([hidden])', 8000], ['wait', 800]];
 
 export const SHOTS = [
@@ -48,22 +53,21 @@ export const SHOTS = [
   // Accept: then the link's drill starts.
   { name: 'waiver-direct-link-accepted', params: `${FRESH}&${DRILL('activate', 'peripheral')}`, steps: [tick('risks'), tick('age'), ['click', '[data-act="agree"]'], ['waitFor', '.howto', 8000]],
     expect: ['Peripheral Flash', '#screen-session.is-active', SAVED], combos: 'few' },
-  // A brand-new phone: the waiver, then the first-run setup.
-  { name: 'waiver-then-setup', params: FRESH, firstRun: true, steps: [['wait', 1500], ['eval', 'if (document.querySelector(".guide")) throw new Error("setup before the waiver")'],
-    tick('risks'), tick('age'), ['click', '[data-act="agree"]'], ['waitFor', '.guide__card', 8000]], expect: ['Welcome to Sightrep'], combos: 'few' },
+  // A brand-new phone: the waiver is step 1 of the first-time setup (js/onboarding.js), then You're in.
+  { name: 'waiver-then-setup', params: `${FRESH}&install=none`, firstRun: true, steps: [['wait', 1500], ['eval', 'if (document.querySelector("#screen-onboard.is-active")) throw new Error("setup before the waiver")'],
+    tick('risks'), tick('age'), ['click', '[data-act="agree"]'], ['waitFor', '.ob__check', 8000]], expect: ['Step 2 of 4', 'You’re in'], combos: 'few' },
 
   // ---- Accept, close, reopen ----
   { name: 'waiver-accepted', params: FRESH, steps: ACCEPT, expect: ['#screen-start.is-active', 'js:!document.documentElement.dataset.gate', 'Choose a preset', SAVED, DISCLAIMER] },
   { name: 'waiver-reopened', params: FRESH, steps: ACCEPT, reopen: 'noguide=1', expect: ['#screen-start.is-active', 'js:!document.documentElement.dataset.gate', 'js:!document.getElementById("screen-waiver").children.length', SAVED] },
-  // Saved data cleared (Safari can do this after a week unused): the waiver again.
-  { name: 'waiver-cleared', params: FRESH, steps: [...ACCEPT, ['eval', 'localStorage.clear()']], reopen: 'noguide=1', expect: ONLY_WAIVER, combos: 'few' },
+  // Saved data cleared (Safari can do this after a week unused): the key again, then the waiver again.
+  { name: 'waiver-cleared', params: FRESH, init: NETWORK, steps: [...ACCEPT, ['eval', 'localStorage.clear()']], reopen: 'noguide=1', after: KEY_THEN_WAIVER, expect: ONLY_WAIVER, combos: 'few' },
   // A new waiver version: only the previous one was accepted.
   { name: 'waiver-new-version', params: 'waiver=old', expect: ONLY_WAIVER, combos: 'few' },
-  // Saved data blocked: the waiver every visit; accepting still lets this visit go on.
-  { name: 'waiver-no-storage', params: 'nostorage=1', expect: ONLY_WAIVER, combos: 'few' },
-  // With Sightrep Pro on (previews), blocked storage also means entering the key each visit: the unlock screen next.
-  { name: 'waiver-no-storage-accepted', params: 'nostorage=1', steps: [ACCEPT[0], ACCEPT[1], ACCEPT[2], ['waitFor', '#screen-unlock.is-active', 8000]],
-    expect: ['#screen-unlock.is-active', 'js:!!document.querySelector("#unlock-key")'], combos: 'few' },
+  // Saved data blocked: the key and the waiver every visit; accepting still lets this visit go on.
+  { name: 'waiver-no-storage', params: 'nostorage=1', init: NETWORK, steps: KEY_THEN_WAIVER, expect: ONLY_WAIVER, combos: 'few' },
+  { name: 'waiver-no-storage-accepted', params: 'nostorage=1', init: NETWORK, steps: [...KEY_THEN_WAIVER, ACCEPT[0], ACCEPT[1], ACCEPT[2], ['waitFor', '#screen-start.is-active', 8000]],
+    expect: ['#screen-start.is-active', 'js:!document.documentElement.dataset.gate'], combos: 'few' },
 
   // ---- Safety notes, always on the screen they belong to ----
   { name: 'safety-move-hub', steps: [['click', '#btn-move']], expect: [SAFETY.move, 'brightness all the way up'] },
