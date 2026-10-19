@@ -46,6 +46,15 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
   gap: var(--space-5);
 }
 .screen.is-active { display: flex; }
+/* The home-screen app on iPhone draws under the status bar, whose clock and battery are white
+   (apple-mobile-web-app-status-bar-style: black-translucent). In the light and outdoor themes a
+   strip of brand ink sits behind them so they stay readable. */
+@media (display-mode: standalone) {
+  :root:not([data-appearance="dark"]) body::before {
+    content: ""; position: fixed; inset: 0 0 auto; z-index: 300; height: env(safe-area-inset-top);
+    background: var(--p-ink-950); pointer-events: none;
+  }
+}
 .screen.enter-fwd { animation: enter-fwd var(--dur-base) var(--ease-out); }
 .screen.enter-back { animation: enter-back var(--dur-base) var(--ease-out); }
 @keyframes enter-fwd { from { transform: translateX(var(--slide)); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -143,6 +152,9 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .unlock__soon { color: var(--muted); font-size: 0.9375rem; text-align: center; }
 .unlock__key { display: grid; gap: var(--space-2); padding-top: var(--space-4); border-top: var(--line-w) solid var(--line); }
 .unlock__input { font-size: 1rem; letter-spacing: 0.02em; user-select: text; -webkit-user-select: text; }
+.unlock__row { display: grid; grid-template-columns: 1fr auto; gap: var(--space-2); }
+.unlock__paste { padding-inline: var(--space-4); }
+.unlock__key--first { border-top: 0; padding-top: 0; }
 .unlock__help { color: var(--muted); font-size: 0.9375rem; line-height: 1.4; }
 
 /* ---------- Home ---------- */
@@ -891,13 +903,34 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .lb-offline { display: flex; align-items: flex-start; gap: var(--space-2); color: var(--muted); font-weight: 600; font-size: 0.9375rem; line-height: 1.35; }
 .lb-offline[hidden] { display: none; }
 
-/* Add to Home Screen, after a finished session. */
-.install-card { display: grid; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-m); background: var(--surface); border: var(--line-w) solid var(--line); }
-.install-card__title { display: flex; align-items: center; gap: var(--space-2); font-weight: 700; }
-.install-card__why { color: var(--muted); line-height: 1.4; }
-.install-card__steps { list-style: none; display: grid; gap: var(--space-2); }
-.install-card__steps li { display: grid; grid-template-columns: 5.5em 1fr; gap: var(--space-2); line-height: 1.45; }
-.install-card__steps .icon { display: inline-block; vertical-align: -4px; }
+/* Put Sightrep on the home screen (js/install.js): the steps for this phone only, each with a
+   small sketch of the browser where the part to tap pulses. */
+.screen--install { gap: var(--space-4); }
+.ins-head { display: grid; gap: var(--space-2); justify-items: start; }
+.ins-icon { width: 64px; height: 64px; border-radius: 14px; }
+.ins-lead, .ins-note { color: var(--muted); line-height: 1.4; }
+.ins-steps { list-style: none; display: grid; gap: var(--space-4); }
+.ins-steps li { display: grid; grid-template-columns: 32px 1fr; gap: var(--space-3); align-items: start; }
+.ins-num { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--side); color: var(--side-ink); font: 800 1.125rem/1 var(--font-num); }
+.ins-step { display: grid; gap: var(--space-2); min-width: 0; }
+.ins-step p { line-height: 1.4; font-weight: 600; }
+.ins-foot { display: grid; gap: var(--space-2); }
+.ins-art { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-m); background: var(--raised); color: var(--muted); font-size: 0.9375rem; }
+.ins-art--list, .ins-art--dialog { flex-direction: column; align-items: stretch; gap: 0; padding: var(--space-1) var(--space-3); }
+.ins-url { flex: 1; min-width: 0; padding: 6px 10px; border-radius: var(--radius-pill); background: var(--surface); color: var(--text); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ins-dots { font-weight: 800; color: var(--text); }
+.ins-row { display: flex; align-items: center; gap: var(--space-2); padding: 8px 0; color: var(--text); }
+.ins-row + .ins-row, .ins-row + .ins-hit, .ins-hit + .ins-row { border-top: var(--line-w) solid var(--line); }
+.ins-dialog__top, .ins-dialog__btns, .ins-dialog__app { display: flex; align-items: center; gap: var(--space-2); padding: 8px 0; color: var(--text); }
+.ins-dialog__top, .ins-dialog__btns { justify-content: space-between; }
+.ins-dialog__app img { border-radius: 8px; }
+.ins-blue { color: var(--move-text); }
+.ins-hit { display: inline-flex; align-items: center; border-radius: var(--radius-s); padding: 2px 6px; box-shadow: 0 0 0 2px var(--side); animation: ins-pulse 1.6s ease-in-out infinite; }
+.ins-art--list .ins-hit { display: flex; margin-inline: -6px; }
+@keyframes ins-pulse { 50% { box-shadow: 0 0 0 5px var(--side); } }
+@media (prefers-reduced-motion: reduce) { .ins-hit { animation: none; } }
+.banner--install { display: flex; align-items: center; gap: var(--space-1); }
+.banner--install .banner__btn { flex: 1; }
 
 
 /* ---------- Eye Check (beta): js/eye/ ---------- */

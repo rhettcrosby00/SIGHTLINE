@@ -66,7 +66,7 @@
     @media (prefers-reduced-motion: reduce) { .splash { transition: none; } }
     /* The safety waiver comes first: until it's accepted (js/main.js lifts the
        gate), no other screen is shown or reachable, even before the app loads. */
-    :root[data-gate] .screen:not(#screen-waiver):not(#screen-unlock) { display: none !important; }
+    :root[data-gate] .screen:not(#screen-waiver):not(#screen-unlock):not(#screen-install) { display: none !important; }
   </style>
 </head>
 <body>
@@ -80,6 +80,8 @@
   <section id="screen-waiver" class="screen screen--waiver" aria-labelledby="waiver-title"></section>
   <!-- Then the key that unlocks this phone (js/unlock.js) -->
   <section id="screen-unlock" class="screen screen--unlock" aria-labelledby="unlock-title"></section>
+  <!-- Put Sightrep on the home screen (js/install.js): after a key first unlocks a phone, and from Settings -->
+  <section id="screen-install" class="screen screen--install" aria-labelledby="install-title"></section>
 
   <!-- Home: the two sides -->
   <section id="screen-start" class="screen screen--home is-active" aria-labelledby="app-title">
@@ -97,6 +99,10 @@
 
     <div id="update" class="banner" hidden>
       <button id="btn-update" class="banner__btn" type="button"><i data-icon="download"></i>Update ready · Tap to refresh</button>
+    </div>
+    <div id="install-banner" class="banner banner--install" hidden>
+      <button id="btn-install-banner" class="banner__btn" type="button"><i data-icon="square-plus"></i>Put Sightrep on your home screen</button>
+      <button id="btn-install-banner-x" class="icon-btn" type="button" aria-label="Not now"><i data-icon="x" data-size="20"></i></button>
     </div>
 
     <div class="home__sides">
@@ -160,6 +166,12 @@
         <span id="license-status" class="setting__label"></span>
         <p id="license-hint" class="setting__hint"></p>
       </div></div>
+    </section>
+    <section class="group" aria-labelledby="app-group-title">
+      <h3 id="app-group-title" class="group__title">App</h3>
+      <div class="list">
+        <button id="btn-settings-install" class="list__row list__row--button" type="button"><span class="list__label">Install on home screen</span><i data-icon="chevron-right"></i></button>
+      </div>
     </section>
     <section class="group" aria-labelledby="legal-title">
       <h3 id="legal-title" class="group__title">Legal</h3>
@@ -296,7 +308,6 @@
   <section id="screen-done" class="screen" data-side="focus">
     <div id="summary"></div>
     <div id="summary-board" class="lb-inline"></div>
-    <div id="done-install"></div>
     <div class="screen__foot">
       <button id="btn-next-move" class="btn btn--primary btn--block btn--last" type="button" data-side="move" hidden>
         <i data-icon="move"></i><span><small>Next: Move</small><span id="next-move-desc"></span></span>

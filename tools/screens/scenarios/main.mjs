@@ -9,6 +9,9 @@
 //   reopen: close and reopen the app (saved data kept) at /?<reopen>, then run the `after` steps
 //   combos: 'few' = SE dark and Pro Max light only; sizes: ['pm'] / themes: ['dark'] pick exact ones
 //   url: open that page as it is (the website) instead of the app
+//   ua: pretend to be that phone and browser; init: JavaScript run before the page's own
+//   offline: no network for the reopen; installable: Chrome's installability check
+//   media: CSS media to pretend ([{ name, value }]); settle: ms to let the page restart itself, then `after`
 export const BASE = { length: 'standard', difficulty: 'normal', sound: 'off', guide: 'full', cue: 'ATTACK' };
 
 const LAST = { focus: 'game:standard', move: 'game:speed' };
@@ -44,8 +47,8 @@ export const SHOTS = [
   { name: 'move-resume-count', steps: [...MOVE_QUICK, ['hold', '#stage', 1400], ['click', '#btn-resume'], ['wait', 200]], expect: ['Back to your start spot', '.pause.is-counting'], combos: 'few' },
   // Auto-pause when the app is left.
   { name: 'auto-pause', steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-session.is-active'], ['wait', 500], ['eval', "window.dispatchEvent(new Event('pagehide'))"], ['wait', 300]], expect: ['You left the app or the screen locked.', 'Resume'] },
-  // Finishing: the score saves on its own under the remembered name; install card; Next: Move.
-  { name: 'focus-done', player: 'Jordan', params: `${FAST}&only=colorcall`, steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-done.is-active', 90000], ['waitFor', '.lb-inline__line .link-btn', 15000], ['wait', 300]], expect: ['Next: Move', 'for Jordan', 'Add Sightrep to your home screen'] },
+  // Finishing: the score saves on its own under the remembered name; Next: Move.
+  { name: 'focus-done', player: 'Jordan', params: `${FAST}&only=colorcall`, steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-done.is-active', 90000], ['waitFor', '.lb-inline__line .link-btn', 15000], ['wait', 300]], expect: ['Next: Move', 'for Jordan', 'js:!/home screen/i.test(document.querySelector("#screen-done").innerText)'] },
   { name: 'focus-done-end', player: 'Jordan', params: `${FAST}&only=colorcall`, steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-done.is-active', 90000], ['waitFor', '.lb-inline__line .link-btn', 15000], ['scrollEnd']], combos: 'few' },
   { name: 'focus-done-first', params: `${FAST}&only=colorcall`, steps: [['click', '#btn-focus'], ['click', '[data-preset="quick"]'], ['waitFor', '#screen-name.is-active', 90000], ['wait', 1200]], expect: ['Your name'], combos: 'few' },
   { name: 'move-done', player: 'Jordan', params: FAST, steps: [['click', '#btn-move'], ['click', '[data-run="game:quick"]'], ['waitFor', '#screen-cone-done.is-active', 90000], ['waitFor', '.lb-inline__line .link-btn', 15000], ['wait', 300]], expect: ['Quick complete', 'for Jordan', 'How was the pace?'] },

@@ -161,10 +161,15 @@ distance, rep style (Out and back, First step, Cone to cone) and pace.
 - **Screen awake** (`js/lib/wakelock.js`): if the phone won't keep the screen on (no support,
   Low Power Mode or Battery Saver refusing it, or the lock dropped), a tip says to turn those off
   or set Auto-Lock to Never. A web app can't see Low Power Mode itself.
-- **Install** (`js/install.js`): after the first finished session, the summary shows how to add
-  Sightrep to the home screen (iPhone: Share → Add to Home Screen; Android: ⋮ → Install app, or
-  Chrome's own Install button). Safari can clear a website's saved data after about 7 days
-  without a visit; home-screen apps keep it. "Not now" hides it for a week.
+- **Install** (`js/install.js`, 6.4): right after a key first unlocks a phone, a full screen shows
+  how to put Sightrep on the home screen, for that phone and browser only: iPhone Safari (Share →
+  Add to Home Screen → Add), iPhone Chrome (its Share button), Android and computers with Chrome or
+  Edge (one Install button: the browser's own prompt; or its menu steps), and "open this page in
+  Safari / Chrome" with Copy link for in-app browsers. "I've added it" ends it; "Remind me later"
+  puts a small banner on the home screen on the next 2 visits, then stops. Never in the
+  home-screen app. Settings → App → Install on home screen opens it any time. The help page is
+  sightrep.app/install. Why: full screen with its own icon, works with no signal, and Safari can
+  clear a website's saved data after about 7 days without a visit (home-screen apps keep it).
 - **Offline**: every file is precached (`sw.js`); scores wait on the phone and post later, and
   the leaderboard shows an Offline note when it can't sync.
 
@@ -214,12 +219,17 @@ to this GitHub repo:
 The phone needs the app served over **HTTPS** for offline use, installing, and keeping the
 screen awake: open https://app.sightrep.app.
 
-On the phone, open the URL once while online, then install it:
+On the phone, open the URL once while online, then install it (the app shows the steps right
+after the key unlocks it; https://sightrep.app/install has them too):
 
-- **iPhone:** Share, then Add to Home Screen.
-- **Android:** tap Install.
+- **iPhone:** in Safari, Share, then Add to Home Screen, then Add. Then open it from the home
+  screen and enter the key once more: the home-screen app keeps its own storage, apart from
+  Safari. That first move into it is free (it doesn't count toward 3 moves in 30 days), Safari
+  then says "Sightrep is on your home screen now", and the setup saved with the key comes back.
+- **Android:** tap Install Sightrep (or ⋮ → Install app). It shares Chrome's storage: no key again.
 
-After that it works with no signal.
+After that it works with no signal. Icons, launch pictures and the link preview are drawn on the
+palette's ink (`tools/brand/make.py`); the manifest uses the same color and `id: "/"`.
 
 ## Updating
 
@@ -316,7 +326,8 @@ or a switch is never checked. `false` parks a feature: its code stays, off every
 - `sightrep.tune.v1`: "Too fast / Too slow" answers, per distance and rep style
 - `sightrep.name.v1`, `sightrep.lbqueue.v1`: last leaderboard name; scores waiting to post
 - `sightrep.last.v2`: "Run last" for each side: a preset (`game:speed`), a FOCUS part or a MOVE setup (older saves upgraded by `js/migrate.js`)
-- `sightrep.install.v1`: finished sessions and "Not now" for the install card
+- `sightrep.install.v2`: the home-screen steps: new, later (and reminders shown), or added
+- `sightrep.backup.v1`: a fingerprint of the setup last saved with the key (to skip repeats)
 - `sightrep.variety.v1`, `sightrep.seen.v1` (drills run, for Auto instructions)
 - `sightrep.waiver.v1`: the accepted safety waiver: its version, the date and time (ISO), and both boxes
 - `sightrep.license.v1`, `sightrep.device.v1`: the Sightrep key on this phone (and when the server last called it good, or why it's locked); this phone's random ID
@@ -337,7 +348,16 @@ On for everyone since 6.0.
   Cloudflare's settings; it never counts a use). The database (`lb_licenses`) records which phone
   each key is on, by a hash of the key, never the key itself.
 - **Moving phones:** entering the key on another phone moves it there, at most 3 times in 30
-  days. The old phone locks at its next check.
+  days. The old phone locks at its next check. The first move into a home-screen app (on iPhone it
+  has its own storage) is free, once per key; the old Safari copy hears "installed" and says to
+  open Sightrep from the home screen.
+- **Saved with the key** (`js/backup.js`, 6.4): settings, My Routine, levels, training days, Run
+  last, the leaderboard name, MOVE setups, Focus Check results and the waiver acceptance are saved
+  under the key's hash (`lb_key_data`), only by the phone the key is on, and only those items.
+  Entering the key on a phone with none of its own (the home-screen app, a new phone) brings them
+  back and the app restarts with them; a waiver version change still asks again. The home-screen
+  app's first open asks for the key first (a welcome screen with Paste), so the waiver acceptance
+  can come back with it.
 - **Checks:** once a day when online (`js/license.js`). With no signal, the app keeps working for
   30 days after the last good check. A lock only happens on the home screen, never mid-session.
 - **Coach tools → Keys → Free a key:** for a lost or reset phone; the key then unlocks the next
@@ -431,7 +451,8 @@ Saved data moved from `sightline.*` to `sightrep.*` keys in v5.0 (`renameSavedDa
 | `js/license.js`, `js/unlock.js`, `js/content/pro.js`, `api/license.js` | Sightrep Pro: the key on this phone, the unlock screen, its wording and price, the key check |
 | `js/waiver.js`, `js/content/safety.js` | The safety waiver screen and its saved acceptance; every word of the waiver, disclaimer and safety notes |
 | `js/presets.js` | Quick / Standard / Game Speed, Run last keys, the Game Day / Training switch |
-| `js/guide.js`, `js/install.js` | First-run setup and How it works; the Add to Home Screen card |
+| `js/guide.js`, `js/install.js` | First-run setup and How it works; the home-screen install steps |
+| `js/backup.js` | The setup saved with the key, and bringing it back |
 | `js/focus.js` | The FOCUS screen (readiness, presets, Advanced) and session flow |
 | `js/plan.js` | FOCUS pillars, sessions, minutes for each length, and how readiness changes them |
 | `js/myroutine.js`, `js/myroutine-ui.js` | My Routine: its parts and timing, the saved copy, the builder screen |

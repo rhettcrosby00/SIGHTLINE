@@ -1,7 +1,8 @@
 # sightrep.app (the website)
 
 Plain pages plus one small script for reviews: the home page (from the launch poster), Write a
-review, Safety waiver, Privacy, Terms and a not-found page. Hosted on Cloudflare Pages, project **sightrep-site** (root directory
+review, Install the app (/install: home-screen steps for iPhone, Android and computers, with
+pictures of the app's own install screen), Safety waiver, Privacy, Terms and a not-found page. Hosted on Cloudflare Pages, project **sightrep-site** (root directory
 `site`, build command `npm run build`, output `dist`). Every branch gets a preview at
 `https://<branch>.sightrep-site.pages.dev`.
 
@@ -21,7 +22,8 @@ review, Safety waiver, Privacy, Terms and a not-found page. Hosted on Cloudflare
 - **Type:** Barlow Condensed for the big headline and buttons (it matches the launch poster),
   Barlow for everything else; sentence-case headings.
 - **Pictures:** `python3 ../tools/site/pictures.py`. It makes `assets/screens/*.webp` from the app
-  screenshots (`DPR=2 node ../tools/screens/cdp.mjs site-shots`) and the poster crop.
+  screenshots (`DPR=2 node ../tools/screens/cdp.mjs site-shots`), `assets/install/*.webp` from the
+  install steps (`DPR=2 node ../tools/screens/cdp.mjs install`) and the poster crop.
 - **Look at it locally:** `node build.mjs`, then `node ../tools/site/serve.mjs` (:5177) and
   `node ../tools/screens/apiserver.mjs` (:5176, for reviews), then
   `node ../tools/screens/cdp.mjs site` for phone and desktop screen checks, and

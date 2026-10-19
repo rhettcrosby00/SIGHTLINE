@@ -27,6 +27,9 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'sigh
 LOGO = os.path.join(ROOT, 'assets', 'logo')
 CHROME = os.environ.get('CHROME', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome')
 LIME, WHITE, BLACK, DEEP_LIME = '#B7FF00', '#FFFFFF', '#050505', '#3F5C00'
+# Backgrounds of the app icons, launch pictures and link preview: the palette's ink (css/palette.css),
+# the same color as the app's dark theme and the manifest, so the icon, splash and app match.
+INK = re.search(r'--p-ink-950:\s*(#[0-9A-Fa-f]{6})', open(os.path.join(ROOT, 'css', 'palette.css')).read()).group(1)
 VARIANTS = {'': (LIME, WHITE), '-light': (DEEP_LIME, BLACK), '-white': (WHITE, WHITE), '-black': (BLACK, BLACK)}
 TITLE = 'Sightrep logo'
 BRAND = re.search(r"tagline: '([^']+)'", open(os.path.join(ROOT, 'js', 'brand.js')).read()).group(1)
@@ -122,7 +125,7 @@ def shoot(html, w, h, out, transparent=False):
                         f'--screenshot={out}', f'file://{page}'], check=True, capture_output=True)
 
 
-def square(img_src, size, share, out, bg=BLACK):
+def square(img_src, size, share, out, bg=INK):
     """A square picture: the image centered at `share` of the width, drawn at 1024 px and scaled down."""
     from PIL import Image
     big = out + '.big.png'
@@ -133,7 +136,7 @@ def square(img_src, size, share, out, bg=BLACK):
     os.remove(big)
 
 
-def page(body, bg=BLACK, extra=''):
+def page(body, bg=INK, extra=''):
     return (f'<!doctype html><html><head><meta charset="utf-8">{extra}<style>html,body{{margin:0;height:100%;background:{bg};}}'
             f'body{{display:flex;flex-direction:column;align-items:center;justify-content:center;}}img{{display:block}}</style></head>'
             f'<body>{body}</body></html>')
@@ -143,14 +146,14 @@ def pictures(sizes):
     (iw, ih), (hw, hh), (sw, sh) = sizes
     src = lambda name: f'file://{os.path.join(LOGO, name)}'
     icons = os.path.join(ROOT, 'icons')
-    # App icons: the full icon on matte black. Maskable keeps it inside the safe circle (phones crop the edges).
-    for name, size, share in [('icon-192.png', 192, 0.78), ('icon-512.png', 512, 0.78), ('apple-touch-icon.png', 180, 0.76),
-                              ('icon-maskable-512.png', 512, 0.62)]:
-        square(src('logo-icon.svg'), size, share, os.path.join(icons, name))
+    # App icons: the full icon on the brand ink. Maskable keeps it inside the safe circle (phones crop the edges).
+    for name, size, part in [('icon-192.png', 192, 0.78), ('icon-512.png', 512, 0.78), ('apple-touch-icon.png', 180, 0.76),
+                             ('icon-maskable-512.png', 512, 0.62)]:
+        square(src('logo-icon.svg'), size, part, os.path.join(icons, name))
     for name, size in [('favicon-32.png', 32), ('favicon-16.png', 16)]:
         square(f'file://{os.path.join(icons, "icon.svg")}', size, 1.0, os.path.join(icons, name), bg='transparent')
     share()
-    # iPhone launch pictures: the stacked logo, centered on matte black.
+    # iPhone launch pictures: the stacked logo, centered on the brand ink.
     os.makedirs(os.path.join(ROOT, 'splash'), exist_ok=True)
     for w, h, r in SPLASH:
         shoot(page(f'<img src="{src("logo-stacked.svg")}" width="{w * 0.46:.0f}">'), w, h, os.path.join(ROOT, 'splash', f'launch-{w}x{h}.png'))

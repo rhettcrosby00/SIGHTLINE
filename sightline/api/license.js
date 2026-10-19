@@ -1,7 +1,8 @@
 // License keys API, served at /api/license (functions/api/[name].js).
-//   POST { action: 'activate', key, device } → { ok: true, moved } | { ok: false, reason }
+//   POST { action: 'activate', key, device, app?, restore? } → { ok: true, moved, free, data? } | { ok: false, reason }
 //   POST { action: 'check', key, device }    → { ok: true } | { ok: false, reason }
-//   reason: invalid | refunded | moved | moves | busy (api/_lib/license.js)
+//   POST { action: 'save', key, device, data } → { ok: true } | { ok: false, reason } (the setup saved with the key)
+//   reason: invalid | refunded | moved | installed | moves | busy (api/_lib/license.js)
 // Gumroad checks each key (GUMROAD_PRODUCT_ID in the project settings); the
 // database keeps which phone each key is on. Test keys work only on preview
 // builds (api/_lib/build-info.js), or with TEST_KEYS=1 for local runs.
@@ -15,7 +16,7 @@ import { PREVIEW_BUILD } from './_lib/build-info.js';
 // deps (tests only): a stand-in fetch for Gumroad, and the clock.
 export async function handle({ method, body = {}, ip = 'unknown' }, env = {}, deps = {}) {
   try {
-    if (method !== 'POST' || !['activate', 'check'].includes(body.action)) return { status: 404, body: { error: 'Not found.' } };
+    if (method !== 'POST' || !['activate', 'check', 'save'].includes(body.action)) return { status: 404, body: { error: 'Not found.' } };
     const store = await openStore(env).catch(() => null);
     if (!store) return { status: 503, body: { error: 'The server isn’t connected yet.' } };
     const testKeys = PREVIEW_BUILD || env.TEST_KEYS === '1';

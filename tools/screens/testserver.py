@@ -24,6 +24,7 @@ class H(http.server.SimpleHTTPRequestHandler):
             legacy = q.pop('legacy', '')  # save under the old sightline.* keys (checks the move to sightrep.*)
             waiver = q.pop('waiver', '')  # the safety waiver: accepted (this version) unless waiver=0 (a fresh device) or waiver=old (the previous version)
             lic = q.pop('license', '')    # Sightrep Pro key: unlocked (checked just now) unless license=0 (none), locked (moved to another phone) or old (last good check 40 days ago)
+            inst = q.pop('install', '')   # home-screen steps (js/install.js): already added, unless install=later|new|none (no record: a phone from before 6.4); none with license=0
             html = open(APP + '/index.html', encoding='utf-8').read()
             inject = f"<script>localStorage.setItem('sightrep.settings.v1', JSON.stringify({json.dumps(q)}));</script>"
             if cone: inject += "<script>localStorage.setItem('sightrep.cone.v1', " + json.dumps(cone) + ");</script>"
@@ -31,6 +32,8 @@ class H(http.server.SimpleHTTPRequestHandler):
             if name: inject += "<script>localStorage.setItem('sightrep.name.v1', " + json.dumps(json.dumps(name)) + ");</script>"
             if nostorage: inject += "<script>Object.defineProperty(window, 'localStorage', { get() { throw new Error('storage blocked'); } });</script>"
             if legacy: inject = inject.replace("'sightrep.", "'sightline.")
+            inst = inst or ('none' if lic == '0' else 'added')
+            if inst != 'none': inject += "<script>localStorage.setItem('sightrep.install.v2', " + json.dumps(json.dumps({'status': inst, 'reminders': 0})) + ");</script>"
             if lic != '0':
                 state, age = ('locked' if lic == 'locked' else 'ok'), (40 if lic == 'old' else 0)
                 inject = ("<script>localStorage.setItem('sightrep.device.v1', 'seed-phone-0001');"

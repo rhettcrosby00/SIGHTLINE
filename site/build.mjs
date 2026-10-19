@@ -73,6 +73,7 @@ const foot = () => `
       <a href="/waiver">Safety waiver</a>
       <a href="/privacy">Privacy</a>
       <a href="/terms">Terms</a>
+      <a href="/install">Install the app</a>
       <a href="/review">Write a review</a>
       <a href="https://app.sightrep.app">Open the app</a>
       <a href="mailto:support@sightrep.app">support@sightrep.app</a>
@@ -114,6 +115,7 @@ mkdirSync(new URL('icons/', out), { recursive: true });
 const pages = {
   'index.html': page('index.html', '/', { script: true }),
   'review.html': page('review.html', '/review', { script: true }),
+  'install.html': page('install.html', '/install'),
   'privacy.html': page('privacy.html', '/privacy'),
   'terms.html': page('terms.html', '/terms'),
   'waiver.html': waiver(),
@@ -125,6 +127,7 @@ cpSync(new URL('src/reviews.js', here), new URL('reviews.js', out));
 cpSync(new URL('css/palette.css', app), new URL('palette.css', out));   // the app's palette, unchanged
 cpSync(new URL('src/sw.js', here), new URL('sw.js', out));   // clears the app's old offline copy from sightrep.app
 cpSync(new URL('assets/screens/', here), new URL('assets/screens/', out), { recursive: true });
+cpSync(new URL('assets/install/', here), new URL('assets/install/', out), { recursive: true });   // the app's install steps (tools/site/pictures.py)
 cpSync(new URL('assets/poster.webp', here), new URL('assets/poster.webp', out));
 cpSync(new URL('assets/share.png', app), new URL('assets/share.png', out));
 for (const f of ['logo-horizontal.svg']) cpSync(new URL(`assets/logo/${f}`, app), new URL(`assets/logo/${f}`, out));

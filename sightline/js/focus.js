@@ -37,7 +37,7 @@ const roundMin = (m) => (m < 2 ? Math.round(m * 2) / 2 : Math.round(m));
 // leaderboard (optional) gets the score after each finished session.
 // onTrained() fires when a Training session finishes (the weekly streak);
 // week() gives that streak; onDay() fires when the Game Day / Training switch changes.
-// afterSession(done) runs on the summary (install tip, "Next: Move").
+// afterSession(done) runs on the summary ("Next: Move", saving the setup with the key).
 export function initFocus({
   show, dev = {}, variety, getSettings, updateSetting, onRun = () => {}, onOptions = () => {}, onRoutine = () => {},
   onTrained = () => {}, leaderboard = null, week = () => ({}), onDay = () => {}, afterSession = () => {},

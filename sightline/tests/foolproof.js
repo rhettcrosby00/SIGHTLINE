@@ -1,8 +1,8 @@
 // Foolproof and seamless (v4.0), run by tests/run.js: two choices on home,
 // three presets per side that start in two taps, one readiness tap, taps that
 // can't count twice or before a cue, MOVE's countdown and touch lock, the
-// pause and screen-awake backups, sound unlocked inside the Start tap, the
-// install card, parked Partner mode, two leaderboard tabs per side, no trivia,
+// pause and screen-awake backups, sound unlocked inside the Start tap,
+// parked Partner mode, two leaderboard tabs per side, no trivia,
 // and cues big enough to read from far away.
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -16,7 +16,6 @@ import { numberYards, NUMBER_SIZE } from '../js/cone/render.js';
 import { parseSettings, DEFAULTS } from '../js/settings.js';
 import { tapGuard, TAP_GUARD } from '../js/stages/common.js';
 import { HOLD_TO_PAUSE_MS, PAUSE_WHY, AWAKE_TIP } from '../js/engine.js';
-import { shouldOfferInstall, SNOOZE_DAYS } from '../js/install.js';
 import { FEATURES } from '../js/features.js';
 
 const root = new URL('../', import.meta.url);
@@ -143,18 +142,6 @@ test('Sound: unlocked inside the Start tap, plays through the silent switch, eve
     });
   }
   for (const l of read('js/lib/audio.js').split('\n').filter((x) => /^\s+\w+:\s+\(\) => \{.*buzz\(/.test(x))) assert(/tone\(/.test(l), `cue without a tone: ${l.trim()}`);
-});
-
-test('Install card: after the first finished session, not when installed, "Not now" waits a week', () => {
-  const now = 1_000_000;
-  assert(!shouldOfferInstall({ installed: false, sessions: 0, now }), 'not before a session');
-  assert(shouldOfferInstall({ installed: false, sessions: 1, now }), 'after the first');
-  assert(!shouldOfferInstall({ installed: true, sessions: 5, now }), 'never once installed');
-  assert(!shouldOfferInstall({ installed: false, sessions: 3, snoozedUntil: now + 1, now }), 'snoozed');
-  assert(SNOOZE_DAYS === 7, 'a week');
-  const src = read('js/install.js');
-  assert(/Add to Home Screen/.test(src) && /Install app/.test(src) && /7 days/.test(src), 'iPhone and Android steps, and why');
-  assert(!read('index.html').includes('id="install"'), 'no install line on home before they’ve used it');
 });
 
 test('Works offline: every app file is precached', () => {
