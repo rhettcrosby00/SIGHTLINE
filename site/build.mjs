@@ -128,6 +128,7 @@ const pages = {
 };
 for (const [name, html] of Object.entries(pages)) writeFileSync(new URL(name, out), html);
 cpSync(new URL('src/site.css', here), new URL('site.css', out));
+cpSync(new URL('src/sw.js', here), new URL('sw.js', out));   // clears the app's old offline copy from sightrep.app
 cpSync(new URL('assets/screens/', here), new URL('assets/screens/', out), { recursive: true });
 cpSync(new URL('assets/poster.webp', here), new URL('assets/poster.webp', out));
 cpSync(new URL('assets/share.png', app), new URL('assets/share.png', out));
@@ -156,6 +157,8 @@ for (const s of WAIVER.sections) if (!pages['waiver.html'].includes(esc(s.body))
 const screens = readdirSync(new URL('assets/screens/', out));
 for (const [, img] of index.matchAll(/src="\/assets\/screens\/([\w-]+\.webp)"/g)) if (!screens.includes(img)) problems.push(`missing screenshot ${img}`);
 
+const sw = readFileSync(new URL('sw.js', out), 'utf8');
+if (!/registration\.unregister\(\)/.test(sw) || !/caches\.delete/.test(sw) || /addEventListener\('fetch'/.test(sw)) problems.push('sw.js must only clear the old app (unregister, delete caches, no fetch handling)');
 if (problems.length) {
   console.error(`Site build failed:\n  ${problems.join('\n  ')}`);
   process.exit(1);
