@@ -1,5 +1,5 @@
-// "Put Sightrep on your home screen". Right after a key first unlocks a phone (never inside the
-// home-screen app itself), a full screen shows how, for this phone and browser only:
+// "Put Sightrep on your home screen". Step 4 of the first-time setup (js/onboarding.js, never
+// inside the home-screen app itself) shows how, for this phone and browser only:
 //   iPhone Safari: Share → Add to Home Screen → Add (iPhone Chrome: its own Share button)
 //   Android and computers with Chrome or Edge: one Install button (the browser's own prompt),
 //     or that browser's menu steps when it has no prompt
@@ -41,21 +41,22 @@ export function detectDevice(ua = '', { touchPoints = 0 } = {}) {
 // kind: prompt (one Install button) | steps | open (open this page in another browser) | bookmark.
 // canPrompt: the browser offered its own install prompt (beforeinstallprompt).
 export function installGuide({ os, browser }, { canPrompt = false } = {}) {
-  const keyNote = 'Then open Sightrep from your home screen and enter your key once more (it’s in your Gumroad receipt email). That move is free, and your settings come back with it.';
+  const keyNote = 'Then open Sightrep from your home screen and paste your key once (tap Copy your key first). That move is free, and your settings come back with it.';
+  const shortNote = 'Then open the new icon and paste your key once. That move is free.';
   if (canPrompt && os !== 'ios') {
     return { kind: 'prompt', button: os === 'desktop' ? 'Install app' : 'Install Sightrep', steps: [],
       note: os === 'desktop' ? 'Or bookmark this page.' : '' };
   }
   if (os === 'ios') {
     if (browser === 'safari') {
-      return { kind: 'steps', note: keyNote, steps: [
+      return { kind: 'steps', note: keyNote, shortNote, steps: [
         { text: 'Tap the Share button: the square with an arrow pointing up. Don’t see it? Tap ⋯ first.', art: 'ios-share' },
         { text: 'Scroll down and tap “Add to Home Screen.”', art: 'ios-add' },
         { text: 'If you see “Open as Web App,” leave it on. Tap “Add.”', art: 'ios-confirm' },
       ] };
     }
     if (browser === 'chrome') {
-      return { kind: 'steps', note: keyNote, copyLink: 'Don’t see “Add to Home Screen”? Open this page in Safari instead.', steps: [
+      return { kind: 'steps', note: keyNote, shortNote, copyLink: 'Don’t see “Add to Home Screen”? Open this page in Safari instead.', steps: [
         { text: 'Tap the Share button in the address bar, at the top right.', art: 'ioschrome-share' },
         { text: 'Tap “Add to Home Screen.”', art: 'ios-add' },
         { text: 'Tap “Add.”', art: 'ios-confirm' },
@@ -92,45 +93,51 @@ export function installGuide({ os, browser }, { canPrompt = false } = {}) {
     note: 'Sightrep is made for your phone: open sightrep.app on it to put Sightrep on its home screen.' };
 }
 
-// What to show now: 'screen' (right after a key first unlocks this phone), 'banner' (after
-// "Remind me later", on the next REMINDERS visits), or null. Never in the home-screen app.
-export function installPlan(state = {}, { standalone = false, firstUnlock = false } = {}) {
+// The banner on the home screen: after "Remind me later", on the next REMINDERS visits; never
+// in the home-screen app. (Right after a first unlock the steps are part of the first-time
+// setup, js/onboarding.js.)
+export function installPlan(state = {}, { standalone = false } = {}) {
   if (standalone || state.status === 'added') return null;
-  if (firstUnlock && (state.status ?? 'new') === 'new') return 'screen';
-  if (state.status === 'later' && (state.reminders ?? 0) < REMINDERS) return 'banner';
-  return null;
+  return state.status === 'later' && (state.reminders ?? 0) < REMINDERS ? 'banner' : null;
 }
 
 // The little pictures beside each step: the part to tap, pulsing.
 const hit = (inner) => `<span class="ins-hit">${inner}</span>`;
+// compact (in the first-time setup): just the row to tap, so the steps fit an iPhone SE.
 const ART = {
   'ios-share': () => `<div class="ins-art ins-art--bar">${icon('chevron-left', { size: 18 })}<span class="ins-url">app.sightrep.app</span>${hit(icon('share', { size: 20 }))}<span class="ins-dots">⋯</span></div>`,
   'ioschrome-share': () => `<div class="ins-art ins-art--bar"><span class="ins-url">app.sightrep.app</span>${hit(icon('share', { size: 20 }))}<span class="ins-dots">⋯</span></div>`,
-  'ios-add': () => `<div class="ins-art ins-art--list"><span class="ins-row">${icon('copy', { size: 18 })}Copy</span><span class="ins-row">${icon('plus', { size: 18 })}Add to Reading List</span>${hit(`<span class="ins-row">${icon('square-plus', { size: 18 })}Add to Home Screen</span>`)}</div>`,
-  'ios-confirm': () => `<div class="ins-art ins-art--dialog"><span class="ins-dialog__top"><span>Cancel</span><b>Add to Home Screen</b>${hit('<b class="ins-blue">Add</b>')}</span><span class="ins-dialog__app"><img src="icons/icon-192.png" alt="" width="36" height="36"><span>Sightrep</span></span></div>`,
+  'ios-add': (compact) => `<div class="ins-art ins-art--list">${compact ? '' : `<span class="ins-row">${icon('copy', { size: 18 })}Copy</span><span class="ins-row">${icon('plus', { size: 18 })}Add to Reading List</span>`}${hit(`<span class="ins-row">${icon('square-plus', { size: 18 })}Add to Home Screen</span>`)}</div>`,
+  'ios-confirm': (compact) => `<div class="ins-art ins-art--dialog"><span class="ins-dialog__top"><span>Cancel</span><b>Add to Home Screen</b>${hit('<b class="ins-blue">Add</b>')}</span>${compact ? '' : '<span class="ins-dialog__app"><img src="icons/icon-192.png" alt="" width="36" height="36"><span>Sightrep</span></span>'}</div>`,
   'android-menu': () => `<div class="ins-art ins-art--bar"><span class="ins-url">app.sightrep.app</span>${hit(icon('ellipsis-vertical', { size: 20 }))}</div>`,
-  'android-add': () => `<div class="ins-art ins-art--list"><span class="ins-row">${icon('plus', { size: 18 })}New tab</span>${hit(`<span class="ins-row">${icon('square-plus', { size: 18 })}Add to Home screen</span>`)}<span class="ins-row">${icon('download', { size: 18 })}Downloads</span></div>`,
-  'android-confirm': () => `<div class="ins-art ins-art--dialog"><span class="ins-dialog__app"><img src="icons/icon-192.png" alt="" width="36" height="36"><span>Install app? <b>Sightrep</b></span></span><span class="ins-dialog__btns"><span>Cancel</span>${hit('<b class="ins-blue">Install</b>')}</span></div>`,
+  'android-add': (compact) => `<div class="ins-art ins-art--list">${compact ? '' : `<span class="ins-row">${icon('plus', { size: 18 })}New tab</span>`}${hit(`<span class="ins-row">${icon('square-plus', { size: 18 })}Add to Home screen</span>`)}${compact ? '' : `<span class="ins-row">${icon('download', { size: 18 })}Downloads</span>`}</div>`,
+  'android-confirm': (compact) => `<div class="ins-art ins-art--dialog">${compact ? '' : '<span class="ins-dialog__app"><img src="icons/icon-192.png" alt="" width="36" height="36"><span>Install app? <b>Sightrep</b></span></span>'}<span class="ins-dialog__btns"><span>${compact ? 'Install app? <b>Sightrep</b>' : 'Cancel'}</span>${hit('<b class="ins-blue">Install</b>')}</span></div>`,
   'desktop-install': () => `<div class="ins-art ins-art--bar"><span class="ins-url">app.sightrep.app</span>${hit(icon('download', { size: 20 }))}</div>`,
 };
 
-function screenHtml(guide, { device, fromSettings, standalone, keyLast4 }) {
-  const steps = guide.steps.length ? `<ol class="ins-steps">${guide.steps.map((s, i) => `
-      <li><span class="ins-num" aria-hidden="true">${i + 1}</span><div class="ins-step"><p>${esc(s.text)}</p>${s.art ? ART[s.art]() : ''}</div></li>`).join('')}</ol>` : '';
+// The steps for this phone. compact: inside the first-time setup (one screen on an iPhone SE).
+function stepsHtml(guide, { device, standalone, keyLast4, compact = false }) {
+  const steps = guide.steps.length ? `<ol class="ins-steps${compact ? ' ins-steps--compact' : ''}">${guide.steps.map((s, i) => `
+      <li><span class="ins-num" aria-hidden="true">${i + 1}</span><div class="ins-step"><p>${esc(s.text)}</p>${s.art ? ART[s.art](compact) : ''}</div></li>`).join('')}</ol>` : '';
   const copyKey = device.os === 'ios' && keyLast4 && !standalone
-    ? `<button type="button" class="btn btn--secondary btn--block" data-install="copy-key">${icon('copy')}Copy your key (ending ${esc(keyLast4)})</button>` : '';
+    ? `<button type="button" class="${compact ? 'link-btn ins-copykey' : 'btn btn--secondary btn--block'}" data-install="copy-key">${icon('copy')}Copy your key (ending ${esc(keyLast4)})</button>` : '';
+  return `
+    ${guide.kind === 'prompt' ? `<button type="button" class="btn btn--primary btn--big btn--block" data-install="prompt">${icon('download')}${esc(guide.button)}</button>` : ''}
+    ${steps}
+    ${guide.copyLink != null ? `${guide.copyLink ? `<p class="ins-note">${esc(guide.copyLink)}</p>` : ''}<button type="button" class="btn btn--secondary btn--block" data-install="copy-link">${icon('copy')}Copy link</button>` : ''}
+    ${guide.note ? `<p class="ins-note">${esc(compact && guide.shortNote ? guide.shortNote : guide.note)}</p>` : ''}
+    ${copyKey}
+    <p class="ins-msg status" role="status" aria-live="polite"></p>`;
+}
+
+function screenHtml(guide, { device, fromSettings, standalone, keyLast4 }) {
   return `
     <header class="ins-head">
       <img class="ins-icon" src="icons/icon-192.png" alt="" width="64" height="64">
       <h1 id="install-title" class="screen-title">${esc(guide.title ?? 'Put Sightrep on your home screen')}</h1>
       <p class="ins-lead">${standalone ? 'You’re in the home-screen app now. These steps are for another phone.' : 'Then it opens like a regular app: full screen, with its own icon, and drills work on the field with no signal.'}</p>
     </header>
-    ${guide.kind === 'prompt' ? `<button type="button" class="btn btn--primary btn--big btn--block" data-install="prompt">${icon('download')}${esc(guide.button)}</button>` : ''}
-    ${steps}
-    ${guide.copyLink != null ? `${guide.copyLink ? `<p class="ins-note">${esc(guide.copyLink)}</p>` : ''}<button type="button" class="btn btn--secondary btn--block" data-install="copy-link">${icon('copy')}Copy link</button>` : ''}
-    ${guide.note ? `<p class="ins-note">${esc(guide.note)}</p>` : ''}
-    ${copyKey}
-    <p class="ins-msg status" role="status" aria-live="polite"></p>
+    ${stepsHtml(guide, { device, standalone, keyLast4 })}
     <div class="screen__foot ins-foot">
       ${fromSettings
         ? '<button type="button" class="btn btn--primary btn--block" data-install="close">Done</button>'
@@ -155,15 +162,52 @@ export function initInstall({ storage = safeStorage(), license = null, link = 'h
   async function copy(text) {
     try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
   }
+  // The buttons inside the steps. True when the browser's own prompt installed the app.
+  async function handle(act, el, render) {
+    const msg = () => el.querySelector('.ins-msg');
+    if (act === 'prompt') {
+      const p = prompt;
+      prompt = null;   // a prompt can be used once
+      if (!p) { render(); return false; }
+      p.prompt();
+      const choice = await p.userChoice?.catch(() => null);
+      if (choice?.outcome !== 'accepted') { render(); return false; }   // dismissed: show the menu steps instead
+      write({ ...state, status: 'added' });
+      msg().textContent = 'Installed. Open Sightrep from your home screen or app list.';
+      return true;
+    }
+    if (act === 'copy-link') msg().textContent = (await copy(link)) ? 'Link copied.' : link;
+    if (act === 'copy-key') {
+      msg().textContent = (await copy(license?.key?.() ?? '')) ? 'Key copied. In the home-screen app, tap Paste your key.' : 'Couldn’t copy. Your key is in your Gumroad receipt email.';
+    }
+    return false;
+  }
 
   return {
     standalone,
     device,
-    // After the gate: what to show this visit ('screen' | 'banner' | null). A phone unlocked
-    // before 6.4 (no install record yet) gets the banner, not the full screen.
-    plan({ firstUnlock = false } = {}) {
-      if (!firstUnlock && !state.status && !standalone()) write({ status: 'later', reminders: 0 });
-      return installPlan(state, { standalone: standalone(), firstUnlock });
+    // After the gate: the banner this visit, or null. A phone unlocked before 6.4 (no install
+    // record yet) gets the banner twice.
+    plan() {
+      if (!state.status && !standalone()) write({ status: 'later', reminders: 0 });
+      return installPlan(state, { standalone: standalone() });
+    },
+    added: () => state.status === 'added',
+    markAdded() { write({ ...state, status: 'added' }); },
+    markLater() { write({ ...state, status: 'later', reminders: state.status === 'later' ? state.reminders ?? 0 : 0 }); },
+
+    // Step 4 of the first-time setup: just this phone's steps, compact, in `el`.
+    // onAdded: the browser's own prompt installed it.
+    embed(el, { onAdded = () => {} } = {}) {
+      const render = () => {
+        const guide = installGuide(device(), { canPrompt: !!prompt });
+        el.innerHTML = stepsHtml(guide, { device: device(), standalone: standalone(), keyLast4: license?.last4?.(), compact: true });
+      };
+      render();
+      el.onclick = async (e) => {
+        const act = e.target.closest('[data-install]')?.dataset.install;
+        if (act && await handle(act, el, render)) onAdded();
+      };
     },
     // The banner was shown on this visit: one of the REMINDERS used.
     bannerShown() { write({ ...state, reminders: (state.reminders ?? 0) + 1 }); },
@@ -175,31 +219,16 @@ export function initInstall({ storage = safeStorage(), license = null, link = 'h
         el.innerHTML = screenHtml(guide, { device: device(), fromSettings, standalone: standalone(), keyLast4: license?.last4?.() });
       };
       render();
-      const msg = () => el.querySelector('.ins-msg');
       return new Promise((resolve) => {
         el.onclick = async (e) => {
           const act = e.target.closest('[data-install]')?.dataset.install;
           if (!act) return;
-          if (act === 'prompt') {
-            const p = prompt;
-            prompt = null;   // a prompt can be used once
-            if (!p) { render(); return; }
-            p.prompt();
-            const choice = await p.userChoice?.catch(() => null);
-            if (choice?.outcome !== 'accepted') { render(); return; }   // dismissed: show the menu steps instead
-            write({ ...state, status: 'added' });
-            msg().textContent = 'Installed. Open Sightrep from your home screen or app list.';
-            el.onclick = null;
-            setTimeout(resolve, 1800, 'added');
+          if (['prompt', 'copy-link', 'copy-key'].includes(act)) {
+            if (await handle(act, el, render)) { el.onclick = null; setTimeout(resolve, 1800, 'added'); }
             return;
           }
-          if (act === 'copy-link') { msg().textContent = (await copy(link)) ? 'Link copied.' : link; return; }
-          if (act === 'copy-key') {
-            msg().textContent = (await copy(license?.key?.() ?? '')) ? 'Key copied. In the home-screen app, tap Paste.' : 'Couldn’t copy. Your key is in your Gumroad receipt email.';
-            return;
-          }
-          if (act === 'added') write({ ...state, status: 'added' });
-          if (act === 'later') write({ ...state, status: 'later', reminders: state.status === 'later' ? state.reminders ?? 0 : 0 });
+          if (act === 'added') this.markAdded();
+          if (act === 'later') this.markLater();
           el.onclick = null;
           resolve(act);
         };

@@ -8,7 +8,7 @@
 import { initSettings, updateSetting } from './settings.js';
 import { setMusicMode } from './lib/audio.js';
 import { hydrateIcons } from './lib/icons.js';
-import { showGuide, showFirstRun } from './guide.js';
+import { showGuide } from './guide.js';
 import { createVariety } from './lib/variety.js';
 import { createLastRuns, renameSavedData } from './migrate.js';
 import { initFocus } from './focus.js';
@@ -24,6 +24,9 @@ import { createWaiverStore, showWaiver, showFullWaiver } from './waiver.js';
 import { DISCLAIMER } from './content/safety.js';
 import { createLicense } from './license.js';
 import { showUnlock } from './unlock.js';
+import { showDesktopStart, takeHandoff } from './handoff.js';
+import { createOnboarding } from './onboarding.js';
+import { lastName } from './score/board.js';
 import { PRO } from './content/pro.js';
 import { isLiveHost } from './features.js';
 
@@ -32,7 +35,7 @@ import { isLiveHost } from './features.js';
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '6.4';
+export const APP_VERSION = '6.5';
 
 const $ = (id) => document.getElementById(id);
 
@@ -57,32 +60,40 @@ function show(name, { back = false } = {}) {
 hydrateIcons();
 hydrateLogos();   // home and About (js/brand.js)
 
-// ---- First the safety waiver (js/waiver.js), then the key (js/unlock.js) ----
-// index.html starts with <html data-gate="waiver">, which hides every other
-// screen until both are done: the waiver accepted (this version), and a key
-// that unlocks this phone (sold on Gumroad). Everything that can open by
-// itself (the first-run setup, the ?autostart direct links) waits for `accepted`.
-// The setup saved with the key (js/backup.js), the waiver acceptance included, comes
-// back when the key is entered on a phone that has none yet: a new phone, or the
-// home-screen app on iPhone (its own storage, apart from Safari), which asks for the
-// key first. Then the app starts over with it. Right after a key first unlocks a phone:
-// how to put Sightrep on the home screen (js/install.js).
+// ---- The key (js/unlock.js), the safety waiver (js/waiver.js), then the first-time setup ----
+// index.html starts with <html data-gate="waiver">, which hides every other screen until all
+// are done: a key that unlocks this phone (sold on Gumroad), the waiver accepted (this
+// version), and, on a phone setting up for the first time, the guided setup
+// (js/onboarding.js: the waiver is its step 1, then You're in, Make it yours, Home screen and
+// "Let's try it"). Everything that can open by itself (?autostart direct links) waits for
+// `accepted`. Buyers come from "Start Sightrep" on their Gumroad page (?start): one big Paste
+// your key. On a computer that link offers a QR code for the phone instead (js/handoff.js),
+// and the phone opens with the key in its link (#h=…) and unlocks by itself.
+// The setup saved with the key (js/backup.js), the waiver acceptance included, comes back
+// when the key is entered on a phone that has none yet (a new phone, or the home-screen app
+// on iPhone, which has its own storage); then the app starts over with it.
+const params = new URLSearchParams(location.search);
 const waiver = createWaiverStore();
 const license = createLicense();
 const install = initInstall({ license });
 const backup = createBackup({ license });
 const standalone = install.standalone();
 const freshPhone = !license.hasRecord();   // no key was ever entered here
-const FIRST = 'sightrep.firstunlock';      // the first unlock, kept across the restart below (this visit only)
-async function unlockScreen(reason, { welcome = false } = {}) {
+const fromStart = params.has('start');     // "Start Sightrep" on the Gumroad page
+const handoff = /^#h=/.test(location.hash) ? location.hash.slice(3) : '';   // a computer's QR code
+if (handoff) history.replaceState(null, '', location.pathname + location.search);   // the secret leaves the address bar
+const onboarding = createOnboarding({ install, lastName, skip: params.has('noguide') || params.has('autostart'),
+  updateSetting: (k, v) => updateSetting(k, v) });
+let startFirst = () => {};   // the first session, once FOCUS is set up (below)
+async function unlockScreen(reason, { autoKey = '', note = '' } = {}) {
   document.documentElement.dataset.gate = 'unlock';
   show('unlock');
-  return showUnlock($('screen-unlock'), license, { reason, welcome, preview: !isLiveHost(location.hostname),
-    activate: { app: standalone, restore: freshPhone } });
+  const opts = { reason, preview: !isLiveHost(location.hostname), activate: { app: standalone, restore: freshPhone } };
+  if (fromStart && !handoff && !reason && install.device().os === 'desktop') return showDesktopStart($('screen-unlock'), license, opts);
+  return showUnlock($('screen-unlock'), license, { ...opts, autoKey, note, mode: standalone ? 'app' : fromStart || handoff ? 'buyer' : 'sales' });
 }
 function restartWithSetup(out) {
   if (!freshPhone || !out?.data || !restoreBackup(out.data, { keepWaiver: !waiver.needed() })) return false;
-  try { sessionStorage.setItem(FIRST, '1'); } catch { /* blocked */ }
   location.reload();
   return true;
 }
@@ -90,35 +101,38 @@ let installNext = null;
 const accepted = (async () => {
   let gated = false;
   let unlocked = null;
-  if (standalone && freshPhone && license.needed()) {
-    gated = true;
-    unlocked = await unlockScreen(null, { welcome: true });
-    if (restartWithSetup(unlocked)) return new Promise(() => {});
-  }
-  if (waiver.needed()) {
-    gated = true;
-    show('waiver');
-    waiver.accept(await showWaiver($('screen-waiver')));
-  }
   // Last good check over 30 days ago: check now, before asking for the key again.
   if (license.lockedFor() === 'expired') await license.recheck({ force: true });
   if (license.needed()) {
     gated = true;
-    unlocked = await unlockScreen(license.lockedFor());
+    if (fromStart && freshPhone) onboarding.track('opened');
+    const fromQr = handoff ? await takeHandoff(handoff) : {};
+    unlocked = await unlockScreen(license.lockedFor(), { autoKey: fromQr.key, note: fromQr.problem });
+    if (freshPhone) onboarding.track('unlocked');
     if (restartWithSetup(unlocked)) return new Promise(() => {});
   }
-  let restarted = false;
-  try { restarted = sessionStorage.getItem(FIRST) === '1'; sessionStorage.removeItem(FIRST); } catch { /* blocked */ }
-  installNext = install.plan({ firstUnlock: (!!unlocked && freshPhone) || restarted });
-  if (installNext === 'screen') {
+  const setup = onboarding.active();
+  if (waiver.needed()) {
     gated = true;
-    document.documentElement.dataset.gate = 'install';
-    show('install');
-    await install.showScreen($('screen-install'));
+    document.documentElement.dataset.gate = 'waiver';
+    show('waiver');
+    waiver.accept(await showWaiver($('screen-waiver'), { progress: setup ? onboarding.waiverLabel() : '' }));
+    if (setup) onboarding.track('waiver');
+  }
+  if (setup) {
+    gated = true;
+    document.documentElement.dataset.gate = 'setup';
+    show('onboard');
+    // Start lifts the gate inside the tap, so the first session can open (and play sound) right away.
+    const choice = await onboarding.run($('screen-onboard'), { onStart: () => { document.documentElement.removeAttribute('data-gate'); startFirst(); } });
+    backup.saveSoon(0);
+    if (choice === 'start') return;
+  } else {
+    installNext = install.plan();
   }
   document.documentElement.removeAttribute('data-gate');
   if (gated) show('start');
-  backup.saveSoon(unlocked || restarted ? 0 : 4000);
+  backup.saveSoon(unlocked ? 0 : 4000);
 })();
 
 // Once a day (when online), check the key is still good on this phone. A key
@@ -147,7 +161,6 @@ $('brand-tagline').textContent = BRAND.tagline;   // one place to change it: js/
 // ?autoready=1 skips the Ready taps; ?noguide=1 skips the first-run setup;
 // ?seed=N replays a session exactly (ignores and doesn't update the
 // "recently used" list).
-const params = new URLSearchParams(location.search);
 const dev = {
   speed: Math.max(1, Number(params.get('speed')) || 1),
   autoReady: params.has('autoready'),
@@ -222,11 +235,13 @@ focus = initFocus({
   onRoutine: () => builder.open(),
   afterSession: ({ key }) => {
     backup.saveSoon();
+    if (key === 'first') onboarding.track('first-done');
     const next = parseRunKey(key)?.day === 'game';
     $('btn-next-move').hidden = !next;
     if (next) $('next-move-desc').textContent = move.describeRun(NEXT_MOVE);
   },
 });
+startFirst = () => focus.start('first', { from: 'start' });   // "Let's try it. 3 minutes." (js/onboarding.js)
 const builder = initRoutineBuilder({
   show, getSettings,
   onTry: () => focus.start('myroutine', { from: 'routine' }),
@@ -273,16 +288,10 @@ $('version').textContent = `· v${APP_VERSION}`;
 $('about-version').textContent = `Version ${APP_VERSION}`;
 
 // Splash: show the logo for a beat, then fade (immediately for test runs).
-// A brand-new phone (or the first open after v4.0) gets the first-run setup.
 const splash = $('splash');
 const hideSplash = () => {
   splash.classList.add('is-out');
   setTimeout(() => splash.remove(), 300);
-  accepted.then(() => {
-    if (!getSettings().setupDone && !params.has('noguide') && !params.has('autostart')) {
-      showFirstRun({ getSettings, updateSetting, onDone: renderHome });
-    }
-  });
 };
 setTimeout(hideSplash, params.has('autostart') ? 0 : Math.max(0, 700 - performance.now()));
 

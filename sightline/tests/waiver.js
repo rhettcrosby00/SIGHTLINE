@@ -111,27 +111,27 @@ test('Cleared, blocked or damaged saved data shows the waiver again', () => {
 test('Nothing is reachable before the waiver is accepted', () => {
   assert(/^<!doctype html>\s*<html lang="en" data-gate="waiver">/i.test(html), 'the page starts gated');
   const head = html.slice(0, html.indexOf('</head>'));
-  assert(/:root\[data-gate\] \.screen:not\(#screen-waiver\):not\(#screen-unlock\):not\(#screen-install\) \{ display: none !important; \}/.test(head),
-    'the gate hides every other screen (all but the waiver, the unlock screen and the install steps), in the page itself (before any file loads)');
+  assert(/:root\[data-gate\] \.screen:not\(#screen-waiver\):not\(#screen-unlock\):not\(#screen-install\):not\(#screen-onboard\) \{ display: none !important; \}/.test(head),
+    'the gate hides every other screen (all but the waiver, the unlock screen and the setup steps), in the page itself (before any file loads)');
   const first = html.indexOf('<section id="screen-');
   assert(html.indexOf('<section id="screen-waiver"') === first, 'the waiver is the first screen in the page');
-  // main.js: the gate lifts only once accepted; the first-run setup and direct links wait.
+  // main.js (6.5): the key first (the waiver acceptance saved with it can come back, js/backup.js),
+  // then the waiver, then the first-time setup; the gate lifts only after all of them.
   const gate = /const accepted = \(async \(\) => \{([^]*?)\n\}\)\(\);/.exec(main)?.[1] ?? '';
   const at = (code) => gate.indexOf(code);
-  assert(at("if (waiver.needed())") >= 0 && at("waiver.accept(await showWaiver($('screen-waiver')))") > at("if (waiver.needed())"),
-    'the waiver first, accepted before anything goes on');
-  // Only the home-screen app's first open asks for the key before the waiver, so the acceptance
-  // saved with the key can come back (js/backup.js): then the app restarts with it, or the waiver shows as usual.
-  assert(/if \(standalone && freshPhone && license\.needed\(\)\) \{\s*gated = true;\s*unlocked = await unlockScreen\(null, \{ welcome: true \}\);\s*if \(restartWithSetup\(unlocked\)\) return new Promise\(\(\) => \{\}\);\s*\}/.test(gate)
-    && at('welcome: true') < at('if (waiver.needed())'), 'the home-screen app: the key first, then the waiver unless it came back with the key');
-  const unlockAt = at('unlocked = await unlockScreen(license.lockedFor())');
-  assert(unlockAt > at('waiver.accept(') && at("document.documentElement.removeAttribute('data-gate')") > unlockAt,
-    'then the key (Sightrep Pro); the gate lifts only after both');
-  assert((main.match(/removeAttribute\('data-gate'\)/g) ?? []).length === 2 && /async function lockIfDue\(\) \{[^]*?await unlockScreen\(reason\);\s*document\.documentElement\.removeAttribute\('data-gate'\);/.test(main),
-    'and nowhere else (the other: after a locked phone is unlocked again)');
+  const unlockAt = at('unlocked = await unlockScreen(license.lockedFor()');
+  assert(unlockAt > 0 && at("if (waiver.needed())") > unlockAt && at("waiver.accept(await showWaiver($('screen-waiver')") > at("if (waiver.needed())"),
+    'the key, then the waiver, accepted before anything goes on');
+  assert(at("await onboarding.run($('screen-onboard')") > at('waiver.accept(') && /const setup = onboarding\.active\(\);\s*if \(waiver\.needed\(\)\)/.test(gate),
+    'the setup steps come only after the waiver (it is their step 1)');
+  assert(gate.lastIndexOf("document.documentElement.removeAttribute('data-gate')") > at('await onboarding.run('), 'the gate lifts only after all of them');
+  // Three places lift it: after the setup; its Start tap (the first session opens at once, the waiver
+  // already accepted); and after a locked phone is unlocked again.
+  assert((main.match(/removeAttribute\('data-gate'\)/g) ?? []).length === 3
+    && /onStart: \(\) => \{ document\.documentElement\.removeAttribute\('data-gate'\); startFirst\(\); \}/.test(gate)
+    && /async function lockIfDue\(\) \{[^]*?await unlockScreen\(reason\);\s*document\.documentElement\.removeAttribute\('data-gate'\);/.test(main),
+    'and nowhere else');
   assert(main.indexOf('const accepted') < main.indexOf('initFocus('), 'decided before either side is set up');
-  assert(/accepted\.then\(\(\) => \{\s*if \(!getSettings\(\)\.setupDone[^}]*showFirstRun\(/.test(main) && main.split('showFirstRun(').length === 2,
-    'the first-run setup waits for it');
   assert(/accepted\.then\(\(\) => \{\s*const auto = params\.get\('autostart'\);[^]*?move\.run\(autoMove\);\s*else if \(auto\) focus\.start\(/.test(main)
     && main.split("params.get('autostart')").length === 2, 'so do direct drill links (?autostart, ?session, ?only)');
   // No way around it on the waiver screen.

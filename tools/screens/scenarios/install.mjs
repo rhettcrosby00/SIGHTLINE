@@ -1,6 +1,6 @@
 // Putting Sightrep on the home screen (v6.4) in a real browser: `node tools/screens/cdp.mjs install`.
-// The steps for each phone and browser right after a first unlock; "Remind me later" (the banner
-// next visit) and "I've added it"; Settings → Install on home screen; the home-screen app's first
+// The steps for each phone and browser (from Settings; after a first unlock they're step 4 of the
+// setup, scenarios/first-run.mjs); "Remind me later" (the banner, twice); the home-screen app's first
 // open (the key first, with Paste) and the setup saved with the key coming back; a drill with no
 // network from the offline copy; and Chrome's own installability check.
 // Needs testserver.py (:5175) and apiserver.mjs (:5176, test keys on), started fresh: this set
@@ -24,10 +24,11 @@ const PROMPT = "window.addEventListener('load', () => { const e = new Event('bef
 const STANDALONE = "Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true, configurable: true });";
 const APP_MEDIA = [{ name: 'display-mode', value: 'standalone' }];
 
-const NEW_KEY = ['eval', "const i = document.querySelector('#unlock-key'); i.value = 'TEST-OK-' + Math.random().toString(36).slice(2, 10).toUpperCase();"];
-const FIRST_UNLOCK = [['waitFor', '#unlock-key'], NEW_KEY, ['click', '#screen-unlock [data-act="unlock"]'], ['waitFor', '#screen-install.is-active', 8000], ['wait', 500]];
-const ONLY_INSTALL = 'js:[...document.querySelectorAll(".screen")].filter((s) => getComputedStyle(s).display !== "none").map((s) => s.id).join() === "screen-install"';
-const BUTTONS = ['I’ve added it', 'Remind me later'];
+// The full steps screen, from Settings → Install on home screen (right after a first unlock the
+// same steps are step 4 of the setup: scenarios/first-run.mjs).
+const OPEN = [['click', '#btn-settings'], ['click', '#btn-settings-install'], ['waitFor', '#screen-install.is-active'], ['wait', 400]];
+const ONLY_INSTALL = 'js:document.querySelector("#screen-install.is-active") && !document.querySelector("#screen-settings.is-active")';
+const DONE = 'Done';
 
 // The setup saved under a test key, as Safari would have saved it, for the carry-over shots.
 const API = 'http://localhost:5176/api/license';
@@ -42,37 +43,34 @@ await post({ action: 'save', key: CARRY, device: SAFARI, data: {
 } });
 
 export const SHOTS = [
-  // ---- Right after a first unlock: only this phone's steps ----
-  { name: 'install-iphone', params: 'license=0', ua: UA.iphone, steps: FIRST_UNLOCK,
-    expect: [ONLY_INSTALL, 'Put Sightrep on your home screen', 'Tap the Share button', 'Add to Home Screen', 'Open as Web App', 'enter your key once more', 'Copy your key (ending', ...BUTTONS,
+  // ---- Only this phone's steps ----
+  { name: 'install-iphone', ua: UA.iphone, steps: OPEN,
+    expect: [ONLY_INSTALL, 'Put Sightrep on your home screen', 'Tap the Share button', 'Add to Home Screen', 'Open as Web App', 'paste your key once', 'Copy your key (ending SEED)', DONE,
       'js:!document.querySelector("[data-install=prompt]")', 'js:!/Android|⋮/.test(document.querySelector("#screen-install").innerText)'] },
-  { name: 'install-iphone-end', params: 'license=0', ua: UA.iphone, steps: [...FIRST_UNLOCK, ['scrollEnd']], expect: ['Copy your key', ...BUTTONS], combos: 'few' },
-  { name: 'install-iphone-chrome', params: 'license=0', ua: UA.iphoneChrome, steps: FIRST_UNLOCK, expect: ['Share button in the address bar', 'Open this page in Safari instead', 'Copy link'], combos: 'few' },
-  { name: 'install-iphone-instagram', params: 'license=0', ua: UA.iphoneInstagram, steps: FIRST_UNLOCK, expect: ['Open this page in Safari to install', 'Copy link', 'Open in Safari'], combos: 'few' },
-  { name: 'install-android', params: 'license=0', ua: UA.android, init: PROMPT, steps: FIRST_UNLOCK,
-    expect: [ONLY_INSTALL, '[data-install="prompt"]', 'Install Sightrep', ...BUTTONS, 'js:!/Share|Safari/.test(document.querySelector("#screen-install").innerText)'] },
-  { name: 'install-android-manual', params: 'license=0', ua: UA.android, steps: FIRST_UNLOCK, expect: ['Tap ⋮ at the top right.', 'Install app', 'js:!document.querySelector("[data-install=prompt]")'], combos: 'few' },
-  { name: 'install-android-installed', params: 'license=0', ua: UA.android, init: PROMPT, steps: [...FIRST_UNLOCK, ['click', '[data-install="prompt"]'], ['waitFor', '#screen-start.is-active', 8000]],
-    expect: ['#screen-start.is-active', 'js:JSON.parse(localStorage.getItem("sightrep.install.v2")).status === "added"'], combos: 'few' },
-  { name: 'install-desktop', params: 'license=0', sizes: ['desk'], themes: ['dark', 'light'], init: PROMPT, steps: FIRST_UNLOCK, expect: ['Install app', 'Or bookmark this page.'] },
+  { name: 'install-iphone-end', ua: UA.iphone, steps: [...OPEN, ['scrollEnd']], expect: ['Copy your key', DONE], combos: 'few' },
+  { name: 'install-iphone-chrome', ua: UA.iphoneChrome, steps: OPEN, expect: ['Share button in the address bar', 'Open this page in Safari instead', 'Copy link'], combos: 'few' },
+  { name: 'install-iphone-instagram', ua: UA.iphoneInstagram, steps: OPEN, expect: ['Open this page in Safari to install', 'Copy link', 'Open in Safari'], combos: 'few' },
+  { name: 'install-android', ua: UA.android, init: PROMPT, steps: OPEN,
+    expect: [ONLY_INSTALL, '[data-install="prompt"]', 'Install Sightrep', DONE, 'js:!/Share|Safari/.test(document.querySelector("#screen-install").innerText)'] },
+  { name: 'install-android-manual', ua: UA.android, steps: OPEN, expect: ['Tap ⋮ at the top right.', 'Install app', 'js:!document.querySelector("[data-install=prompt]")'], combos: 'few' },
+  { name: 'install-android-installed', params: 'install=new', ua: UA.android, init: PROMPT, steps: [...OPEN, ['click', '[data-install="prompt"]'], ['waitFor', '#screen-settings.is-active', 8000], ['wait', 500]],
+    expect: ['#screen-settings.is-active', 'js:JSON.parse(localStorage.getItem("sightrep.install.v2")).status === "added"'], combos: 'few' },
+  { name: 'install-desktop', sizes: ['desk'], themes: ['dark', 'light'], init: PROMPT, steps: OPEN, expect: ['Install app', 'Or bookmark this page.'] },
 
-  // ---- "Remind me later": a banner on the next visit; "I've added it": never again ----
-  { name: 'install-later', params: 'license=0', ua: UA.iphone, steps: [...FIRST_UNLOCK, ['click', '[data-install="later"]'], ['waitFor', '#screen-start.is-active', 8000]],
-    reopen: 'noguide=1', after: [['waitFor', '#install-banner:not([hidden])', 8000], ['wait', 300]],
-    expect: ['#install-banner:not([hidden])', 'Put Sightrep on your home screen', 'js:JSON.parse(localStorage.getItem("sightrep.install.v2")).reminders === 1'] },
-  { name: 'install-added', params: 'license=0', ua: UA.iphone, steps: [...FIRST_UNLOCK, ['click', '[data-install="added"]'], ['waitFor', '#screen-start.is-active', 8000]],
-    reopen: 'noguide=1', after: [['wait', 600]], expect: ['#install-banner[hidden]', '#screen-start.is-active'], combos: 'few' },
+  // ---- "Remind me later": the banner on the next 2 visits; after "Done", never ----
+  { name: 'install-later', params: 'install=later', ua: UA.iphone, steps: [['waitFor', '#install-banner:not([hidden])', 8000], ['wait', 300]],
+    reopen: 'noguide=1', after: [['wait', 600]],
+    expect: ['#install-banner:not([hidden])', 'Put Sightrep on your home screen', 'js:JSON.parse(localStorage.getItem("sightrep.install.v2")).reminders === 2'] },
+  { name: 'install-added', ua: UA.iphone, steps: [['wait', 600]], expect: ['#install-banner[hidden]', '#screen-start.is-active'], combos: 'few' },
   // A phone unlocked before 6.4: the banner (twice), never the full screen.
   { name: 'install-banner-old', params: 'install=none', ua: UA.iphone, expect: ['#install-banner:not([hidden])', '#screen-start.is-active'], combos: 'few' },
-  { name: 'install-settings', ua: UA.iphone, steps: [['click', '#btn-settings'], ['click', '#btn-settings-install'], ['waitFor', '#screen-install.is-active']],
-    expect: ['Put Sightrep on your home screen', 'Add to Home Screen', 'Done', 'js:!/Remind me later/.test(document.querySelector("#screen-install").innerText)'], combos: 'few' },
   { name: 'install-settings-row', steps: [['click', '#btn-settings'], ['scrollTo', '#btn-settings-install']], expect: ['Install on home screen'], combos: 'few' },
 
   // ---- The home-screen app's first open: the key first; the setup comes back with it ----
-  { name: 'app-welcome', url: 'http://localhost:5175/?noguide=1', ua: UA.iphone, init: STANDALONE, media: APP_MEDIA, steps: [['waitFor', '#unlock-key'], ['wait', 300]],
-    expect: ['Welcome to the Sightrep app', 'Your key', 'Paste', 'free', '#screen-unlock.is-active', 'js:!document.querySelector("#screen-waiver.is-active")'], sizes: ['se', 'pm'], themes: ['dark'] },
+  { name: 'app-welcome', url: 'http://localhost:5175/?noguide=1', ua: UA.iphone, init: STANDALONE, media: APP_MEDIA, steps: [['waitFor', '[data-act="paste-go"]'], ['wait', 300]],
+    expect: ['Welcome to the Sightrep app', 'Paste your key', 'Have a license key? Enter it here', '#screen-unlock.is-active', 'js:!document.querySelector("#screen-waiver.is-active")'], sizes: ['se', 'pm'], themes: ['dark'] },
   { name: 'app-restored', url: 'http://localhost:5175/?noguide=1', ua: UA.iphone, init: STANDALONE, media: APP_MEDIA, sizes: ['se', 'pm'], themes: ['dark'],
-    steps: [['waitFor', '#unlock-key'], ['type', '#unlock-key', CARRY], ['click', '#screen-unlock [data-act="unlock"]'], ['wait', 300]],
+    steps: [['waitFor', '[data-act="enter"]'], ['click', '[data-act="enter"]'], ['type', '#unlock-key', CARRY], ['click', '#screen-unlock [data-act="unlock"]'], ['wait', 300]],
     settle: 3500, after: [['waitFor', '#screen-start.is-active', 8000], ['wait', 400]],
     expect: ['#screen-start.is-active', 'Your eyes move first.', 'js:document.documentElement.dataset.appearance === "outdoor"', 'js:JSON.parse(localStorage.getItem("sightrep.name.v1")) === "Carry"',
       'js:!document.querySelector("#screen-waiver.is-active") && !document.documentElement.dataset.gate', '#install-banner[hidden]'] },

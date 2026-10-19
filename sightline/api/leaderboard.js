@@ -5,8 +5,9 @@
 //   GET  ?action=health        → { db, coach } (true/false only, no secrets)
 //   POST { action: 'submit', name, side, score, settings, clientId }
 //   POST { action: 'unlock', pin }                  → { token }
+//   POST { action: 'step', step }                   → { ok } (a first-time setup step: today's total + 1, nothing else kept)
 //   POST { action: 'admin', token, task, … }        → coach tools (task: scores, rename, remove-name, remove-score, reset-week, reset-all, reset-key,
-//                                                     reviews, review-approve, review-reject, review-connected, review-remove)
+//                                                     reviews, review-approve, review-reject, review-connected, review-remove, setup-steps)
 // The database address (DATABASE_URL) and COACH_PIN live in Cloudflare's
 // project settings (env). LB_MEMORY=1 runs it without a database (local testing only).
 
@@ -34,6 +35,7 @@ export async function handle({ method, query = {}, body = {}, ip = 'unknown' }, 
     if (method === 'POST') {
       if (body.action === 'submit') return { status: 200, body: await svc.submit(body, ip) };
       if (body.action === 'unlock') return { status: 200, body: await svc.unlock(body, ip) };
+      if (body.action === 'step') return { status: 200, body: await svc.step(body, ip) };
       if (body.action === 'admin') return { status: 200, body: await svc.admin({ ...body, action: body.task }) };
     }
     return { status: 404, body: { error: 'Not found.' } };

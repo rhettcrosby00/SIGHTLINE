@@ -21,6 +21,7 @@ import './waiver.js';
 import './cloudflare.js';
 import './license.js';
 import './install.js';
+import './onboarding.js';
 import './reviews.js';
 import './deadcode.js';
 

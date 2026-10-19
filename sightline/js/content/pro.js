@@ -29,7 +29,7 @@ export const PRO = {
   app: {
     heading: 'Welcome to the Sightrep app',
     keyLabel: 'Your key',
-    lead: 'Enter your key once more to open Sightrep here. Your settings come back with it.',
+    lead: 'Paste your key once more to open Sightrep here. Your settings come back with it.',
     help: 'Your key is in your Gumroad receipt email (or tap “Copy your key” in Safari first). Moving it from Safari into this app is free: it doesn’t count toward your 3 moves.',
     noKey: 'Don’t have a key yet?',
   },

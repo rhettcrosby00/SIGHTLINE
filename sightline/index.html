@@ -66,7 +66,7 @@
     @media (prefers-reduced-motion: reduce) { .splash { transition: none; } }
     /* The safety waiver comes first: until it's accepted (js/main.js lifts the
        gate), no other screen is shown or reachable, even before the app loads. */
-    :root[data-gate] .screen:not(#screen-waiver):not(#screen-unlock):not(#screen-install) { display: none !important; }
+    :root[data-gate] .screen:not(#screen-waiver):not(#screen-unlock):not(#screen-install):not(#screen-onboard) { display: none !important; }
   </style>
 </head>
 <body>
@@ -82,6 +82,8 @@
   <section id="screen-unlock" class="screen screen--unlock" aria-labelledby="unlock-title"></section>
   <!-- Put Sightrep on the home screen (js/install.js): after a key first unlocks a phone, and from Settings -->
   <section id="screen-install" class="screen screen--install" aria-labelledby="install-title"></section>
+  <!-- First-time setup (js/onboarding.js): You're in, Make it yours, Home screen, Let's try it -->
+  <section id="screen-onboard" class="screen screen--onboard" aria-labelledby="onboard-title"></section>
 
   <!-- Home: the two sides -->
   <section id="screen-start" class="screen screen--home is-active" aria-labelledby="app-title">

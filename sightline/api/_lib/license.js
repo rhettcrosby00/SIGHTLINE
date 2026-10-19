@@ -8,10 +8,12 @@
 // count toward the limit), once per key; Safari then hears "installed", not "moved".
 // The key also holds the phone's saved setup (js/backup.js): save() keeps it, and
 // activate({ restore }) sends it back to a phone that has none yet.
+// Computer to phone (js/handoff.js): the computer leaves the key, encrypted with a secret that
+// only the QR code carries, for 10 minutes; the phone takes it once. The server can't read it.
 
 import { cleanKey } from '../../js/license.js';
 import { BACKUP_KEYS, BACKUP_MAX } from '../../js/backup.js';
-import { keyHash } from './keys.js';
+import { keyHash, handoffHash } from './keys.js';
 import { HttpError } from './service.js';
 
 export const KEYS = {
@@ -20,10 +22,14 @@ export const KEYS = {
   tries: 40,           // key attempts per network (a whole team on one school Wi-Fi)…
   checks: 120,         // …and daily checks…
   saves: 240,          // …and setup saves…
+  handoffs: 30,        // …and QR codes made…
   windowS: 600,        // …per 10 minutes
 };
 const DAY = 86400000;
 const PHONE = /^[A-Za-z0-9-]{8,64}$/;
+export const HANDOFF_MS = 10 * 60000;                     // a QR code works for 10 minutes, once
+const HANDOFF_ID = /^[A-Za-z0-9_-]{22}$/;                 // 16 random bytes
+const HANDOFF_BLOB = /^[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{24,300}$/;   // AES-GCM: iv.ciphertext
 
 // Gumroad's public license check: no secret needed, and it never counts a use.
 // Test keys (TEST-OK-…, TEST-REFUNDED-…) answer only when testKeys is on.
@@ -106,6 +112,28 @@ export function createLicensing(store, { verify, now = () => Date.now() }) {
       if (!rec || rec.device !== device) return { ok: false, reason: 'moved' };
       await store.putKeyData(hash, input.data, now());
       return { ok: true };
+    },
+
+    // Is this a real, paid-for key? Nothing is bound (the computer, before it makes a QR code).
+    async verify(input, ip = 'unknown') {
+      const key = cleanKey(input?.key);
+      if (await store.hit(`key:${ip}`, KEYS.windowS) > KEYS.tries) return { ok: false, reason: 'busy' };
+      const problem = await paid(key);
+      return problem ? { ok: false, reason: problem } : { ok: true };
+    },
+
+    // Computer to phone: keep the encrypted key for 10 minutes; hand it out once.
+    async handoffPut({ id, blob } = {}, ip = 'unknown') {
+      if (!HANDOFF_ID.test(String(id ?? '')) || !HANDOFF_BLOB.test(String(blob ?? ''))) throw new HttpError(400, 'Bad request.');
+      if (await store.hit(`handoff:${ip}`, KEYS.windowS) > KEYS.handoffs) return { ok: false, reason: 'busy' };
+      await store.putHandoff(handoffHash(id), blob, now() + HANDOFF_MS);
+      return { ok: true };
+    },
+    async handoffTake({ id } = {}, ip = 'unknown') {
+      if (!HANDOFF_ID.test(String(id ?? ''))) throw new HttpError(400, 'Bad request.');
+      if (await store.hit(`key:${ip}`, KEYS.windowS) > KEYS.tries) return { ok: false, reason: 'busy' };
+      const blob = await store.takeHandoff(handoffHash(id), now());
+      return blob ? { ok: true, blob } : { ok: false, reason: 'expired' };
     },
 
     // The daily check: still paid for, and still on this phone?

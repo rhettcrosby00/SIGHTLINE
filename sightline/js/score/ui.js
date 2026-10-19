@@ -294,7 +294,7 @@ export function initLeaderboard({ show, getSettings }) {
   });
 
   // ---- Coach tools (PIN) ------------------------------------------------------
-  const coachState = { players: [], player: '', panel: '', msg: '', bad: false, scores: [], reviews: { pending: [], approved: [] } };
+  const coachState = { players: [], player: '', panel: '', msg: '', bad: false, scores: [], reviews: { pending: [], approved: [] }, steps: [] };
 
   async function renderCoach() {
     const s = coachState;
@@ -350,6 +350,13 @@ export function initLeaderboard({ show, getSettings }) {
           ${approved.length ? `<ul class="lb-reviews">${approved.map((r) => review(r, `
             <button type="button" class="link-btn" data-act="review-remove" data-id="${r.id}">Remove</button>`)).join('')}</ul>`
             : '<p class="setting__hint">None yet.</p>'}
+        </div>
+      </div></section>
+      <section class="group"><h3 class="group__title">First-time setup (last 30 days)</h3><div class="group__rows">
+        <div class="setting setting--stack">
+          <p class="setting__hint">How many new phones reached each step. Totals only, nothing about who.</p>
+          ${s.steps.length ? `<ul class="lb-scores lb-steps" data-act="setup-steps">${s.steps.map((x) => `<li><span>${esc(x.label)}</span><b>${x.count}</b></li>`).join('')}</ul>`
+            : '<p class="setting__hint">No numbers yet.</p>'}
         </div>
       </div></section>
       <section class="group"><h3 class="group__title">Player</h3><div class="group__rows">
@@ -410,6 +417,7 @@ export function initLeaderboard({ show, getSettings }) {
     if (!coachState.players.includes(coachState.player)) coachState.player = '';
     coachState.scores = coachState.player && token ? (await coach.run(token, 'scores', { name: coachState.player }).catch(() => ({ scores: [] }))).scores : [];
     if (token) coachState.reviews = await coach.run(token, 'reviews').catch(() => coachState.reviews);
+    if (token) coachState.steps = (await coach.run(token, 'setup-steps').catch(() => ({ steps: coachState.steps }))).steps;
   }
 
   coachEl.addEventListener('change', async (e) => {

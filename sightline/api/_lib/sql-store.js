@@ -31,6 +31,17 @@ export function sqlStore(url) {
       // 6.4: the free move into a home-screen app ({ at, from }), once per key.
       await sql`alter table lb_licenses add column if not exists app_move jsonb`;
       // 6.4: each key's saved setup (js/backup.js), so it comes back in the home-screen app or on a new phone.
+      // 6.5: computer-to-phone QR codes (an encrypted key the server can't read, 10 minutes, once).
+      await sql`create table if not exists lb_handoffs (
+        id_hash text primary key,
+        blob text not null,
+        expires_at timestamptz not null)`;
+      // 6.5: how many people reach each first-time setup step, per day. Totals only.
+      await sql`create table if not exists lb_funnel (
+        day date not null,
+        step text not null,
+        count integer not null default 0,
+        primary key (day, step))`;
       await sql`create table if not exists lb_key_data (
         key_hash text primary key,
         data jsonb not null,
@@ -140,6 +151,25 @@ export function sqlStore(url) {
         insert into lb_licenses (key_hash, device, bound_at, moves, app_move)
         values (${hash}, ${device}, ${new Date(boundAt).toISOString()}::timestamptz, ${JSON.stringify(moves)}::jsonb, ${appMove ? JSON.stringify(appMove) : null}::jsonb)
         on conflict (key_hash) do update set device = excluded.device, bound_at = excluded.bound_at, moves = excluded.moves, app_move = excluded.app_move`;
+    },
+    async putHandoff(hash, blob, expiresAt) {
+      await sql`delete from lb_handoffs where expires_at < now()`;
+      await sql`insert into lb_handoffs (id_hash, blob, expires_at) values (${hash}, ${blob}, ${new Date(expiresAt).toISOString()}::timestamptz)
+        on conflict (id_hash) do update set blob = excluded.blob, expires_at = excluded.expires_at`;
+    },
+    async takeHandoff(hash, at = Date.now()) {
+      const rows = await sql`delete from lb_handoffs where id_hash = ${hash} and expires_at > ${new Date(at).toISOString()}::timestamptz returning blob`;
+      return rows[0]?.blob ?? null;
+    },
+    async countStep(step, at = Date.now()) {
+      const day = new Date(at).toISOString().slice(0, 10);
+      await sql`insert into lb_funnel (day, step, count) values (${day}::date, ${step}, 1)
+        on conflict (day, step) do update set count = lb_funnel.count + 1`;
+    },
+    async stepTotals(sinceAt) {
+      const since = new Date(sinceAt).toISOString().slice(0, 10);
+      const rows = await sql`select step, sum(count)::int as count from lb_funnel where day >= ${since}::date group by step`;
+      return Object.fromEntries(rows.map((r) => [r.step, Number(r.count)]));
     },
     async getKeyData(hash) {
       const rows = await sql`select data from lb_key_data where key_hash = ${hash}`;

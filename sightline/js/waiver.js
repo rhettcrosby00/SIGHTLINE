@@ -77,10 +77,12 @@ export function showFullWaiver() {
 // The waiver screen in `el`. Resolves with { risks, age } once both boxes are
 // checked and "Agree and continue" is tapped. There is no other way out: no
 // back button, no decline.
-export function showWaiver(el) {
+// progress: "Step 1 of 4" when it opens the first-time setup (js/onboarding.js).
+export function showWaiver(el, { progress = '' } = {}) {
   el.innerHTML = `
     <header class="waiver__head">
       <div class="waiver__logo">${logo('horizontal')}</div>
+      ${progress ? `<p class="ob__progress">${esc(progress)}</p>` : ''}
       <h1 id="waiver-title" class="screen-title">${esc(WAIVER.heading)}</h1>
     </header>
     <div class="waiver__text" tabindex="0" role="region" aria-label="Safety waiver"><p class="waiver__intro">${esc(WAIVER.intro)}</p>${body()}</div>

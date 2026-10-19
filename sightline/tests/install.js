@@ -135,7 +135,7 @@ test('Install steps: only the ones for this phone and browser', () => {
   const ios = installGuide({ os: 'ios', browser: 'safari' });
   assert(ios.kind === 'steps' && ios.steps.length === 3, 'iPhone Safari: 3 steps');
   assert(/Share/.test(ios.steps[0].text) && /square with an arrow pointing up/.test(ios.steps[0].text) && /“Add to Home Screen\.”/.test(ios.steps[1].text) && /“Add\.”/.test(ios.steps[2].text), 'Share → Add to Home Screen → Add');
-  assert(/enter your key once more/.test(ios.note) && /free/.test(ios.note), 'and what happens next on iPhone');
+  assert(/paste your key once/.test(ios.note) && /Copy your key/.test(ios.note) && /free/.test(ios.note), 'and what happens next on iPhone');
   assert(installGuide({ os: 'ios', browser: 'safari' }, { canPrompt: true }).kind === 'steps', 'iPhone never has an install button');
   const crios = installGuide({ os: 'ios', browser: 'chrome' });
   assert(crios.kind === 'steps' && /address bar/.test(crios.steps[0].text) && /Safari/.test(crios.copyLink), 'iPhone Chrome: its Share button, or Safari');
@@ -154,13 +154,12 @@ test('Install steps: only the ones for this phone and browser', () => {
   assert(installGuide({ os: 'desktop', browser: 'firefox' }).kind === 'bookmark', 'Firefox on a computer: bookmark');
 });
 
-test('When it shows: right after a key first unlocks; never in the home-screen app; "Remind me later" stops after 2', () => {
+test('The banner: never in the home-screen app; "Remind me later" stops after 2 (the full steps: step 4 of the setup)', () => {
   assert(REMINDERS === 2, 'two reminders');
-  assert(installPlan({}, { firstUnlock: true }) === 'screen', 'right after the first unlock');
-  assert(installPlan({}, { firstUnlock: true, standalone: true }) === null, 'never in the home-screen app');
-  assert(installPlan({ status: 'later', reminders: 0 }, { standalone: true }) === null, 'not even the banner');
-  assert(installPlan({ status: 'added' }, { firstUnlock: true }) === null, '“I’ve added it” ends it');
-  assert(installPlan({ status: 'later', reminders: 1 }, { firstUnlock: true }) === 'banner', 'a later unlock: just the banner');
+  assert(installPlan({}) === null && installPlan({ status: 'new' }) === null, 'no banner before “Remind me later”');
+  assert(installPlan({ status: 'later', reminders: 0 }, { standalone: true }) === null, 'never in the home-screen app');
+  assert(installPlan({ status: 'added' }) === null, '“Done” / “I’ve added it” ends it');
+  assert(installPlan({ status: 'later', reminders: 1 }) === 'banner' && installPlan({ status: 'later', reminders: 2 }) === null, 'twice');
   // A phone's visits after "Remind me later", through initInstall (the real bookkeeping).
   const was = { window: globalThis.window, matchMedia: globalThis.matchMedia };
   globalThis.window = { addEventListener() {} };
@@ -183,7 +182,7 @@ test('When it shows: right after a key first unlocks; never in the home-screen a
     Object.assign(globalThis, was);
   }
   const main = read('js/main.js');
-  assert(/installNext = install\.plan\(\{ firstUnlock:[^]*?if \(installNext === 'screen'\) \{[^]*?await install\.showScreen\(\$\('screen-install'\)\);[^]*?\}\s*document\.documentElement\.removeAttribute\('data-gate'\);/.test(main), 'the full screen comes before the app opens');
+  assert(/\} else \{\s*installNext = install\.plan\(\);\s*\}/.test(main), 'the banner only on phones past the setup');
   assert(/if \(installNext !== 'banner'\) return;\s*\$\('install-banner'\)\.hidden = false;\s*install\.bannerShown\(\);/.test(main), 'the banner counts each visit it shows');
   assert(/id="btn-settings-install"[^>]*>[^]*?Install on home screen/.test(html) && /\$\('btn-settings-install'\)[^]*?install\.showScreen\(\$\('screen-install'\), \{ fromSettings: true \}\)/.test(main), 'Settings → Install on home screen');
   const src = read('js/install.js');
@@ -198,7 +197,7 @@ test('Saved data blocked (private browsing): the install steps and the backup ne
   Object.defineProperty(globalThis, 'localStorage', { get() { throw new Error('storage blocked'); }, configurable: true });
   try {
     const install = initInstall();   // must not throw: main.js makes it before the waiver shows
-    assert(install.plan({ firstUnlock: true }) === 'screen', 'still offered, for this visit');
+    assert(install.plan() === 'banner' && !install.added(), 'still offered, for this visit');
     assert(await createBackup({ license: { needed: () => true } }).saveNow() === false, 'nothing to save without a key');
     assert(Object.keys(snapshot()).length === 0, 'and nothing read');
   } finally {
@@ -299,8 +298,8 @@ test('Carry-over: Safari → home-screen app on one iPhone, with the key; settin
 
 test('The home-screen app asks for the key first, with Paste; Privacy says what’s saved with it', () => {
   const unlock = read('js/unlock.js');
-  assert(/welcome \? `/.test(unlock) && /PRO\.app\.heading/.test(unlock) && PRO.app.heading === 'Welcome to the Sightrep app', 'a welcome, not a sales page');
-  assert(/data-act="paste"/.test(unlock) && /navigator\.clipboard\.readText\(\)/.test(unlock), 'a Paste button');
+  assert(/mode === 'app' \? \{ heading: PRO\.app\.heading/.test(unlock) && /mode: standalone \? 'app'/.test(read('js/main.js')) && PRO.app.heading === 'Welcome to the Sightrep app', 'a welcome, not a sales page');
+  assert(/data-act="paste-go"/.test(unlock) && /navigator\.clipboard\.readText\(\)/.test(unlock), 'a big Paste your key button');
   assert(/activate: \{ app: standalone, restore: freshPhone \}/.test(read('js/main.js')), 'tells the server it’s the home-screen app, and asks for the setup on a fresh phone');
   const privacy = read('../site/src/privacy.html');
   assert(/saved with your key/i.test(privacy) && /waiver/i.test(privacy.slice(privacy.search(/saved with your key/i))), 'Privacy: the setup saved with the key');

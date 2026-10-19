@@ -1,7 +1,7 @@
 // Settings every shot starts from (sightrep.settings.v1), plus the shots.
 // A shot: { name, set?, cone?, last?, player?, firstRun?, params?, steps?, expect?, combos? }
 //   last: Run last ({ focus, move }); player: the remembered leaderboard name;
-//   firstRun: show the first-run setup (otherwise ?noguide=1 skips it)
+//   firstRun: show the first-time setup (otherwise ?noguide=1 skips it)
 //   steps run in the page: ['click', sel] | ['wait', ms] | ['waitFor', sel, ms]
 //     | ['scrollEnd'] | ['scrollTo', sel] | ['eval', js] | ['type', sel, text] | ['select', sel, value]
 //     | ['hold', sel, ms] (a finger held down on sel for ms) | ['until', jsExpression, ms]
@@ -57,7 +57,7 @@ export const SHOTS = [
   // Coach tools (PIN 2468 on the local test API): website reviews wait here for the owner.
   // Pending ones come from the site-reviews set (run it first to see them listed).
   { name: 'coach-reviews', steps: [['click', '#btn-board'], ['click', '.lb-coach'], ['type', '#lb-pin', '2468'], ['click', '[data-act="unlock"]'], ['waitFor', '.lb-review', 8000], ['wait', 300]],
-    expect: ['Website reviews', 'Waiting for you', 'Approve every honest review, good or bad. Reject only spam, abuse, or reviews not about Sightrep.', 'On the website', 'Got it free or knows the team', 'Add the “Got it free” label'] },
+    expect: ['Website reviews', 'Waiting for you', 'Approve every honest review, good or bad. Reject only spam, abuse, or reviews not about Sightrep.', 'On the website', 'Got it free or knows the team', 'Add the “Got it free” label', 'First-time setup (last 30 days)', 'Unlocked a new phone'] },
   { name: 'settings', steps: [['click', '#btn-settings']], expect: ['Cue word', 'Sounds'] },
   { name: 'settings-end', steps: [['click', '#btn-settings'], ['scrollEnd']], expect: ['Countdown before the first set'], combos: 'few' },
   { name: 'about', steps: [['click', '#btn-about']] },
@@ -65,7 +65,5 @@ export const SHOTS = [
   // Focus Check: Training only.
   { name: 'check', set: { day: 'training', focusCheck: 'on' }, steps: [['click', '#btn-focus'], ['click', '[data-preset="standard"]'], ['waitFor', '.fc-intro', 8000], ['wait', 300]], expect: ['Focus Check', 'About 30 seconds'], combos: 'few' },
   // First-run setup, step by step.
-  { name: 'first-run-1', firstRun: true, steps: [['waitFor', '.guide__card', 8000]], expect: ['Welcome to Sightrep', 'Set up'] },
-  { name: 'first-run-2', firstRun: true, steps: [['click', '.guide__next']], expect: ['Your sport and cue word', 'Your cue word', 'ATTACK'] },
-  { name: 'first-run-3', firstRun: true, steps: [['click', '.guide__next'], ['click', '.guide__next']], expect: ['Your leaderboard name'] },
+  // The first-time setup (6.5): scenarios/first-run.mjs.
 ];

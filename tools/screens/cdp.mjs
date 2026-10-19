@@ -24,6 +24,7 @@ const THEMES = ['light', 'dark', 'outdoor'];
 // ---- tiny CDP client ----
 let ws, nextId = 1;
 const pending = new Map();
+const frames = new Map();   // sessionId → frames, for shots that record
 const send = (method, params = {}, sessionId) => new Promise((res, rej) => {
   const id = nextId++;
   pending.set(id, { res, rej, method });
@@ -42,6 +43,11 @@ async function connect() {
       await new Promise((r) => ws.addEventListener('open', r, { once: true }));
       ws.addEventListener('message', (e) => {
         const m = JSON.parse(e.data);
+        if (m.method === 'Page.screencastFrame') {   // record: a frame of the page, as it changes
+          frames.get(m.sessionId)?.push({ data: m.params.data, t: m.params.metadata.timestamp });
+          send('Page.screencastFrameAck', { sessionId: m.params.sessionId }, m.sessionId).catch(() => {});
+          return;
+        }
         const p = pending.get(m.id);
         if (!p) return;
         pending.delete(m.id);
@@ -132,6 +138,8 @@ async function shoot(shot, size, theme) {
     // shot.url: any page as it is (the website), instead of the app with seeded settings.
     const url = shot.url ?? `http://localhost:5175/__set?${q}${shot.firstRun ? '' : '&noguide=1'}${shot.params ? `&${shot.params}` : ''}`;
     await s('Page.enable');
+    // record: frames of the whole shot, written to shots/<name>__<size>-<theme>.frames/ (make a movie: tools/screens/movie.py).
+    if (shot.record) { frames.set(sessionId, []); await s('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1 }); }
     await s('Page.navigate', { url });
     for (let i = 0; i < 100; i++) {   // wait for the app page to finish loading
       const st = await s('Runtime.evaluate', { expression: 'location.href + "|" + document.readyState', returnByValue: true });
@@ -179,6 +187,15 @@ async function shoot(shot, size, theme) {
       : { format: 'png' });
     const file = `${shot.name}__${size}-${theme}`;
     writeFileSync(join(OUT, `${file}.png`), Buffer.from(png.data, 'base64'));
+    if (shot.record) {
+      await s('Page.stopScreencast').catch(() => {});
+      const dir = join(OUT, `${file}.frames`);
+      mkdirSync(dir, { recursive: true });
+      const list = frames.get(sessionId) ?? [];
+      list.forEach((f, i) => writeFileSync(join(dir, `${String(i).padStart(4, '0')}.jpg`), Buffer.from(f.data, 'base64')));
+      writeFileSync(join(dir, 'times.json'), JSON.stringify(list.map((f) => f.t)));
+      frames.delete(sessionId);
+    }
     const out = { file, error: err, ...JSON.parse(c.result.value) };
     // installable: Chrome's own check that the page can be installed as an app (what Lighthouse's
     // old PWA audit ran), plus any manifest errors.
