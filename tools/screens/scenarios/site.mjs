@@ -4,7 +4,17 @@ export const BASE = {};
 const SITE = 'http://localhost:5177';
 const ALL = { sizes: ['se', 'pm', 'desk'], themes: ['dark'] };
 export const SHOTS = [
+  // The whole home page, top to bottom: look at every section, not just the first screen.
+  { name: 'site-full', url: `${SITE}/`, ...ALL, fullPage: true,
+    // Scroll down gradually, like a person would, so every picture loads; then back to the top.
+    steps: [['until', '(window.__y = (window.__y || 0) + 300, scrollTo(0, window.__y), window.__y > document.documentElement.scrollHeight)', 30000],
+      ['wait', 800], ['eval', 'scrollTo(0, 0)'], ['wait', 300]],
+    expect: ['js:[...document.images].every((i) => i.complete && i.naturalWidth > 0)'] },
+  { name: 'site-how', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#how-title'], ['wait', 600]],
+    expect: ['How it works', 'js:[...document.querySelectorAll(".steps li")].every((li) => li.getBoundingClientRect().height < 120)'] },
   { name: 'site-home', url: `${SITE}/`, ...ALL, expect: ['Reps for your eyes.', 'Get Sightrep · $35.50', 'Already have a key?', 'js:document.querySelector(".hero__poster").naturalWidth > 0'] },
+  { name: 'site-inside', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#inside-title'], ['wait', 400]], expect: ['What’s inside'] },
+  { name: 'site-why', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#why-title'], ['wait', 400]], expect: ['Why it works'] },
   { name: 'site-sides', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#sides-title'], ['wait', 900]], expect: ['Two sides, one warm-up', 'js:[...document.querySelectorAll(".phone img")].filter((i) => { const r = i.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }).every((i) => i.complete && i.naturalWidth > 0)'] },
   { name: 'site-price', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#price-title'], ['wait', 300]], expect: ['One price. Yours to keep.', 'All sales are final.'] },
   { name: 'site-faq', url: `${SITE}/`, ...ALL, steps: [['scrollEnd'], ['wait', 300]], expect: ['Can I use it on two phones?', 'Safety waiver', 'Privacy', 'Terms'] },

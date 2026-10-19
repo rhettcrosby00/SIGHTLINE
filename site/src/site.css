@@ -76,9 +76,11 @@ b { font-weight: 600; }
 .sources { margin-top: 24px; color: var(--muted); font-size: 0.9375rem; max-width: 46em; }
 
 .steps { list-style: none; counter-reset: step; display: grid; gap: 16px; max-width: 40em; }
-.steps li { counter-increment: step; display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; color: var(--muted); }
-.steps li::before { content: counter(step); display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--raised); color: var(--lime);
-  font: 800 1.25rem/1 var(--font-display); }
+/* The number sits in the left margin; the step's words flow normally beside it.
+   (Not a grid: a grid puts each loose run of words in its own narrow column.) */
+.steps li { counter-increment: step; position: relative; padding-left: 52px; min-height: 36px; color: var(--muted); }
+.steps li::before { content: counter(step); position: absolute; left: 0; top: -5px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  background: var(--raised); color: var(--lime); font: 800 1.25rem/1 var(--font-display); }
 .steps b { color: var(--text); }
 
 .price { text-align: center; display: grid; justify-items: center; gap: 12px; }
