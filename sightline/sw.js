@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v6.0';
+const CACHE_VERSION = 'v6.1';
 const CACHE = `sightrep-${CACHE_VERSION}`;
 
 // Google Fonts (Archivo + Schibsted Grotesk) live in their own cache that

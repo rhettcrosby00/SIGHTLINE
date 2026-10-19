@@ -67,7 +67,10 @@ test('Partner mode: wrong codes are limited per network, so codes can’t be sca
   const store = partnerMemory();
   const svc = createPartner(store, { now: () => t });
   const { code } = await svc.open({ setup: { cueType: 'colors' } }, '1.1.1.1');
-  for (let i = 0; i < PARTNER.wrongCodes; i++) assert(await status(svc.poll({ code: String(1000 + i) }, '6.6.6.6')) === 404, 'unknown code');
+  // Wrong codes: any that aren't this room's (its code is random, so skip it if it falls in range).
+  const wrong = [];
+  for (let c = 1000; wrong.length < PARTNER.wrongCodes; c++) if (String(c) !== String(code)) wrong.push(String(c));
+  for (const w of wrong) assert(await status(svc.poll({ code: w }, '6.6.6.6')) === 404, 'unknown code');
   assert(await status(svc.poll({ code }, '6.6.6.6')) === 429, 'scanner blocked, even for a real code');
   assert(await status(svc.send({ code, cue: { kind: 'hold' } }, '6.6.6.6')) === 429, 'and can’t send cues');
   assert(await status(svc.poll({ code }, '1.1.1.1')) === 200, 'other networks are fine');

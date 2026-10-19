@@ -18,7 +18,7 @@ import { initLeaderboard } from './score/ui.js';
 import { initRoutineBuilder } from './myroutine-ui.js';
 import { initInstall } from './install.js';
 import { parseRunKey } from './presets.js';
-import { BRAND, APP_URL, movedFrom, hydrateLogos } from './brand.js';
+import { BRAND, hydrateLogos } from './brand.js';
 import { createWaiverStore, showWaiver, showFullWaiver } from './waiver.js';
 import { DISCLAIMER } from './content/safety.js';
 import { createLicense } from './license.js';
@@ -31,7 +31,7 @@ import { isLiveHost } from './features.js';
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '6.0';
+export const APP_VERSION = '6.1';
 
 const $ = (id) => document.getElementById(id);
 
@@ -105,9 +105,6 @@ $('btn-settings-waiver').addEventListener('click', () => showFullWaiver());
 $('disclaimer').textContent = DISCLAIMER;
 $('about-disclaimer').textContent = DISCLAIMER;
 
-// Opened at the old address: point to the new one (?moved=1 shows it anywhere, for checking).
-$('moved').hidden = !(movedFrom(location.hostname) || new URLSearchParams(location.search).has('moved'));
-$('moved-link').href = APP_URL;
 $('brand-tagline').textContent = BRAND.tagline;   // one place to change it: js/brand.js
 
 // Dev aids: ?speed=20 fast-forwards; ?autostart=1 starts Game Ready (or
