@@ -14,6 +14,27 @@ export const FIRST = {
     buy: 'Don’t have a key yet?',
     unlocking: 'Unlocking…',
   },
+  // The purchase email's "Start Sightrep" link (#t=…), and 6-digit codes (6.6).
+  link: {
+    unlocking: 'Opening Sightrep…',
+    expired: 'This link has expired. We’ll email you a new one.',
+    resend: 'Email me a new link',
+    sent: 'Sent. Check your email for a new Start Sightrep link.',
+    qr: 'Scan with your phone’s camera to open your Start Sightrep link there. It works once.',
+  },
+  email: {
+    get: 'Get a code by email',
+    label: 'Your purchase email',
+    placeholder: 'The email you bought with',
+    send: 'Email me a code',
+    sent: 'If that email bought Sightrep, a 6-digit code is on its way. It works for 10 minutes.',
+    code: '6-digit code',
+    check: 'Unlock',
+  },
+  app: {
+    lead: 'Enter your purchase email to get a 6-digit code. Your settings come back with it.',
+    paste: 'Or paste your key',
+  },
   // Opened on a computer: hand the unlock to the phone with a QR code.
   desktop: {
     heading: 'Sightrep works best on your phone',
@@ -29,6 +50,7 @@ export const FIRST = {
   ready: {
     title: 'You’re in',
     line: 'You’re all set. Sightrep is unlocked on this phone.',
+    lineFor: (email) => `You’re all set, ${email}. Your Sightrep access is active.`,
     next: 'Continue',
   },
   yours: {

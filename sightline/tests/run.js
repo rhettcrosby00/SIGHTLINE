@@ -22,6 +22,7 @@ import './cloudflare.js';
 import './license.js';
 import './install.js';
 import './onboarding.js';
+import './email-start.js';
 import './reviews.js';
 import './deadcode.js';
 

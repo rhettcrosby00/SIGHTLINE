@@ -12,6 +12,7 @@ import { cleanName, nameKey, nameProblem } from '../../js/score/names.js';
 import { cleanKey } from '../../js/license.js';
 import { keyHash } from './keys.js';
 import { SETUP_STEPS } from '../../js/content/firstrun.js';
+import { maskEmail } from './purchases.js';
 
 export const LIMITS = {
   submitPerWindow: 60,     // score posts per network (a whole team on one school Wi-Fi)…
@@ -196,6 +197,16 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
       if (action === 'review-connected') {   // add (or take off) "Got it free or knows the team"
         if (!await store.setReviewConnected(Number(id), on === true)) fail(404, 'That review is gone.');
         return { ok: true };
+      }
+      if (action === 'signins') {   // the last 40 unlocks: when, how, whose purchase (masked), phones in 30 days
+        const rows = await store.recentSignins(40);
+        const since = now() - 30 * 86400000;
+        const signins = await Promise.all(rows.map(async (r) => {
+          const p = await store.purchaseByKeyHash(r.keyHash);
+          return { at: r.at, how: r.how, who: p ? maskEmail(p.email) : `key •••${r.keyHash.slice(-4)}`, phones: await store.phonesFor(r.keyHash, since) };
+        }));
+        const ping = JSON.parse((await store.getMeta('ping')) ?? 'null');
+        return { signins, ping };
       }
       if (action === 'setup-steps') {   // the last 30 days, in the order of the setup
         const totals = await store.stepTotals(now() - 30 * 86400000);

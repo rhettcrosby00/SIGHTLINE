@@ -25,7 +25,7 @@ export const SHOTS = [
   { name: 'site-install', url: `${SITE}/install`, ...ALL, expect: ['Put Sightrep on your home screen', 'No app store needed', 'Add to Home Screen', 'js:[...document.images].every((i) => i.complete && i.naturalWidth > 0) || true'] },
   { name: 'site-install-full', url: `${SITE}/install`, ...ALL, fullPage: true,
     steps: [['until', '(window.__y = (window.__y || 0) + 300, scrollTo(0, window.__y), window.__y > document.documentElement.scrollHeight)', 30000], ['wait', 800], ['eval', 'scrollTo(0, 0)'], ['wait', 300]],
-    expect: ['The app asks for my key again.', 'I deleted the icon.', 'js:[...document.images].every((i) => i.complete && i.naturalWidth > 0)'] },
+    expect: ['The app asks me to sign in again.', 'I deleted the icon.', 'js:[...document.images].every((i) => i.complete && i.naturalWidth > 0)'] },
   { name: 'site-faq-app-store', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#faq-title'], ['wait', 300]], expect: ['Is there an app in the App Store?', 'No app store needed'] },
   { name: 'site-waiver', url: `${SITE}/waiver`, ...ALL, expect: ['Safety waiver', 'Assumption of risk', 'Release of liability'] },
   { name: 'site-privacy', url: `${SITE}/privacy`, ...ALL, expect: ['Privacy', 'On your phone', 'Payments'] },

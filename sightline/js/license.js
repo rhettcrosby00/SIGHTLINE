@@ -43,6 +43,7 @@ export function createLicense({ storage = safeStorage(), fetch = (...a) => globa
     }
     if (res.status === 429) return { ok: false, reason: 'busy' };
     const body = await res.json().catch(() => null);
+    if (res.status < 500 && !res.ok && body?.error) return { ok: false, reason: 'said', said: body.error };   // a form mistake, in the server's words
     return res.ok && body ? body : { ok: false, reason: 'store' };
   }
 
@@ -67,11 +68,28 @@ export function createLicense({ storage = safeStorage(), fetch = (...a) => globa
     // A key typed on the unlock screen → { ok, moved, free, data } or { ok: false, reason }.
     // app: this is the home-screen app (its first move there is free). restore: send back the
     // setup saved with the key (data), for a phone that has none of its own yet.
-    async activate(raw, { app = false, restore = false } = {}) {
+    // how: paste | typed | qr, for the sign-in log in Coach tools.
+    async activate(raw, { app = false, restore = false, how = 'typed' } = {}) {
       const key = cleanKey(raw);
       if (!key) return { ok: false, reason: 'empty' };
-      const out = await call('activate', key, { app, restore });
+      const out = await call('activate', key, { app, restore, how });
       if (out.ok) save({ key, state: 'ok', checkedAt: now() });
+      return out;
+    },
+
+    // Sign in by email (6.6): the "Start Sightrep" link (#t=…), or a 6-digit code to the purchase
+    // email. The server unlocks this phone with the same rules and hands the key back, kept here
+    // like a typed one. Answers like activate, plus email; or link-expired | code-wrong | code-expired.
+    async redeem(token, { app = false, restore = false } = {}) {
+      const out = await call('redeem', '', { token, app, restore });
+      if (out.ok && out.key) save({ key: cleanKey(out.key), state: 'ok', checkedAt: now() });
+      return out;
+    },
+    resend: (token) => call('resend', '', { token }),
+    codeSend: (email) => call('code-send', '', { email }),
+    async codeCheck(email, code, { app = false, restore = false } = {}) {
+      const out = await call('code-check', '', { email, code, app, restore });
+      if (out.ok && out.key) save({ key: cleanKey(out.key), state: 'ok', checkedAt: now() });
       return out;
     },
 

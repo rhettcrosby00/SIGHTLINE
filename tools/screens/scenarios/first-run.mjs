@@ -23,6 +23,8 @@ const PROMPT = "window.addEventListener('load', () => { const e = new Event('bef
 const STANDALONE = "Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true, configurable: true });";
 const NEW = 'license=0&waiver=0&start=1';   // a brand-new phone, from "Start Sightrep"
 const FITS = 'js:document.documentElement.scrollHeight <= innerHeight + 1';
+// Screens that may scroll to "Don't have a key yet?": their main buttons are on the first screen.
+const SEEN = (...sel) => `js:[${sel.map((x) => JSON.stringify(x)).join(', ')}].every((q) => { const r = document.querySelector(q).getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })`;
 const ONLY = (id) => `js:[...document.querySelectorAll(".screen")].filter((s) => getComputedStyle(s).display !== "none").map((s) => s.id).join() === "${id}"`;
 const T = 700;   // a person's pause between taps (for the recording)
 
@@ -32,6 +34,17 @@ const READY = [['waitFor', '.ob__tiles', 4000]];
 const YOURS = [['click', '[data-sport="football"]'], ['select', '.ob__position', 'skill'], ['click', '[data-ob="next"]'], ['waitFor', '.ob__install', 4000]];
 const LATER = [['click', '[data-ob="later"]'], ['waitFor', '[data-ob="start"]', 4000]];
 const iphone = { ua: UA.iphone, init: CLIPBOARD, firstRun: true, params: NEW };
+// A purchase, as Gumroad's sale notice would report it (local test API: no email is sent; the
+// outbox shows it). Leaves window.__email and window.__link (the email's Start Sightrep link).
+const SALE = [['eval', `window.__link = null; (async () => {
+  const id = Math.random().toString(36).slice(2, 10).toUpperCase();
+  const email = 'buyer-' + id.toLowerCase() + '@example.com';
+  await fetch('/api/gumroad?k=test-ping', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ sale_id: 'T-' + id, email, license_key: 'TEST-OK-' + id }).toString() });
+  const out = await (await fetch('/api/gumroad?action=outbox')).json();
+  window.__email = email;
+  window.__link = /(http\\S+#t=[A-Za-z0-9_-]{43})/.exec(out.mails.filter((m) => m.to === email).at(-1).text)[1];
+})();`], ['until', 'window.__link', 8000]];
 
 export const SHOTS = [
   // ---- Each step on its own (iPhone Safari) ----
@@ -109,6 +122,39 @@ export const SHOTS = [
       window.__qrDone = out;
     })().catch((e) => { window.__qrDone = [[String(e)]]; });`], ['until', 'window.__qrDone', 30000]],
     expect: ['js:window.__qrDone.length === 12 && window.__qrDone.every((r) => r[2] === true)'] },
+
+  // ---- 6.6: the purchase email's Start Sightrep link, and 6-digit codes ----
+  { name: 'fr-link', ...iphone, params: 'license=0&waiver=0&install=none', steps: [...SALE, ['eval', 'setTimeout(() => { location.href = window.__link; }, 50)']],
+    settle: 3500, after: [['waitFor', '#screen-waiver.is-active', 8000], ...WAIVER, ['wait', 400]],
+    expect: ['js:document.body.innerText.includes(sessionStorage.getItem("sightrep.email"))', 'Step 2 of 4', 'js:location.hash === ""',
+      'js:/^TEST-OK-/.test(JSON.parse(localStorage.getItem("sightrep.license.v1")).key)'] },
+  { name: 'fr-link-used', ...iphone, params: 'license=0&waiver=0', steps: [...SALE, ['eval', `fetch('/api/license', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'redeem', token: window.__link.split('#t=')[1], device: 'used-elsewhere-01' }) }).then(() => setTimeout(() => { location.href = window.__link; }, 50))`]],
+    settle: 3500, after: [['waitFor', '[data-act="resend"]:not([hidden])', 8000], ['wait', 300]],
+    expect: [FIRST.link.expired, FIRST.link.resend, FIRST.buyer.paste, FIRST.email.get, ONLY('screen-unlock'), SEEN('[data-act="resend"]', '[data-act="paste-go"]')] },
+  { name: 'fr-link-resend', ...iphone, params: 'license=0&waiver=0', combos: 'few', steps: [...SALE, ['eval', `fetch('/api/license', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'redeem', token: window.__link.split('#t=')[1], device: 'used-elsewhere-01' }) }).then(() => setTimeout(() => { location.href = window.__link; }, 50))`]],
+    settle: 3500, after: [['waitFor', '[data-act="resend"]:not([hidden])', 8000], ['click', '[data-act="resend"]'], ['wait', 800]],
+    expect: [FIRST.link.sent] },
+  { name: 'fr-code', ...iphone, steps: [...SALE, ['waitFor', '[data-act="email"]'], ['click', '[data-act="email"]'],
+      ['eval', "document.querySelector('#unlock-email').value = window.__email"], ['click', '[data-act="code-send"]'], ['waitFor', '.unlock__code:not([hidden])', 8000], ['wait', 300]],
+    expect: [FIRST.email.sent, FIRST.email.code, 'js:document.querySelector("#unlock-code").autocomplete === "one-time-code"', SEEN('#unlock-code')] },
+  { name: 'fr-code-unlock', ...iphone, combos: 'few', steps: [...SALE, ['waitFor', '[data-act="email"]'], ['click', '[data-act="email"]'],
+      ['eval', "document.querySelector('#unlock-email').value = window.__email"], ['click', '[data-act="code-send"]'], ['waitFor', '.unlock__code:not([hidden])', 8000],
+      ['eval', `fetch('/api/gumroad?action=outbox').then((r) => r.json()).then((o) => { const m = o.mails.filter((x) => x.to === window.__email).at(-1); const c = document.querySelector('#unlock-code'); c.value = /(\\d{6}) is your/.exec(m.subject)[1]; c.dispatchEvent(new Event('input', { bubbles: true })); })`],
+      ['waitFor', '#screen-waiver.is-active', 8000]],
+    expect: ['#screen-waiver.is-active', 'Step 1 of 4', 'js:/^TEST-OK-/.test(JSON.parse(localStorage.getItem("sightrep.license.v1")).key)'] },
+  { name: 'fr-code-app', ...iphone, init: `${CLIPBOARD} ${STANDALONE}`, media: [{ name: 'display-mode', value: 'standalone' }], steps: [['waitFor', '#unlock-email'], ['wait', 300]],
+    expect: ['Welcome to the Sightrep app', FIRST.app.lead, FIRST.email.send, FIRST.app.paste, 'js:!document.querySelector(".unlock__email").hidden', SEEN('#unlock-email', '[data-act="code-send"]', '[data-act="paste-go"]')] },
+  { name: 'fr-link-desktop', sizes: ['desk'], themes: ['dark'], init: CLIPBOARD, firstRun: true, params: 'license=0&waiver=0',
+    steps: [...SALE, ['eval', 'sessionStorage.setItem("link", window.__link); setTimeout(() => { location.href = window.__link; }, 50)']],
+    settle: 3000, after: [['waitFor', '.handoff .qr', 8000], ['eval', `(async () => {
+        const svg = document.querySelector('.handoff .qr').outerHTML.replace('currentColor', 'black').replace('<svg ', '<svg width="400" height="400" ');
+        const img = new Image(); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); await img.decode();
+        const c = document.createElement('canvas'); c.width = c.height = 400; const g = c.getContext('2d'); g.fillStyle = 'white'; g.fillRect(0, 0, 400, 400); g.drawImage(img, 0, 0);
+        window.__qrUrl = (await new BarcodeDetector({ formats: ['qr_code'] }).detect(c))[0]?.rawValue;
+      })()`], ['until', 'window.__qrUrl', 8000]],
+    expect: [FIRST.desktop.heading, FIRST.link.qr, FIRST.desktop.here, 'js:window.__qrUrl === sessionStorage.getItem("link")'] },
 
   // ---- The whole path, recorded (the movie for the checkpoint) ----
   { name: 'fr-movie', ...iphone, sizes: ['pm'], themes: ['dark'], record: true,

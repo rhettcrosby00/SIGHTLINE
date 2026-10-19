@@ -79,8 +79,8 @@ test('Paste your key: no typing; a clipboard without a key says what to do; typi
   assert(/data-act="paste-go"/.test(unlock) && /FIRST\.buyer\.paste/.test(unlock) && FIRST.buyer.paste === 'Paste your key', 'one big Paste your key');
   assert(/if \(!looksLikeKey\(text\)\) \{ say\(FIRST\.buyer\.noKey, true\); return; \}/.test(unlock) && /Tap Copy next to your key/.test(FIRST.buyer.noKey), 'the clipboard has no key: what to do');
   assert(/FIRST\.buyer\.enter/.test(unlock) && FIRST.buyer.enter === 'Have a license key? Enter it here' && /keyBox\(!canPaste\)/.test(unlock), 'typing it, behind a small link (open when Paste can’t work)');
-  assert(/mode: standalone \? 'app' : fromStart \|\| handoff \? 'buyer' : 'sales'/.test(read('js/main.js')), 'buyers from “Start Sightrep” (?start), the home-screen app, and everyone else');
-  assert(/license\.activate\(raw, activate\)/.test(unlock), 'the same activation, limits and moves as typing it');
+  assert(/mode: standalone \? 'app' : fromStart \|\| handoff \|\| token \? 'buyer' : 'sales'/.test(read('js/main.js')), 'buyers from “Start Sightrep” (?start, or the email link), the home-screen app, and everyone else');
+  assert(/license\.activate\(raw, \{ \.\.\.activate, how \}\)/.test(unlock), 'the same activation, limits and moves as typing it');
 });
 
 test('Computer to phone: the QR link carries the key sealed; the server can’t read it; once, 10 minutes', async () => {

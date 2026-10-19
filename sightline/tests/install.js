@@ -298,7 +298,7 @@ test('Carry-over: Safari → home-screen app on one iPhone, with the key; settin
 
 test('The home-screen app asks for the key first, with Paste; Privacy says what’s saved with it', () => {
   const unlock = read('js/unlock.js');
-  assert(/mode === 'app' \? \{ heading: PRO\.app\.heading/.test(unlock) && /mode: standalone \? 'app'/.test(read('js/main.js')) && PRO.app.heading === 'Welcome to the Sightrep app', 'a welcome, not a sales page');
+  assert(/app \? \{ heading: PRO\.app\.heading/.test(unlock) && /mode: standalone \? 'app'/.test(read('js/main.js')) && PRO.app.heading === 'Welcome to the Sightrep app', 'a welcome, not a sales page');
   assert(/data-act="paste-go"/.test(unlock) && /navigator\.clipboard\.readText\(\)/.test(unlock), 'a big Paste your key button');
   assert(/activate: \{ app: standalone, restore: freshPhone \}/.test(read('js/main.js')), 'tells the server it’s the home-screen app, and asks for the setup on a fresh phone');
   const privacy = read('../site/src/privacy.html');

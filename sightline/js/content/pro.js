@@ -29,9 +29,7 @@ export const PRO = {
   app: {
     heading: 'Welcome to the Sightrep app',
     keyLabel: 'Your key',
-    lead: 'Paste your key once more to open Sightrep here. Your settings come back with it.',
     help: 'Your key is in your Gumroad receipt email (or tap “Copy your key” in Safari first). Moving it from Safari into this app is free: it doesn’t count toward your 3 moves.',
-    noKey: 'Don’t have a key yet?',
   },
   help: 'Your key is in your Gumroad receipt email. New phone? Enter your key there, and it moves from your old phone. Questions: support@sightrep.app',
   previewHint: 'Preview only: try the test key TEST-OK-1234.',
@@ -43,6 +41,9 @@ export const PRO = {
     busy: 'Too many tries. Wait a few minutes.',
     offline: 'No connection. Connect to the internet to unlock.',
     store: 'The store didn’t answer. Try again in a minute.',
+    'link-expired': 'This link has expired. We’ll email you a new one.',
+    'code-wrong': 'That code isn’t right. Check it and try again.',
+    'code-expired': 'That code has expired. Tap Email me a code for a new one.',
   },
   locked: {
     moved: 'Your key is now on another phone, so this one is locked. Enter your key to move it back.',

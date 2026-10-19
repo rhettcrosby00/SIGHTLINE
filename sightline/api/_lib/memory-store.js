@@ -9,6 +9,10 @@ export function memoryStore({ now = () => Date.now() } = {}) {
   const licenses = new Map();   // key hash → { hash, device, boundAt, moves, appMove }
   const keyData = new Map();    // key hash → the setup saved with the key (js/backup.js)
   const handoffs = new Map();   // id hash → { blob, expiresAt }
+  const purchases = new Map();  // sale id → { saleId, email, keyEnc, keyHash, at, emailedAt }
+  const tokens = new Map();     // link hash → { saleId, expiresAt, usedAt }
+  const codes = new Map();      // email hash → { saleId, codeHash, expiresAt, tries }
+  let signins = [];             // { at, keyHash, device, how }
   const funnel = new Map();     // "day|step" → count
   let reviews = [];             // { id, name, sport, stars, text, connected, status, at, decidedAt }
   let nextReview = 1;
@@ -89,6 +93,24 @@ export function memoryStore({ now = () => Date.now() } = {}) {
     // License keys: which phone each key is on (by hash).
     async getLicense(hash) { const r = licenses.get(hash); return r ? { ...r, moves: [...r.moves], appMove: r.appMove ? { ...r.appMove } : null } : null; },
     async putLicense(rec) { licenses.set(rec.hash, { ...rec, moves: [...rec.moves], appMove: rec.appMove ? { ...rec.appMove } : null }); },
+    async putPurchase(p) { if (!purchases.has(p.saleId)) purchases.set(p.saleId, { ...p, emailedAt: null }); },
+    async getPurchase(saleId) { const p = purchases.get(saleId); return p ? { ...p } : null; },
+    async purchasesByEmail(email) { return [...purchases.values()].filter((p) => p.email === email).sort((a, b) => b.at - a.at).slice(0, 5).map(({ saleId, email: e }) => ({ saleId, email: e })); },
+    async purchaseByKeyHash(hash) { const p = [...purchases.values()].filter((x) => x.keyHash === hash).sort((a, b) => b.at - a.at)[0]; return p ? { saleId: p.saleId, email: p.email } : null; },
+    async markEmailed(saleId, at) { const p = purchases.get(saleId); if (p) p.emailedAt = at; },
+    async putToken({ hash, saleId, expiresAt }) { tokens.set(hash, { saleId, expiresAt, usedAt: null }); },
+    async getToken(hash) { const t = tokens.get(hash); return t ? { ...t } : null; },
+    async useToken(hash, at) { const t = tokens.get(hash); if (t) t.usedAt = at; },
+    async putCode({ emailHash, saleId, codeHash, expiresAt }) { codes.set(emailHash, { saleId, codeHash, expiresAt, tries: 0 }); },
+    async getCode(emailHash) { const c = codes.get(emailHash); return c ? { ...c } : null; },
+    async bumpCode(emailHash) { const c = codes.get(emailHash); if (!c) return Infinity; c.tries++; return c.tries; },
+    async deleteCode(emailHash) { codes.delete(emailHash); },
+    async addSignin(row) { signins.push({ ...row }); if (signins.length > 2000) signins = signins.slice(-1000); },
+    async recentSignins(limit = 40) { return [...signins].sort((a, b) => b.at - a.at).slice(0, limit); },
+    async phonesFor(keyHash, sinceAt) { return new Set(signins.filter((s) => s.keyHash === keyHash && s.at >= sinceAt).map((s) => s.device)).size; },
+    purchaseRows: () => [...purchases.values()],   // for the tests
+    tokenRows: () => [...tokens.entries()],        // for the tests
+    codeRows: () => [...codes.entries()],          // for the tests
     async putHandoff(hash, blob, expiresAt) { handoffs.set(hash, { blob, expiresAt }); },
     async takeHandoff(hash, at = now()) {
       const h = handoffs.get(hash);
