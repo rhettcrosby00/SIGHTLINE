@@ -229,7 +229,10 @@ test('Low contrast stays above its floor in every theme, and really is fainter',
     }
     return '';
   };
-  const colors = (css) => Object.fromEntries([...css.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})\b/g)].map((x) => [x[1], x[2].toLowerCase()]));
+  // Theme colors, with palette swatches (var(--p-…), css/palette.css) looked up.
+  const palette = Object.fromEntries([...read('css/palette.css').matchAll(/--(p-[\w-]+):\s*(#[0-9a-fA-F]{6})\b/g)].map((x) => [x[1], x[2]]));
+  const colors = (css) => Object.fromEntries([...css.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6}\b|var\(--(p-[\w-]+)\))/g)]
+    .map((x) => [x[1], (x[3] ? palette[x[3]] : x[2]).toLowerCase()]));
   const light = colors(themeBlock(':root {'));
   const themes = { light, dark: { ...light, ...colors(themeBlock(':root[data-appearance="dark"]')) }, outdoor: { ...light, ...colors(themeBlock(':root[data-appearance="outdoor"]')) } };
   for (const [name, t] of Object.entries(themes)) {

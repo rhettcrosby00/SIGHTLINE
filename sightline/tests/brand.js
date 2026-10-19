@@ -15,7 +15,7 @@ const manifest = JSON.parse(read('manifest.webmanifest'));
 const meta = (attr, name) => new RegExp(`<meta ${attr}="${name}" content="([^"]*)"`).exec(html)?.[1];
 
 test('Name and tagline: one source (js/brand.js), and the page and home-screen app agree', () => {
-  assert(BRAND.name === 'Sightrep' && BRAND.tagline === 'Reps for your eyes.', JSON.stringify(BRAND));
+  assert(BRAND.name === 'Sightrep' && BRAND.tagline === 'Your eyes move first.', JSON.stringify(BRAND));
   assert(/<title>Sightrep<\/title>/.test(html) && meta('name', 'apple-mobile-web-app-title') === BRAND.name, 'page title and iPhone home-screen title');
   assert(manifest.name === BRAND.name && manifest.short_name === BRAND.name, 'manifest name and short_name');
   for (const d of [manifest.description, meta('name', 'description'), meta('property', 'og:description'), meta('name', 'twitter:description')]) {

@@ -4,42 +4,32 @@
 //   the waiver and disclaimer: ../sightline/js/content/safety.js
 //   the price and store link:  ../sightline/js/content/pro.js
 //   the logo and icons:        ../sightline/assets/logo, ../sightline/icons
-// Reviews: src/reviews.json, real quotes only, each with the athlete's
-// permission: [{ "quote": "…", "name": "Jordan", "sport": "Wide receiver",
-// "permission": true }]. With none, the section isn't shown at all.
+//   the colors:                ../sightline/css/palette.css (one palette for app and site)
+// Reviews come live from the app's server: src/reviews.js (the site's only
+// script) shows the approved ones on the home page and sends new ones from
+// /review. The owner approves them in the app's Coach tools.
 // Then it checks the result; any problem stops the build (nothing goes live).
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync, existsSync, readdirSync } from 'node:fs';
 import { WAIVER, DISCLAIMER } from '../sightline/js/content/safety.js';
 import { PRO } from '../sightline/js/content/pro.js';
+import { BRAND } from '../sightline/js/brand.js';
 
 const here = new URL('./', import.meta.url);
 const app = new URL('../sightline/', import.meta.url);
 const out = new URL('dist/', here);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const reviews = JSON.parse(readFileSync(new URL('src/reviews.json', here), 'utf8'));
-const reviewProblems = reviews.flatMap((r, i) => [
-  !(typeof r.quote === 'string' && r.quote.length >= 10 && r.quote.length <= 300) && `review ${i + 1}: the quote must be 10 to 300 characters`,
-  !/^[A-Z][A-Za-z'’-]{1,20}$/.test(r.name ?? '') && `review ${i + 1}: first name only (one word), like "Jordan"`,
-  !(typeof r.sport === 'string' && r.sport.trim() && r.sport.length <= 40) && `review ${i + 1}: add the sport or position`,
-  r.permission !== true && `review ${i + 1}: needs "permission": true (the athlete said it's OK to quote them)`,
-]).filter(Boolean);
-const reviewsSection = reviews.length ? `<section class="band reviews" aria-labelledby="reviews-title">
-  <h2 id="reviews-title" class="title">What athletes say</h2>
-  <ul class="reviews__list">
-    ${reviews.map((r) => `<li class="review"><blockquote>“${esc(r.quote.trim().replace(/^["“]|["”]$/g, ''))}”</blockquote><p class="review__who">${esc(r.name)} · ${esc(r.sport.trim())}</p></li>`).join('\n    ')}
-  </ul>
-</section>
-` : '';
-
 const fill = (html) => html
-  .replaceAll('{{REVIEWS}}', reviewsSection)
+  .replaceAll('{{TAGLINE}}', esc(BRAND.tagline))
   .replaceAll('{{BUY_URL}}', esc(PRO.buyUrl))
   .replaceAll('{{PRICE}}', esc(PRO.price))
   .replaceAll('{{PRICE_NOTE}}', esc(`${PRO.priceNote.replace(/^\(|\)/g, '').replace(/\. One time, for this phone\.$/, '.')}`))
   .replaceAll('{{DISCLAIMER}}', esc(DISCLAIMER));
 
-const head = ({ title, description, path }) => `<!doctype html>
+// The one script the site has, on the pages that need it (home and /review).
+const SCRIPT = '<script src="/reviews.js" defer></script>';
+
+const head = ({ title, description, path, script = false }) => `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -61,7 +51,8 @@ const head = ({ title, description, path }) => `<!doctype html>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/site.css">
+  <link rel="stylesheet" href="/palette.css">
+  <link rel="stylesheet" href="/site.css">${script ? `\n  ${SCRIPT}` : ''}
 </head>
 <body>
   <header class="top"><div class="wrap">
@@ -82,6 +73,7 @@ const foot = () => `
       <a href="/waiver">Safety waiver</a>
       <a href="/privacy">Privacy</a>
       <a href="/terms">Terms</a>
+      <a href="/review">Write a review</a>
       <a href="https://app.sightrep.app">Open the app</a>
       <a href="mailto:support@sightrep.app">support@sightrep.app</a>
     </nav>
@@ -93,11 +85,11 @@ const foot = () => `
 `;
 
 // A source page starts with <!-- title: … | description: … -->.
-function page(file, path) {
+function page(file, path, { script = false } = {}) {
   const src = readFileSync(new URL(`src/${file}`, here), 'utf8');
-  const [, title, description] = /^<!-- title: (.+?) \| description: (.+?) -->\n/.exec(src) ?? [];
+  const [, title, description] = /^<!-- title: (.+?) \| description: (.+?) -->\n/.exec(fill(src)) ?? [];
   if (!title) throw new Error(`${file}: missing the title/description line`);
-  return head({ title, description, path }) + fill(src.slice(src.indexOf('-->') + 4)) + foot();
+  return head({ title, description, path, script }) + fill(src.slice(src.indexOf('-->') + 4)) + foot();
 }
 
 const waiver = () => head({ title: 'Safety waiver · Sightrep', description: 'The safety waiver every athlete accepts in Sightrep before first use.', path: '/waiver' }) + `
@@ -120,7 +112,8 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(new URL('assets/logo/', out), { recursive: true });
 mkdirSync(new URL('icons/', out), { recursive: true });
 const pages = {
-  'index.html': page('index.html', '/'),
+  'index.html': page('index.html', '/', { script: true }),
+  'review.html': page('review.html', '/review', { script: true }),
   'privacy.html': page('privacy.html', '/privacy'),
   'terms.html': page('terms.html', '/terms'),
   'waiver.html': waiver(),
@@ -128,6 +121,8 @@ const pages = {
 };
 for (const [name, html] of Object.entries(pages)) writeFileSync(new URL(name, out), html);
 cpSync(new URL('src/site.css', here), new URL('site.css', out));
+cpSync(new URL('src/reviews.js', here), new URL('reviews.js', out));
+cpSync(new URL('css/palette.css', app), new URL('palette.css', out));   // the app's palette, unchanged
 cpSync(new URL('src/sw.js', here), new URL('sw.js', out));   // clears the app's old offline copy from sightrep.app
 cpSync(new URL('assets/screens/', here), new URL('assets/screens/', out), { recursive: true });
 cpSync(new URL('assets/poster.webp', here), new URL('assets/poster.webp', out));
@@ -136,7 +131,7 @@ for (const f of ['logo-horizontal.svg']) cpSync(new URL(`assets/logo/${f}`, app)
 for (const f of ['icon.svg', 'favicon-32.png', 'favicon-16.png', 'apple-touch-icon.png']) cpSync(new URL(`icons/${f}`, app), new URL(`icons/${f}`, out));
 
 // ---- Checks: any problem stops the build ----
-const problems = [...reviewProblems];
+const problems = [];
 for (const [name, html] of Object.entries(pages)) {
   if (/\{\{|\}\}/.test(html)) problems.push(`${name}: a {{placeholder}} wasn't filled`);
   if (!html.includes(esc(DISCLAIMER))) problems.push(`${name}: the disclaimer is missing`);
@@ -144,7 +139,8 @@ for (const [name, html] of Object.entries(pages)) {
     if (!html.includes(link)) problems.push(`${name}: footer link ${link} is missing`);
   }
   if (/coming soon|lorem|todo|draft/i.test(html.replace(/<[^>]+>/g, ' '))) problems.push(`${name}: placeholder or "coming soon" wording`);
-  if (/<script/i.test(html)) problems.push(`${name}: a script (the site is plain pages)`);
+  const scripts = html.match(/<script\b[^>]*>[\s\S]*?<\/script>/gi) ?? [];
+  if (scripts.some((s) => s !== SCRIPT) || scripts.length > 1) problems.push(`${name}: a script other than ${SCRIPT} (the site is plain pages plus reviews.js)`);
   for (const [, ref] of html.matchAll(/(?:src|href)="(\/[^"#]*)"/g)) {
     const file = ref === '/' ? 'index.html' : /\.[a-z0-9]+$/.test(ref) ? ref.slice(1) : `${ref.slice(1)}.html`;
     if (!existsSync(new URL(file, out))) problems.push(`${name}: links to ${ref}, which isn't built`);
@@ -157,6 +153,11 @@ for (const s of WAIVER.sections) if (!pages['waiver.html'].includes(esc(s.body))
 const screens = readdirSync(new URL('assets/screens/', out));
 for (const [, img] of index.matchAll(/src="\/assets\/screens\/([\w-]+\.webp)"/g)) if (!screens.includes(img)) problems.push(`missing screenshot ${img}`);
 
+const reviewsJs = readFileSync(new URL('reviews.js', out), 'utf8');
+if (/innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(/.test(reviewsJs)) problems.push('reviews.js must add reviews as text only (textContent), never as HTML');
+if (!reviewsJs.includes("'https://app.sightrep.app/api/reviews'")) problems.push('reviews.js must send reviews to https://app.sightrep.app/api/reviews');
+if (/#[0-9a-fA-F]{3,8}\b/.test(readFileSync(new URL('src/site.css', here), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ''))) problems.push('site.css holds a raw color: use the palette (var(--p-…))');
+if (readFileSync(new URL('palette.css', out), 'utf8') !== readFileSync(new URL('css/palette.css', app), 'utf8')) problems.push('palette.css differs from the app\'s');
 const sw = readFileSync(new URL('sw.js', out), 'utf8');
 if (!/registration\.unregister\(\)/.test(sw) || !/caches\.delete/.test(sw) || /addEventListener\('fetch'/.test(sw)) problems.push('sw.js must only clear the old app (unregister, delete caches, no fetch handling)');
 if (problems.length) {

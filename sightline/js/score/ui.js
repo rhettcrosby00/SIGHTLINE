@@ -294,7 +294,7 @@ export function initLeaderboard({ show, getSettings }) {
   });
 
   // ---- Coach tools (PIN) ------------------------------------------------------
-  const coachState = { players: [], player: '', panel: '', msg: '', bad: false, scores: [] };
+  const coachState = { players: [], player: '', panel: '', msg: '', bad: false, scores: [], reviews: { pending: [], approved: [] } };
 
   async function renderCoach() {
     const s = coachState;
@@ -323,7 +323,32 @@ export function initLeaderboard({ show, getSettings }) {
         <input class="lbn__input" data-confirm-for="${panel}" autocomplete="off" autocapitalize="characters" spellcheck="false">
         <button type="button" class="btn btn--secondary btn--block" data-act="${act}">${label}</button>
       </div>`;
+    // Website reviews (sightrep.app): each waits here until approved.
+    const review = (r, buttons) => `
+      <li class="lb-review">
+        <span class="lb-review__stars" role="img" aria-label="${r.stars} of 5 stars">${'★'.repeat(r.stars)}${'☆'.repeat(5 - r.stars)}</span>
+        <p class="lb-review__text">${esc(r.text)}</p>
+        <p class="setting__hint">${esc(r.name)} · ${esc(r.sport)} · ${new Date(r.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+        <div class="lb-review__acts">${buttons}</div>
+      </li>`;
+    const { pending, approved } = s.reviews;
     coachEl.innerHTML = `${head}
+      <section class="group"><h3 class="group__title">Website reviews</h3><div class="group__rows">
+        <div class="setting setting--stack">
+          <span class="setting__label">Waiting for you (${pending.length})</span>
+          <p class="setting__hint">Approve every honest review, good or bad. Reject only spam, abuse, or reviews not about Sightrep.</p>
+          ${pending.length ? `<ul class="lb-reviews">${pending.map((r) => review(r, `
+            <button type="button" class="btn btn--secondary" data-act="review-approve" data-id="${r.id}">Approve</button>
+            <button type="button" class="btn btn--secondary" data-act="review-reject" data-id="${r.id}">Reject</button>`)).join('')}</ul>`
+            : '<p class="setting__hint">Nothing waiting.</p>'}
+        </div>
+        <div class="setting setting--stack">
+          <span class="setting__label">On the website (${approved.length})</span>
+          ${approved.length ? `<ul class="lb-reviews">${approved.map((r) => review(r, `
+            <button type="button" class="link-btn" data-act="review-remove" data-id="${r.id}">Remove</button>`)).join('')}</ul>`
+            : '<p class="setting__hint">None yet.</p>'}
+        </div>
+      </div></section>
       <section class="group"><h3 class="group__title">Player</h3><div class="group__rows">
         <div class="setting setting--stack">
           <label class="setting__label" for="lb-player">Name</label>
@@ -381,6 +406,7 @@ export function initLeaderboard({ show, getSettings }) {
     coachState.players = await getNames();
     if (!coachState.players.includes(coachState.player)) coachState.player = '';
     coachState.scores = coachState.player && token ? (await coach.run(token, 'scores', { name: coachState.player }).catch(() => ({ scores: [] }))).scores : [];
+    if (token) coachState.reviews = await coach.run(token, 'reviews').catch(() => coachState.reviews);
   }
 
   coachEl.addEventListener('change', async (e) => {
@@ -423,6 +449,9 @@ export function initLeaderboard({ show, getSettings }) {
     if (b.dataset.act === 'remove-score') await coachDo('remove-score', { name: s.player, id: Number(b.dataset.id) }, 'Score removed.');
     if (b.dataset.act === 'reset-week') await coachDo('reset-week', { confirm: typed('week') }, 'This week’s board is reset.');
     if (b.dataset.act === 'reset-all') await coachDo('reset-all', { confirm: typed('all') }, 'Every score is removed.');
+    if (b.dataset.act === 'review-approve') await coachDo('review-approve', { id: Number(b.dataset.id) }, 'Approved. It’s on the website now.');
+    if (b.dataset.act === 'review-reject') await coachDo('review-reject', { id: Number(b.dataset.id) }, 'Rejected. It won’t show.');
+    if (b.dataset.act === 'review-remove') await coachDo('review-remove', { id: Number(b.dataset.id) }, 'Removed from the website.');
     if (b.dataset.act === 'reset-key') {
       await coachDo('reset-key', { key: coachEl.querySelector('#lb-key').value }, 'That key is free. It unlocks the next phone it’s entered on.');
     }

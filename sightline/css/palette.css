@@ -1,0 +1,40 @@
+/* The Sightrep palette: every brand color the app and the website use, named
+   once. The app's themes (css/tokens.css: light, dark, outdoor) and the website
+   (site/src/site.css, which gets a copy of this file) pick only from these
+   swatches, so all of them are one family. Drill cue and cone colors are the
+   exception: they're pure, true colors on purpose (css/tokens.css). */
+:root {
+  /* Ink: the brand black and its dark surfaces */
+  --p-ink-950: #0A0B08;
+  --p-ink-900: #121410;
+  --p-ink-850: #191C15;
+  --p-ink-800: #272B21;
+  --p-ink-700: #33372C;
+
+  /* Stone: quieter text */
+  --p-stone-600: #565B4C;   /* on paper */
+  --p-stone-400: #A2A895;   /* on ink */
+
+  /* Paper: light backgrounds and lines, tinted toward the lime (never flat gray) */
+  --p-white: #FFFFFF;
+  --p-paper-50: #F5F6F0;
+  --p-paper-100: #ECEEE4;
+  --p-paper-200: #DADDCF;
+
+  /* Lime (the brand, FOCUS) and cyan (MOVE), each with a deep step for text on paper */
+  --p-lime-400: #B7FF00;
+  --p-lime-800: #3F5C00;
+  --p-cyan-400: #22D3EE;
+  --p-cyan-800: #0B5F6E;
+
+  /* Status: right, wrong, heads-up (a step for paper and a step for ink) */
+  --p-green-700: #0B7A4B;
+  --p-green-300: #3DDC97;
+  --p-red-700: #B8321C;
+  --p-red-400: #FF6B52;
+  --p-amber-100: #FFF4C2;
+  --p-amber-300: #FFE14D;
+  --p-amber-400: #FFD60A;
+  --p-amber-900: #5C4600;
+  --p-amber-950: #2A2410;
+}

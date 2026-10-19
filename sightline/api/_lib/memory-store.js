@@ -7,6 +7,8 @@ export function memoryStore({ now = () => Date.now() } = {}) {
   const meta = new Map();
   const hits = new Map();
   const licenses = new Map();   // key hash → { hash, device, boundAt, moves }
+  let reviews = [];             // { id, name, sport, stars, text, status, at, decidedAt }
+  let nextReview = 1;
 
   const latestName = (list) => list.reduce((a, b) => (b.at >= a.at ? b : a)).name;
   const groups = (list) => {
@@ -86,5 +88,26 @@ export function memoryStore({ now = () => Date.now() } = {}) {
     async putLicense(rec) { licenses.set(rec.hash, { ...rec, moves: [...rec.moves] }); },
     async resetLicense(hash) { return licenses.delete(hash); },
     licenseRows: () => [...licenses.values()],   // for the tests
+
+    // Website reviews (pending until the owner approves).
+    async addReview({ name, sport, stars, text, at = new Date(now()) }) {
+      const row = { id: nextReview++, name, sport, stars, text, status: 'pending', at: at.toISOString(), decidedAt: null };
+      reviews.push(row);
+      return row.id;
+    },
+    async reviewsBy(status, limit = 100) {
+      return reviews.filter((r) => r.status === status).sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id).slice(0, limit).map((r) => ({ ...r }));
+    },
+    async reviewStats() {
+      const ok = reviews.filter((r) => r.status === 'approved');
+      return { count: ok.length, average: ok.length ? Math.round((ok.reduce((a, r) => a + r.stars, 0) / ok.length) * 10) / 10 : null };
+    },
+    async setReviewStatus(id, status, at = new Date(now())) {
+      const r = reviews.find((x) => x.id === id);
+      if (!r) return false;
+      Object.assign(r, { status, decidedAt: at.toISOString() });
+      return true;
+    },
+    async removeReview(id) { const n = reviews.length; reviews = reviews.filter((r) => r.id !== id); return reviews.length < n; },
   };
 }

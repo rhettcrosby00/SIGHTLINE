@@ -3,13 +3,13 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v6.1';
+const CACHE_VERSION = 'v6.2';
 const CACHE = `sightrep-${CACHE_VERSION}`;
 
-// Google Fonts (Archivo + Schibsted Grotesk) live in their own cache that
+// Google Fonts (Barlow Condensed + Barlow) live in their own cache that
 // survives app updates. Keep FONT_CSS identical to the <link> in index.html.
-const FONT_CACHE = 'sightrep-fonts-v1';
-const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap';
+const FONT_CACHE = 'sightrep-fonts-v2';   // v2: Barlow (6.2); v1 held Archivo
+const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap';
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 // Eye Check (beta) only: MediaPipe face tracking (about 15 MB) is saved on
@@ -22,6 +22,7 @@ const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './css/palette.css',
   './css/styles.css',
   './css/tokens.css',
   './js/engine.js',

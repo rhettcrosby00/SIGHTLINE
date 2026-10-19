@@ -1,0 +1,55 @@
+<!-- title: Write a review · Sightrep | description: Used Sightrep? Tell other athletes what you think, good or bad. -->
+<article class="doc" aria-labelledby="doc-title">
+  <h1 id="doc-title" class="display">Write a review</h1>
+  <p class="lead">Used Sightrep? Tell other athletes what you think, good or bad. Every honest review is shown once it’s checked.</p>
+
+  <form class="rform" data-review-form novalidate>
+    <fieldset class="rform__field">
+      <legend class="rform__label">Your rating</legend>
+      <div class="rform__stars">
+        <label><input type="radio" name="stars" value="1"><span class="sr">1 star</span><span aria-hidden="true">★</span></label>
+        <label><input type="radio" name="stars" value="2"><span class="sr">2 stars</span><span aria-hidden="true">★</span></label>
+        <label><input type="radio" name="stars" value="3"><span class="sr">3 stars</span><span aria-hidden="true">★</span></label>
+        <label><input type="radio" name="stars" value="4"><span class="sr">4 stars</span><span aria-hidden="true">★</span></label>
+        <label><input type="radio" name="stars" value="5"><span class="sr">5 stars</span><span aria-hidden="true">★</span></label>
+      </div>
+    </fieldset>
+
+    <div class="rform__field">
+      <label class="rform__label" for="r-name">First name</label>
+      <input class="rform__input" id="r-name" name="name" maxlength="20" autocomplete="given-name" autocapitalize="words" spellcheck="false">
+    </div>
+
+    <div class="rform__field">
+      <label class="rform__label" for="r-sport">Sport or position</label>
+      <input class="rform__input" id="r-sport" name="sport" maxlength="40" placeholder="Like: Wide receiver, Point guard" autocomplete="off">
+    </div>
+
+    <div class="rform__field">
+      <label class="rform__label" for="r-text">Your review</label>
+      <textarea class="rform__input" id="r-text" name="text" rows="5" maxlength="400" aria-describedby="r-count"></textarea>
+      <p class="fine" id="r-count" data-review-count>0 / 400</p>
+    </div>
+
+    <!-- A spam trap: hidden from people, filled in by bots. -->
+    <div class="rform__trap" aria-hidden="true">
+      <label for="r-website">Website</label>
+      <input id="r-website" name="website" tabindex="-1" autocomplete="off">
+    </div>
+
+    <label class="rform__check"><input type="checkbox" name="consent"><span>OK to show my first name, sport and review on sightrep.app</span></label>
+    <label class="rform__check"><input type="checkbox" name="age"><span>I’m 16 or older, or I have permission from a parent, guardian or coach</span></label>
+
+    <p class="rform__msg" data-review-msg role="status" aria-live="polite"></p>
+    <button class="btn btn--buy" type="submit">Send review</button>
+    <p class="fine">We keep only what you see here: no email, no account. See <a href="/privacy">Privacy</a> and <a href="/terms">Terms</a>.</p>
+  </form>
+
+  <div class="rform__done" data-review-done hidden>
+    <h2 tabindex="-1">Thanks!</h2>
+    <p>Your review appears once it’s checked.</p>
+    <a class="link" href="/">Back to the home page →</a>
+  </div>
+
+  <noscript><p>This form needs JavaScript. You can also email your review to <a href="mailto:support@sightrep.app">support@sightrep.app</a>.</p></noscript>
+</article>
