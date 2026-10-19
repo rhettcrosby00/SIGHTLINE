@@ -7,7 +7,7 @@ export function memoryStore({ now = () => Date.now() } = {}) {
   const meta = new Map();
   const hits = new Map();
   const licenses = new Map();   // key hash → { hash, device, boundAt, moves }
-  let reviews = [];             // { id, name, sport, stars, text, status, at, decidedAt }
+  let reviews = [];             // { id, name, sport, stars, text, connected, status, at, decidedAt }
   let nextReview = 1;
 
   const latestName = (list) => list.reduce((a, b) => (b.at >= a.at ? b : a)).name;
@@ -90,8 +90,8 @@ export function memoryStore({ now = () => Date.now() } = {}) {
     licenseRows: () => [...licenses.values()],   // for the tests
 
     // Website reviews (pending until the owner approves).
-    async addReview({ name, sport, stars, text, at = new Date(now()) }) {
-      const row = { id: nextReview++, name, sport, stars, text, status: 'pending', at: at.toISOString(), decidedAt: null };
+    async addReview({ name, sport, stars, text, connected = false, at = new Date(now()) }) {
+      const row = { id: nextReview++, name, sport, stars, text, connected, status: 'pending', at: at.toISOString(), decidedAt: null };
       reviews.push(row);
       return row.id;
     },
@@ -106,6 +106,12 @@ export function memoryStore({ now = () => Date.now() } = {}) {
       const r = reviews.find((x) => x.id === id);
       if (!r) return false;
       Object.assign(r, { status, decidedAt: at.toISOString() });
+      return true;
+    },
+    async setReviewConnected(id, connected) {
+      const r = reviews.find((x) => x.id === id);
+      if (!r) return false;
+      r.connected = connected;
       return true;
     },
     async removeReview(id) { const n = reviews.length; reviews = reviews.filter((r) => r.id !== id); return reviews.length < n; },

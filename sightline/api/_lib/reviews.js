@@ -2,7 +2,10 @@
 // waits for the owner to approve it in Coach tools before it shows. The rule
 // the owner follows (US FTC review rule): approve every honest review, good or
 // bad; reject only spam, abuse, or reviews that aren't about Sightrep.
-// Kept: first name, sport or position, stars, the text, and when. No email,
+// A reviewer who got Sightrep free (the team code, a gift) or knows the people
+// who make it ticks a box, and the review says so ("Got it free or knows the
+// team"): FTC endorsement rules. The owner can add that label in Coach tools too.
+// Kept: first name, sport or position, stars, the text, that box, and when. No email,
 // no key, no IP address (rate limits count requests per network for an hour).
 
 import { isBlocked } from '../../js/score/names.js';
@@ -47,7 +50,7 @@ export function createReviews(store, { now = () => Date.now() } = {}) {
       const name = clean(body.name, REVIEWS.nameMax);
       await store.addReview({
         name: name.charAt(0).toUpperCase() + name.slice(1), sport: clean(body.sport, REVIEWS.sportMax),
-        stars: body.stars, text: clean(body.text, REVIEWS.textMax), at: new Date(now()),
+        stars: body.stars, text: clean(body.text, REVIEWS.textMax), connected: body.connected === true, at: new Date(now()),
       });
       return { ok: true };
     },
@@ -56,7 +59,7 @@ export function createReviews(store, { now = () => Date.now() } = {}) {
     async list() {
       const rows = await store.reviewsBy('approved', REVIEWS.shown);
       const { count, average } = await store.reviewStats();
-      return { reviews: rows.map(({ name, sport, stars, text, at }) => ({ name, sport, stars, text, at })), count, average };
+      return { reviews: rows.map(({ name, sport, stars, text, connected, at }) => ({ name, sport, stars, text, connected, at })), count, average };
     },
   };
 }

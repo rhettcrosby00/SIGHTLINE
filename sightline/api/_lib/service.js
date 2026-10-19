@@ -174,13 +174,17 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
     },
 
     // Coach tools. Each needs a token from unlock().
-    async admin({ token, action, name, to, id, confirm, key } = {}) {
+    async admin({ token, action, name, to, id, confirm, key, on } = {}) {
       checkToken(token);
       // Reviews from the website: approve every honest review, good or bad;
       // reject only spam, abuse, or ones not about Sightrep (api/_lib/reviews.js).
       if (action === 'reviews') return { pending: await store.reviewsBy('pending', 100), approved: await store.reviewsBy('approved', 100) };
       if (action === 'review-approve' || action === 'review-reject') {
         if (!await store.setReviewStatus(Number(id), action === 'review-approve' ? 'approved' : 'rejected', new Date(now()))) fail(404, 'That review is gone.');
+        return { ok: true };
+      }
+      if (action === 'review-connected') {   // add (or take off) "Got it free or knows the team"
+        if (!await store.setReviewConnected(Number(id), on === true)) fail(404, 'That review is gone.');
         return { ok: true };
       }
       if (action === 'review-remove') {

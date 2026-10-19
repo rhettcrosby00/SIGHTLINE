@@ -265,6 +265,10 @@ Anyone can leave a review on sightrep.app/review (stars, first name, sport or po
 and shows on the website only after the owner approves it in **Coach tools → Website reviews**.
 The rule there, from the US FTC's review rule: approve every honest review, good or bad; reject
 only spam, abuse, or reviews that aren't about Sightrep.
+- **Got it free or knows the team (6.3):** a box on the form for reviewers who got Sightrep free
+  (the team code, a gift) or know the people who make it. Their review shows "Got it free or knows
+  the team" (FTC endorsement rules). In Coach tools the owner can add or take off that label, for a
+  teammate who forgot the box.
 - Server: `api/reviews.js` (`/api/reviews`; `GET ?action=list` gives the approved ones, newest
   first, with their count and average; `POST { action: 'submit', … }` sends one), rules in
   `api/_lib/reviews.js`: the same offensive-word check as leaderboard names, a hidden spam-trap

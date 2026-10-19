@@ -31,7 +31,7 @@ import { isLiveHost } from './features.js';
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '6.2';
+export const APP_VERSION = '6.3';
 
 const $ = (id) => document.getElementById(id);
 
