@@ -28,6 +28,16 @@ export function sqlStore(url) {
         device text not null,
         bound_at timestamptz not null default now(),
         moves jsonb not null default '[]')`;
+      // Website reviews: pending until the owner approves them in Coach tools.
+      await sql`create table if not exists site_reviews (
+        id bigserial primary key,
+        name text not null,
+        sport text not null,
+        stars smallint not null check (stars between 1 and 5),
+        body text not null,
+        status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+        created_at timestamptz not null default now(),
+        decided_at timestamptz)`;
     },
 
     async hit(bucket, windowS, { peek = false } = {}) {
@@ -121,6 +131,29 @@ export function sqlStore(url) {
         insert into lb_licenses (key_hash, device, bound_at, moves)
         values (${hash}, ${device}, ${new Date(boundAt).toISOString()}::timestamptz, ${JSON.stringify(moves)}::jsonb)
         on conflict (key_hash) do update set device = excluded.device, bound_at = excluded.bound_at, moves = excluded.moves`;
+    },
+    async addReview({ name, sport, stars, text, at }) {
+      const rows = await sql`insert into site_reviews (name, sport, stars, body, created_at)
+        values (${name}, ${sport}, ${stars}, ${text}, ${at.toISOString()}::timestamptz) returning id`;
+      return Number(rows[0].id);
+    },
+    async reviewsBy(status, limit = 100) {
+      const rows = await sql`select id, name, sport, stars, body, status, created_at, decided_at from site_reviews
+        where status = ${status} order by created_at desc, id desc limit ${limit}`;
+      return rows.map((r) => ({ id: Number(r.id), name: r.name, sport: r.sport, stars: r.stars, text: r.body, status: r.status,
+        at: new Date(r.created_at).toISOString(), decidedAt: r.decided_at ? new Date(r.decided_at).toISOString() : null }));
+    },
+    async reviewStats() {
+      const rows = await sql`select count(*)::int as count, round(avg(stars)::numeric, 1) as average from site_reviews where status = 'approved'`;
+      return { count: rows[0].count, average: rows[0].average == null ? null : Number(rows[0].average) };
+    },
+    async setReviewStatus(id, status, at = new Date()) {
+      const rows = await sql`update site_reviews set status = ${status}, decided_at = ${at.toISOString()}::timestamptz where id = ${id}::bigint returning id`;
+      return rows.length > 0;
+    },
+    async removeReview(id) {
+      const rows = await sql`delete from site_reviews where id = ${id}::bigint returning id`;
+      return rows.length > 0;
     },
     async resetLicense(hash) {
       const rows = await sql`delete from lb_licenses where key_hash = ${hash} returning key_hash`;

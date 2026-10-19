@@ -15,6 +15,7 @@ from the repo root. It writes:
                           favicon SVG (reticle) + 32 / 16 px PNGs
   sightline/assets/share.png   the link-preview picture, 1200 x 630, with the tagline
   sightline/splash/       iPhone home-screen launch pictures (one per screen size)
+With --share, only the link preview (assets/share.png).
 With --store, only the Gumroad store pictures, into design/gumroad/ (not shipped):
   gumroad-cover.png       2560 x 1440, the product page's cover (Gumroad: horizontal, at least 1280 x 720)
   gumroad-thumbnail.png   1200 x 1200, the square thumbnail (Gumroad: at least 600 x 600)
@@ -148,12 +149,7 @@ def pictures(sizes):
         square(src('logo-icon.svg'), size, share, os.path.join(icons, name))
     for name, size in [('favicon-32.png', 32), ('favicon-16.png', 16)]:
         square(f'file://{os.path.join(icons, "icon.svg")}', size, 1.0, os.path.join(icons, name), bg='transparent')
-    # Link preview: the horizontal logo and the tagline.
-    font = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" '
-            'href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@600&display=block">')
-    shoot(page(f'<img src="{src("logo-horizontal.svg")}" width="760"><p style="margin:48px 0 0;color:#F2F4EC;'
-               f'font:600 44px \'Schibsted Grotesk\',system-ui,sans-serif;letter-spacing:0.01em">{BRAND}</p>', extra=font),
-          1200, 630, os.path.join(ROOT, 'assets', 'share.png'))
+    share()
     # iPhone launch pictures: the stacked logo, centered on matte black.
     os.makedirs(os.path.join(ROOT, 'splash'), exist_ok=True)
     for w, h, r in SPLASH:
@@ -162,17 +158,27 @@ def pictures(sizes):
               open(os.path.join(ROOT, 'splash', 'sizes.json'), 'w'), indent=1)
 
 
+def share():
+    """The link preview (1200 x 630): the horizontal logo and the tagline, in the app's type (Barlow Condensed)."""
+    src = lambda name: f'file://{os.path.join(LOGO, name)}'
+    font = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" '
+            'href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&display=block">')
+    shoot(page(f'<img src="{src("logo-horizontal.svg")}" width="760"><p style="margin:44px 0 0;color:#F5F6F0;'
+               f'font:800 64px \'Barlow Condensed\',\'Arial Narrow\',sans-serif;text-transform:uppercase;letter-spacing:0.01em">{BRAND}</p>', extra=font),
+          1200, 630, os.path.join(ROOT, 'assets', 'share.png'))
+
+
 def store(out_dir=os.path.join(ROOT, '..', 'design', 'gumroad')):
     """The Gumroad store pictures: a wide cover (logo, tagline, one line on what it is) and a square thumbnail (the icon)."""
     from PIL import Image
     os.makedirs(out_dir, exist_ok=True)
     src = lambda name: f'file://{os.path.join(LOGO, name)}'
     font = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" '
-            'href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600&display=block">')
+            'href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&family=Barlow:wght@500&display=block">')
     cover = os.path.join(out_dir, 'gumroad-cover.png')
     shoot(page(f'<img src="{src("logo-horizontal.svg")}" width="1560">'
-               f'<p style="margin:96px 0 0;color:#F2F4EC;font:600 92px \'Schibsted Grotesk\',system-ui,sans-serif;letter-spacing:0.01em">{BRAND}</p>'
-               f'<p style="margin:36px 0 0;color:#A2A895;font:500 54px \'Schibsted Grotesk\',system-ui,sans-serif">Pre-game focus and reaction warm-up for athletes</p>',
+               f'<p style="margin:88px 0 0;color:#F5F6F0;font:800 136px \'Barlow Condensed\',\'Arial Narrow\',sans-serif;text-transform:uppercase;letter-spacing:0.01em">{BRAND}</p>'
+               f'<p style="margin:30px 0 0;color:#A2A895;font:500 56px \'Barlow\',system-ui,sans-serif">Pre-game focus and reaction warm-up for athletes</p>',
                extra=font), 2560, 1440, cover)
     thumb = os.path.join(out_dir, 'gumroad-thumbnail.png')
     shoot(page(f'<img src="{src("logo-icon.svg")}" width="780">'), 1200, 1200, thumb)
@@ -184,6 +190,10 @@ def store(out_dir=os.path.join(ROOT, '..', 'design', 'gumroad')):
 if __name__ == '__main__':
     if '--store' in sys.argv:
         print('done:', store())
+        sys.exit(0)
+    if '--share' in sys.argv:   # just the link preview (after a tagline change)
+        share()
+        print('done: assets/share.png')
         sys.exit(0)
     sizes = logos()
     if '--svg-only' not in sys.argv:

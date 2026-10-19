@@ -7,30 +7,30 @@
    data-appearance="light" | "dark" | "outdoor" on <html>. Outdoor is a
    high-contrast light theme for bright sun.
 
-   Cone colors live in their own section: they are pure and true, never tinted
-   and never part of the brand palette. */
+   Every theme color comes from the brand palette (css/palette.css), so light,
+   dark and outdoor are one family. Cue and cone colors live in their own
+   section: they are pure and true, never tinted, never part of the palette. */
 
 :root {
-  /* ---- Type: Archivo (display, wide for headings, narrow for numbers and cues)
-          + Schibsted Grotesk (body). Fallbacks keep the layout if fonts fail. */
-  --font-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
-  --font-body: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-num: "Archivo", "Arial Narrow", Arial, sans-serif;
-  --wdth-wide: "wdth" 118;     /* headings, buttons */
-  --wdth-narrow: "wdth" 72;    /* scores, timers, big cues */
+  /* ---- Type, the same as the website: Barlow Condensed (big titles, buttons,
+          scores and cues: the launch poster's look) + Barlow (everything you
+          read). Caps only for big titles and buttons; labels in sentence case.
+          Fallbacks keep the layout if fonts fail. */
+  --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
   --weight-display: 800;
   --weight-num: 800;
 
   /* Type scale: six sizes. Tight leading for display, generous for reading. */
-  --text-score: clamp(3.5rem, 16vw, 4.5rem);     /* scores, countdowns */
-  --text-display: clamp(2.125rem, 9vw, 2.75rem); /* screen titles */
-  --text-title: 1.375rem;                        /* group and card titles */
-  --text-body: 1.0625rem;                        /* 17px reading text */
-  --text-label: 0.8125rem;                       /* 13px caps labels */
+  --text-score: clamp(3.75rem, 17vw, 4.75rem);       /* scores, countdowns */
+  --text-display: clamp(2.625rem, 11.5vw, 3.375rem); /* screen titles */
+  --text-title: 1.5rem;                              /* group and card titles */
+  --text-body: 1.0625rem;                            /* 17px reading text */
+  --text-label: 0.875rem;                            /* 14px labels */
   --text-caption: 0.75rem;                       /* 12px fine print */
   --leading-display: 0.95;
   --leading-body: 1.5;
-  --tracking-label: 0.08em;
 
   /* Spacing (4 / 8 / 12 / 16 / 24 / 32 / 48) */
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
@@ -49,28 +49,28 @@
   --ease-out: cubic-bezier(.2, .7, .2, 1);
   --slide: 24px;
 
-  /* ---- Color: light (neutrals tinted toward Volt Lime, never flat gray) ---- */
-  --bg: #F5F6F0;
-  --surface: #FFFFFF;
-  --raised: #ECEEE4;
-  --line: #DADDCF;
-  --line-strong: #10120D;
+  /* ---- Color: light (paper and ink from the palette) ---- */
+  --bg: var(--p-paper-50);
+  --surface: var(--p-white);
+  --raised: var(--p-paper-100);
+  --line: var(--p-paper-200);
+  --line-strong: var(--p-ink-950);
   --line-w: 1px;
-  --text: #10120D;
-  --muted: #565B4C;
-  --accent: #B7FF00;          /* brand: primary buttons, active states, #1 rank */
-  --accent-ink: #10120D;      /* text on accent */
-  --accent-text: #3F5C00;     /* accent used as text (lime itself fails contrast on light) */
+  --text: var(--p-ink-950);
+  --muted: var(--p-stone-600);
+  --accent: var(--p-lime-400);       /* brand: primary buttons, active states, #1 rank */
+  --accent-ink: var(--p-ink-950);    /* text on accent */
+  --accent-text: var(--p-lime-800);  /* accent used as text (lime itself fails contrast on paper) */
   --accent-border: transparent;
-  --move: #22D3EE;            /* MOVE side tone (FOCUS uses the brand lime) */
-  --move-ink: #10120D;
-  --move-text: #0B5F6E;
-  --good: #0B7A4B;            /* correct / success text */
-  --bad: #B8321C;             /* wrong / error text */
-  --warn-bg: #FFF4C2;
-  --warn-text: #5C4600;
-  --overlay: rgba(245, 246, 240, 0.96);
-  --scrim: rgba(16, 18, 13, 0.45);
+  --move: var(--p-cyan-400);         /* MOVE side tone (FOCUS uses the brand lime) */
+  --move-ink: var(--p-ink-950);
+  --move-text: var(--p-cyan-800);
+  --good: var(--p-green-700);        /* correct / success text */
+  --bad: var(--p-red-700);           /* wrong / error text */
+  --warn-bg: var(--p-amber-100);
+  --warn-text: var(--p-amber-900);
+  --overlay: rgba(245, 246, 240, 0.96);   /* paper-50, almost solid */
+  --scrim: rgba(10, 11, 8, 0.45);          /* ink-950, see-through */
   color-scheme: light;
 
   /* ---- Drill canvas: cue screens stay pure black / true color in every theme ---- */
@@ -78,6 +78,7 @@
   --cue-fg: #FFFFFF;
   --cue-muted: #8E9384;
   --cue-accent: #B7FF00;
+  --cue-hold: #6B6B6B;      /* the gray Hold screen (stay still) */
 
   /* ---- Cone colors: pure and true, shared by FOCUS cues and MOVE cones ---- */
   --cone-red: #ff4d2e;
@@ -87,30 +88,33 @@
 }
 
 /* Dark: follows the phone unless the athlete picked Light or Outdoor. */
+/* Dark: the website's look. Follows the phone unless the athlete picked Light or Outdoor. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-appearance="light"]):not([data-appearance="outdoor"]) {
-    --bg: #0A0B08; --surface: #121410; --raised: #191C15; --line: #272B21; --line-strong: #F2F4EC;
-    --text: #F2F4EC; --muted: #A2A895; --accent: #B7FF00; --accent-ink: #0A0B08; --accent-text: #B7FF00;
-    --move: #22D3EE; --move-ink: #0A0B08; --move-text: #22D3EE;
-    --good: #3DDC97; --bad: #FF6B52; --warn-bg: #2A2410; --warn-text: #FFD60A;
-    --overlay: rgba(10, 11, 8, 0.96); --scrim: rgba(0, 0, 0, 0.6);
+    --bg: var(--p-ink-950); --surface: var(--p-ink-900); --raised: var(--p-ink-850); --line: var(--p-ink-800); --line-strong: var(--p-paper-50);
+    --text: var(--p-paper-50); --muted: var(--p-stone-400); --accent: var(--p-lime-400); --accent-ink: var(--p-ink-950); --accent-text: var(--p-lime-400);
+    --move: var(--p-cyan-400); --move-ink: var(--p-ink-950); --move-text: var(--p-cyan-400);
+    --good: var(--p-green-300); --bad: var(--p-red-400); --warn-bg: var(--p-amber-950); --warn-text: var(--p-amber-400);
+    --overlay: rgba(10, 11, 8, 0.96); --scrim: rgba(10, 11, 8, 0.6);
     color-scheme: dark;
   }
 }
 :root[data-appearance="dark"] {
-  --bg: #0A0B08; --surface: #121410; --raised: #191C15; --line: #272B21; --line-strong: #F2F4EC;
-  --text: #F2F4EC; --muted: #A2A895; --accent: #B7FF00; --accent-ink: #0A0B08; --accent-text: #B7FF00;
-  --move: #22D3EE; --move-ink: #0A0B08; --move-text: #22D3EE;
-  --good: #3DDC97; --bad: #FF6B52; --warn-bg: #2A2410; --warn-text: #FFD60A;
-  --overlay: rgba(10, 11, 8, 0.96); --scrim: rgba(0, 0, 0, 0.6);
+  --bg: var(--p-ink-950); --surface: var(--p-ink-900); --raised: var(--p-ink-850); --line: var(--p-ink-800); --line-strong: var(--p-paper-50);
+  --text: var(--p-paper-50); --muted: var(--p-stone-400); --accent: var(--p-lime-400); --accent-ink: var(--p-ink-950); --accent-text: var(--p-lime-400);
+  --move: var(--p-cyan-400); --move-ink: var(--p-ink-950); --move-text: var(--p-cyan-400);
+  --good: var(--p-green-300); --bad: var(--p-red-400); --warn-bg: var(--p-amber-950); --warn-text: var(--p-amber-400);
+  --overlay: rgba(10, 11, 8, 0.96); --scrim: rgba(10, 11, 8, 0.6);
   color-scheme: dark;
 }
-/* Outdoor / high contrast: pure black on white, heavier lines, outlined lime. */
+/* Outdoor / high contrast for bright sun: the same palette pushed to the
+   strongest pairs: ink on white, heavier ink lines, outlined lime. */
 :root[data-appearance="outdoor"] {
-  --bg: #FFFFFF; --surface: #FFFFFF; --raised: #F0F0F0; --line: #000000; --line-strong: #000000; --line-w: 2px;
-  --text: #000000; --muted: #262626; --accent: #B7FF00; --accent-ink: #000000; --accent-text: #000000;
-  --accent-border: #000000; --move: #22D3EE; --move-ink: #000000; --move-text: #000000; --good: #00592F; --bad: #A3200B; --warn-bg: #FFE14D; --warn-text: #000000;
-  --overlay: rgba(255, 255, 255, 0.98); --scrim: rgba(0, 0, 0, 0.5);
+  --bg: var(--p-white); --surface: var(--p-white); --raised: var(--p-paper-100); --line: var(--p-ink-950); --line-strong: var(--p-ink-950); --line-w: 2px;
+  --text: var(--p-ink-950); --muted: var(--p-ink-700); --accent: var(--p-lime-400); --accent-ink: var(--p-ink-950); --accent-text: var(--p-ink-950);
+  --accent-border: var(--p-ink-950); --move: var(--p-cyan-400); --move-ink: var(--p-ink-950); --move-text: var(--p-ink-950);
+  --good: var(--p-green-700); --bad: var(--p-red-700); --warn-bg: var(--p-amber-300); --warn-text: var(--p-ink-950);
+  --overlay: rgba(255, 255, 255, 0.98); --scrim: rgba(10, 11, 8, 0.5);
   color-scheme: light;
 }
 

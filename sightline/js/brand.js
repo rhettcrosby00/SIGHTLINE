@@ -5,7 +5,7 @@
 
 export const BRAND = {
   name: 'Sightrep',
-  tagline: 'Reps for your eyes.',
+  tagline: 'Your eyes move first.',
 };
 
 // The logo, in one place. Files live in assets/logo/ (built from two masters by

@@ -258,12 +258,29 @@ a session). The version number shows at the bottom of the start screen.
   database address never appears in the app.
 - `/api/leaderboard?action=health` shows `{ db, coach }` (true/false only).
 
+## Website reviews
+
+Anyone can leave a review on sightrep.app/review (stars, first name, sport or position, up to
+400 characters, and two boxes: OK to show it, and 16+ or permission). It's saved as **pending**
+and shows on the website only after the owner approves it in **Coach tools → Website reviews**.
+The rule there, from the US FTC's review rule: approve every honest review, good or bad; reject
+only spam, abuse, or reviews that aren't about Sightrep.
+- Server: `api/reviews.js` (`/api/reviews`; `GET ?action=list` gives the approved ones, newest
+  first, with their count and average; `POST { action: 'submit', … }` sends one), rules in
+  `api/_lib/reviews.js`: the same offensive-word check as leaderboard names, a hidden spam-trap
+  field, 3 per hour per network. Table `site_reviews` (no email, IP, device or key).
+- Only https://sightrep.app, its previews (`*.sightrep-site.pages.dev`) and the local site
+  (:5177) may call it from a browser (CORS).
+- Approve, Reject and Remove are coach tasks in `api/_lib/service.js`, behind `COACH_PIN`.
+- Previews share the live database, so a review sent on a preview is a real pending review.
+  The website preview calls the app preview of the same branch.
+
 ## Web addresses
 
 | Address | What it is |
 |---|---|
 | https://app.sightrep.app | the app (Cloudflare Pages custom domain) |
-| https://sightrep.app | the website (`../site/`, Cloudflare Pages project "sightrep-site"): what Sightrep is, Buy, Safety waiver, Privacy, Terms |
+| https://sightrep.app | the website (`../site/`, Cloudflare Pages project "sightrep-site"): what Sightrep is, reviews, Buy, Safety waiver, Privacy, Terms |
 | https://www.sightrep.app | permanent (301) redirect to sightrep.app |
 | sightrep.pages.dev | Cloudflare's own name for the live app |
 | sightline-psi.vercel.app | the old address: a permanent (308) redirect to app.sightrep.app, set in Vercel → Settings → Domains. For that, app.sightrep.app is also listed in the Vercel project, as a name only (it shows "Invalid Configuration"; its DNS points to Cloudflare). Don't remove it there, or the redirect stops. |

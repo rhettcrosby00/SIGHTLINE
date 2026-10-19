@@ -17,7 +17,7 @@ const MOVE_QUICK = [['click', '#btn-move'], ['click', '[data-run="game:quick"]']
 
 export const SHOTS = [
   // Home: two choices only, each with Run last once something has run.
-  { name: 'home', expect: ['#btn-focus-open:not([hidden])', '#btn-move-open:not([hidden])', 'Choose a preset', 'Reps for your eyes.', 'js:document.title === "Sightrep"', 'js:!/sightline/i.test(document.body.innerText)'] },
+  { name: 'home', expect: ['#btn-focus-open:not([hidden])', '#btn-move-open:not([hidden])', 'Choose a preset', 'Your eyes move first.', 'js:document.title === "Sightrep"', 'js:!/sightline/i.test(document.body.innerText)'] },
   // A phone with Sightline-era saved data: everything carries over under the new keys.
   { name: 'home-migrated', params: 'legacy=1', set: { appearance: 'dark', cue: 'EYES UP' }, last: { focus: 'game:standard', move: 'game:speed' }, player: 'Jordan',
     expect: ['Run last', 'Standard · 8 min', 'js:document.documentElement.dataset.appearance === JSON.parse(localStorage.getItem("sightrep.settings.v1")).appearance', 'js:JSON.parse(localStorage.getItem("sightrep.name.v1")) === "Jordan"',
@@ -51,6 +51,10 @@ export const SHOTS = [
   { name: 'move-done', player: 'Jordan', params: FAST, steps: [['click', '#btn-move'], ['click', '[data-run="game:quick"]'], ['waitFor', '#screen-cone-done.is-active', 90000], ['waitFor', '.lb-inline__line .link-btn', 15000], ['wait', 300]], expect: ['Quick complete', 'for Jordan', 'How was the pace?'] },
   // Leaderboard, Settings, About.
   { name: 'board', steps: [['click', '#btn-board'], ['wait', 600]], expect: ['All-time', 'This week'] },
+  // Coach tools (PIN 2468 on the local test API): website reviews wait here for the owner.
+  // Pending ones come from the site-reviews set (run it first to see them listed).
+  { name: 'coach-reviews', steps: [['click', '#btn-board'], ['click', '.lb-coach'], ['type', '#lb-pin', '2468'], ['click', '[data-act="unlock"]'], ['waitFor', '.lb-review', 8000], ['wait', 300]],
+    expect: ['Website reviews', 'Waiting for you', 'Approve every honest review, good or bad. Reject only spam, abuse, or reviews not about Sightrep.', 'On the website'] },
   { name: 'settings', steps: [['click', '#btn-settings']], expect: ['Cue word', 'Sounds'] },
   { name: 'settings-end', steps: [['click', '#btn-settings'], ['scrollEnd']], expect: ['Countdown before the first set'], combos: 'few' },
   { name: 'about', steps: [['click', '#btn-about']] },

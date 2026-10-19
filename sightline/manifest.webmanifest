@@ -1,7 +1,7 @@
 {
   "name": "Sightrep",
   "short_name": "Sightrep",
-  "description": "Reps for your eyes. A pre-game visual reaction and focus warm-up for athletes.",
+  "description": "Your eyes move first. A pre-game visual reaction and focus warm-up for athletes.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

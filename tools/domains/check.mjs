@@ -33,7 +33,7 @@ const APP = 'https://app.sightrep.app/';
 const SITE = 'https://sightrep.app/';
 const SITES = [
   { url: APP, expect: 200, cloudflare: true },
-  { url: SITE, expect: 200, cloudflare: true, says: 'Reps for your eyes.' },
+  { url: SITE, expect: 200, cloudflare: true, says: 'Pre-game focus and reaction warm-up.' },
   { url: 'https://www.sightrep.app/', expect: [301, 308], to: SITE },
   { url: 'http://app.sightrep.app/', expect: [301, 308], to: APP },
   { url: 'http://sightrep.app/', expect: [301, 308], to: SITE },

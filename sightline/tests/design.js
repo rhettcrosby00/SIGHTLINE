@@ -8,6 +8,7 @@ import { test, assert } from './harness.js';
 const root = new URL('../', import.meta.url);
 const read = (p) => readFileSync(new URL(p, root), 'utf8');
 const tokensCss = read('css/tokens.css');
+const paletteCss = read('css/palette.css');
 const stylesCss = read('css/styles.css');
 const indexHtml = read('index.html');
 const swJs = read('sw.js');
@@ -24,7 +25,10 @@ function block(startMarker) {
   }
   throw new Error(`unclosed block ${startMarker}`);
 }
-const colors = (css) => Object.fromEntries([...css.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})\b/g)].map((m) => [m[1], m[2]]));
+// The palette's swatches, and each theme's colors with var(--p-…) looked up in it.
+const PALETTE = Object.fromEntries([...paletteCss.matchAll(/--(p-[\w-]+):\s*(#[0-9a-fA-F]{6})\b/g)].map((m) => [m[1], m[2]]));
+const colors = (css) => Object.fromEntries([...css.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6}\b|var\(--(p-[\w-]+)\))/g)]
+  .map((m) => [m[1], m[3] ? PALETTE[m[3]] : m[2]]));
 
 const light = colors(block(':root {'));
 const darkMedia = colors(block('@media (prefers-color-scheme: dark)'));
@@ -64,6 +68,20 @@ for (const [name, t] of Object.entries(THEMES)) {
     assert(fails.length === 0, fails.join('; '));
   });
 }
+
+test('One palette: every theme color comes from css/palette.css (cue and cone colors aside)', () => {
+  assert(Object.keys(PALETTE).length >= 20, `palette has ${Object.keys(PALETTE).length} swatches`);
+  for (const marker of [':root {', '@media (prefers-color-scheme: dark)', ':root[data-appearance="dark"]', ':root[data-appearance="outdoor"]']) {
+    const raw = [...block(marker).matchAll(/--([\w-]+):\s*#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[1]).filter((n) => !/^(cue|cone)-/.test(n));
+    assert(raw.length === 0, `${marker} has raw colors instead of palette swatches: ${raw.join(', ')}`);
+    const unknown = [...block(marker).matchAll(/var\(--(p-[\w-]+)\)/g)].map((m) => m[1]).filter((n) => !PALETTE[n]);
+    assert(unknown.length === 0, `${marker} uses swatches that don't exist: ${unknown.join(', ')}`);
+  }
+  assert(!/#[0-9a-fA-F]{6}\b/.test(stylesCss.replace(/\/\*[\s\S]*?\*\//g, '')), 'css/styles.css holds a raw color: use a token');
+  const outdoorRaw = stylesCss.split('\n').filter((l) => l.startsWith(':root[data-appearance="outdoor"]') && /#[0-9a-fA-F]{3,8}\b/.test(l));
+  assert(outdoorRaw.length === 0, `outdoor rules use raw colors instead of tokens: ${outdoorRaw.join(' | ')}`);
+  for (const t of Object.values(THEMES)) for (const [k, v] of Object.entries(t)) assert(/^#[0-9a-fA-F]{6}$/.test(v), `--${k} didn't resolve`);
+});
 
 test('dark theme is the same whether it comes from the phone or the setting', () => {
   const diff = Object.keys(darkMedia).filter((k) => darkMedia[k] !== dark[k]);

@@ -12,7 +12,11 @@ export const SHOTS = [
     expect: ['js:[...document.images].every((i) => i.complete && i.naturalWidth > 0)'] },
   { name: 'site-how', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#how-title'], ['wait', 600]],
     expect: ['How it works', 'js:[...document.querySelectorAll(".steps li")].every((li) => li.getBoundingClientRect().height < 120)'] },
-  { name: 'site-home', url: `${SITE}/`, ...ALL, expect: ['Reps for your eyes.', 'Get Sightrep · $35.50', 'Already have a key?', 'js:document.querySelector(".hero__poster").naturalWidth > 0'] },
+  { name: 'site-home', url: `${SITE}/`, ...ALL, expect: ['Pre-game focus and reaction warm-up.', 'Get Sightrep · $35.50', 'Already have a key?', 'js:document.querySelector(".hero__poster").naturalWidth > 0'] },
+  // Reviews right under the top, filled in from the API (empty or not, depending on what ran before).
+  { name: 'site-reviews', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#reviews-title'], ['until', 'document.querySelector("[data-reviews-status]").textContent || document.querySelector(".review")', 8000], ['wait', 300]],
+    expect: ['What athletes say', 'Write a review', 'js:document.querySelector("[data-reviews]").compareDocumentPosition(document.querySelector("#sides-title")) & Node.DOCUMENT_POSITION_FOLLOWING', 'js:!/didn’t load/.test(document.body.innerText)'] },
+  { name: 'site-review', url: `${SITE}/review`, ...ALL, expect: ['Write a review', 'Your rating', 'First name', 'Sport or position', 'Your review', 'OK to show my first name', '16 or older', 'Send review'] },
   { name: 'site-inside', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#inside-title'], ['wait', 400]], expect: ['What’s inside'] },
   { name: 'site-why', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#why-title'], ['wait', 400]], expect: ['Why it works'] },
   { name: 'site-sides', url: `${SITE}/`, ...ALL, steps: [['scrollTo', '#sides-title'], ['wait', 900]], expect: ['Two sides, one warm-up', 'js:[...document.querySelectorAll(".phone img")].filter((i) => { const r = i.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }).every((i) => i.complete && i.naturalWidth > 0)'] },

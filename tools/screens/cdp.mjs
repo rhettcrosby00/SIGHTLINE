@@ -59,15 +59,15 @@ const CHECK = `(() => {
   if (out.docW > W) out.problems.push('page scrolls sideways: ' + out.docW + 'px');
   const root = document.querySelector('.waiver-full') || (!document.querySelector('.screen') && document.body) || document.querySelector('.guide') || document.querySelector('.eyecal:not([hidden])') || document.querySelector('.pause:not([hidden])') || document.querySelector('.screen.is-active');
   const desc = (el) => (el.id ? '#' + el.id : el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\\s+/).join('.') : '')) + (el.textContent.trim() ? ' "' + el.textContent.trim().slice(0, 30) + '"' : '');
-  const seen = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && !el.closest('[hidden]'); };
+  const seen = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && !el.closest('[hidden]') && !el.closest('.rform__trap'); };   // the review form's spam trap is off-screen on purpose
   for (const el of root.querySelectorAll('*')) {
     if (!seen(el) || el.closest('svg') && el.tagName !== 'svg') continue;
     const r = el.getBoundingClientRect();
     if (r.right > W + 0.5 || r.left < -0.5) out.problems.push('sticks out ' + Math.round(r.left) + '..' + Math.round(r.right) + ': ' + desc(el));
-    if (/^(BUTTON|P|SPAN|H2|H3|STRONG|LABEL|OUTPUT|B)$/.test(el.tagName) && !el.matches('.switch') && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).display !== 'inline')
+    if (/^(BUTTON|P|SPAN|H2|H3|STRONG|LABEL|OUTPUT|B)$/.test(el.tagName) && !el.matches('.switch, .sr') && el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).display !== 'inline')
       out.problems.push('text spills ' + el.scrollWidth + '>' + el.clientWidth + ': ' + desc(el));
   }
-  const taps = [...root.querySelectorAll('button, a, input, select, [role=radio], [role=switch]')].filter(seen).filter((el) => !el.matches('.switch, .waiver__check input'))   // switches and waiver boxes have a 48px ::before hit area
+  const taps = [...root.querySelectorAll('button, a, input, select, [role=radio], [role=switch]')].filter(seen).filter((el) => !el.matches('.switch, .waiver__check input, .rform__check input'))   // switches and waiver boxes have a 48px ::before hit area; the review form's boxes sit in 48px labels
     .filter((el) => !(el.tagName === 'A' && getComputedStyle(el).display === 'inline'));   // links inside sentences (accessibility rules exempt them)
   const pinned = (el) => { for (let n = el; n && n !== document.body; n = n.parentElement) if (/sticky|fixed/.test(getComputedStyle(n).position)) return true; return false; };
   for (const el of taps) {
@@ -81,7 +81,7 @@ const CHECK = `(() => {
     const x = Math.min(a.right, b.right) - Math.max(a.left, b.left), y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
     if (x > 1 && y > 1) out.problems.push('overlap: ' + desc(taps[i]) + ' / ' + desc(taps[j]));
   }
-  out.fonts = ['Archivo', 'Schibsted Grotesk'].map((f) => f + ':' + document.fonts.check('16px "' + f + '"'));
+  out.fonts = [['800', 'Barlow Condensed'], ['400', 'Barlow']].map(([w, f]) => f + ':' + document.fonts.check(w + ' 16px "' + f + '"'));   // the weights the headings and text use
   out.appearance = document.documentElement.dataset.appearance || 'auto';
   out.screen = document.querySelector('.screen.is-active')?.id;
   return JSON.stringify(out);
