@@ -157,6 +157,15 @@ export const SHOTS = [
     expect: [FIRST.desktop.heading, FIRST.link.qr, FIRST.desktop.here, 'js:window.__qrUrl === sessionStorage.getItem("link")'] },
 
   // ---- The whole path, recorded (the movie for the checkpoint) ----
+  // 6.6: from the email's Start Sightrep button (the purchase made through the local sale notice).
+  { name: 'fr-movie-link', ...iphone, params: 'license=0&waiver=0&install=none', sizes: ['pm'], themes: ['dark'], record: true,
+    steps: [...SALE, ['eval', 'setTimeout(() => { location.href = window.__link; }, 50)']],
+    settle: 3000, after: [['waitFor', '#screen-waiver.is-active', 8000], ['wait', 1200],
+      ['click', '[data-check="risks"]'], ['wait', 500], ['click', '[data-check="age"]'], ['wait', 500], ['click', '[data-act="agree"]'],
+      ['waitFor', '.ob__check', 8000], ['waitFor', '.ob__tiles', 4000], ['wait', T], ['click', '[data-ob="skip"]'],
+      ['waitFor', '.ob__install', 4000], ['wait', 1600], ['click', '[data-ob="later"]'], ['waitFor', '[data-ob="start"]', 4000], ['wait', 1000],
+      ['click', '[data-ob="start"]'], ['waitFor', '#screen-session.is-active', 8000], ['wait', 3000]],
+    expect: ['Settle'] },
   { name: 'fr-movie', ...iphone, sizes: ['pm'], themes: ['dark'], record: true,
     steps: [['wait', 900], ...PASTE.slice(0, 2).flatMap((x) => [x, ['wait', T]]), ['waitFor', '#screen-waiver.is-active', 8000], ['wait', 1200],
       ['click', '[data-check="risks"]'], ['wait', 500], ['click', '[data-check="age"]'], ['wait', 500], ['click', '[data-act="agree"]'],
