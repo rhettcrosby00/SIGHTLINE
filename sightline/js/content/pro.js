@@ -22,6 +22,17 @@ export const PRO = {
   checking: 'Checking your key…',
   unlocked: 'Unlocked. Welcome to Sightrep.',
   movedHere: 'Unlocked. Your key moved to this phone, so your other phone is now locked.',
+  movedFree: 'Unlocked. Your key moved into the home-screen app, free.',
+  restoring: 'Unlocked. Bringing back your settings…',
+  paste: 'Paste',
+  // The home-screen app the first time it opens (on iPhone it has its own storage, apart from Safari).
+  app: {
+    heading: 'Welcome to the Sightrep app',
+    keyLabel: 'Your key',
+    lead: 'Enter your key once more to open Sightrep here. Your settings come back with it.',
+    help: 'Your key is in your Gumroad receipt email (or tap “Copy your key” in Safari first). Moving it from Safari into this app is free: it doesn’t count toward your 3 moves.',
+    noKey: 'Don’t have a key yet?',
+  },
   help: 'Your key is in your Gumroad receipt email. New phone? Enter your key there, and it moves from your old phone. Questions: support@sightrep.app',
   previewHint: 'Preview only: try the test key TEST-OK-1234.',
   errors: {
@@ -35,6 +46,7 @@ export const PRO = {
   },
   locked: {
     moved: 'Your key is now on another phone, so this one is locked. Enter your key to move it back.',
+    installed: 'Sightrep is on your home screen now: open it from there. To use it here in the browser instead, enter your key and it moves back.',
     refunded: 'This purchase was refunded, so Sightrep is locked on this phone.',
     invalid: 'Your key no longer works. Enter your key again, or a new one.',
     expired: 'Connect to the internet once to keep using Sightrep. It checks your key at least once every 30 days.',

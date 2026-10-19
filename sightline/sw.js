@@ -3,7 +3,7 @@
 // changes. Phones download the new version in the background and show a
 // "New version ready" banner on the start screen.
 
-const CACHE_VERSION = 'v6.3';
+const CACHE_VERSION = 'v6.4';
 const CACHE = `sightrep-${CACHE_VERSION}`;
 
 // Google Fonts (Barlow Condensed + Barlow) live in their own cache that
@@ -44,6 +44,7 @@ const ASSETS = [
   './js/eye/sim.js',
   './js/eye/ui.js',
   './js/install.js',
+  './js/backup.js',
   './js/routine.js',
   './js/session.js',
   './js/settings.js',

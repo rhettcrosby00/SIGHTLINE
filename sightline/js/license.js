@@ -2,8 +2,8 @@
 // Saved here: the key, when the server last said it's good, and this phone's
 // random ID. Checks run at most once a day when online; with no signal the app
 // keeps working for 30 days after the last good check. With saved data blocked,
-// an unlock lasts for this visit.
-// TODO accounts: once athletes sign in, the key can live on the account.
+// an unlock lasts for this visit. The key is also the login for the setup saved
+// with it (js/backup.js): no accounts, no email.
 
 const KEY = 'sightrep.license.v1';
 const PHONE = 'sightrep.device.v1';
@@ -31,12 +31,12 @@ export function createLicense({ storage = safeStorage(), fetch = (...a) => globa
     }
     return phone;
   };
-  async function call(action, key) {
+  async function call(action, key, extra = {}) {
     let res;
     try {
       res = await fetch(api, {
         method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, key, device: device() }), signal: AbortSignal.timeout?.(LICENSE.timeoutMs),
+        body: JSON.stringify({ action, key, device: device(), ...extra }), signal: AbortSignal.timeout?.(LICENSE.timeoutMs),
       });
     } catch {
       return { ok: false, reason: 'offline' };
@@ -52,21 +52,34 @@ export function createLicense({ storage = safeStorage(), fetch = (...a) => globa
       const r = record();
       return !(r?.state === 'ok' && now() - r.checkedAt < LICENSE.graceMs);
     },
-    // Why this phone is locked: moved | refunded | invalid | expired (no check in 30 days), or null.
+    // Why this phone is locked: moved | installed (moved into the home-screen app) | refunded |
+    // invalid | expired (no check in 30 days), or null.
     lockedFor() {
       const r = record();
       if (r?.state === 'locked') return r.reason;
       return r?.state === 'ok' && this.needed() ? 'expired' : null;
     },
     last4: () => (record()?.state === 'ok' ? record().key.slice(-4) : ''),
+    key: () => (record()?.state === 'ok' ? record().key : ''),   // for "Copy your key" (js/install.js)
+    // False on a phone (or a home-screen app, which has its own storage on iPhone) where no key was ever entered.
+    hasRecord: () => !!record(),
 
-    // A key typed on the unlock screen → { ok, moved } or { ok: false, reason }.
-    async activate(raw) {
+    // A key typed on the unlock screen → { ok, moved, free, data } or { ok: false, reason }.
+    // app: this is the home-screen app (its first move there is free). restore: send back the
+    // setup saved with the key (data), for a phone that has none of its own yet.
+    async activate(raw, { app = false, restore = false } = {}) {
       const key = cleanKey(raw);
       if (!key) return { ok: false, reason: 'empty' };
-      const out = await call('activate', key);
+      const out = await call('activate', key, { app, restore });
       if (out.ok) save({ key, state: 'ok', checkedAt: now() });
       return out;
+    },
+
+    // Save this phone's setup with the key (js/backup.js). True when the server kept it.
+    async backup(data) {
+      const r = record();
+      if (r?.state !== 'ok') return false;
+      return (await call('save', r.key, { data })).ok === true;
     },
 
     // The daily check (or now, with force). Resolves to why it locked
@@ -76,7 +89,7 @@ export function createLicense({ storage = safeStorage(), fetch = (...a) => globa
       if (!r?.key || r.state !== 'ok' || (!force && now() - r.checkedAt < LICENSE.recheckMs)) return null;
       const out = await call('check', r.key);
       if (out.ok) { save({ ...r, checkedAt: now() }); return null; }
-      if (!['moved', 'refunded', 'invalid'].includes(out.reason)) return null;   // offline or busy: next time
+      if (!['moved', 'installed', 'refunded', 'invalid'].includes(out.reason)) return null;   // offline or busy: next time
       save({ ...r, state: 'locked', reason: out.reason });
       return out.reason;
     },

@@ -6,7 +6,8 @@ export function memoryStore({ now = () => Date.now() } = {}) {
   let nextId = 1;
   const meta = new Map();
   const hits = new Map();
-  const licenses = new Map();   // key hash → { hash, device, boundAt, moves }
+  const licenses = new Map();   // key hash → { hash, device, boundAt, moves, appMove }
+  const keyData = new Map();    // key hash → the setup saved with the key (js/backup.js)
   let reviews = [];             // { id, name, sport, stars, text, connected, status, at, decidedAt }
   let nextReview = 1;
 
@@ -84,8 +85,10 @@ export function memoryStore({ now = () => Date.now() } = {}) {
     async setMeta(k, v) { meta.set(k, v); },
 
     // License keys: which phone each key is on (by hash).
-    async getLicense(hash) { const r = licenses.get(hash); return r ? { ...r, moves: [...r.moves] } : null; },
-    async putLicense(rec) { licenses.set(rec.hash, { ...rec, moves: [...rec.moves] }); },
+    async getLicense(hash) { const r = licenses.get(hash); return r ? { ...r, moves: [...r.moves], appMove: r.appMove ? { ...r.appMove } : null } : null; },
+    async putLicense(rec) { licenses.set(rec.hash, { ...rec, moves: [...rec.moves], appMove: rec.appMove ? { ...rec.appMove } : null }); },
+    async getKeyData(hash) { return keyData.has(hash) ? JSON.parse(keyData.get(hash)) : null; },
+    async putKeyData(hash, data) { keyData.set(hash, JSON.stringify(data)); },
     async resetLicense(hash) { return licenses.delete(hash); },
     licenseRows: () => [...licenses.values()],   // for the tests
 

@@ -61,7 +61,7 @@ const minutesOf = (s) => Math.max(1, Math.round(drillMs(s) / 60000));
 // getSettings / updateSetting: Sounds, the countdown and Game Day / Training;
 // onTrained() fires when a Training drill finishes (the weekly streak);
 // week() gives that streak; onDay() fires when the switch changes;
-// afterSession() runs on the summary (install tip).
+// afterSession() runs on the summary (the setup saved with the key, js/backup.js).
 export function initMove({
   show, dev = {}, onRun = () => {}, onTrained = () => {}, leaderboard = null, sport, getSettings, updateSetting,
   week = () => ({}), onDay = () => {}, afterSession = () => {},
@@ -232,7 +232,6 @@ export function initMove({
         <div class="lb-inline"></div>
         ${tuneButtons('How was the pace?')}
         <p class="sum__foot">Only your pace answer is saved, for this distance and rep style.</p>
-        <div class="install-slot"></div>
         <p class="sum__seed">Session code ${plan.seed}</p>
       </div>
       <div class="screen__foot">
@@ -253,7 +252,7 @@ export function initMove({
       same: `Next time: same pace. ${saved}`,
       faster: `Next time: ${pct}% less time per rep. ${saved}`,
     });
-    afterSession({ key, slot: doneEl.querySelector('.install-slot') });
+    afterSession({ key });
     if (leaderboard) {
       const per = Math.round(SCORING.move.perRep * moveMultiplier(setup));
       await leaderboard.afterSession({

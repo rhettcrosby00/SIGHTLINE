@@ -3,9 +3,11 @@
 // ?eyesim (a pretend face, js/eye/sim.js) so calibration, drill feedback and
 // the summary can be seen. Every shot spies on the camera and the network:
 //   CAMERA_OFF  every camera stream the app opened has ended
-//   PRIVATE     only GETs to Sightrep itself, plus the score upload (with no eye data in it)
+//   PRIVATE     only GETs to Sightrep itself, plus the score upload (with no eye data in it) and
+//               the setup saved with the key (only its known items, no eye data)
 // Same shot format as main.mjs.
 import { BASE as MAIN } from './main.mjs';
+import { BACKUP_KEYS } from '../../../sightline/js/backup.js';
 
 export const BASE = { ...MAIN, eyeCheck: 'on' };
 
@@ -24,7 +26,12 @@ const OPEN = [SPY, ['click', '#btn-focus'], ['click', '.adv__head'], ['click', '
 const CAMERA_ON = [...OPEN, ['click', '[data-eye="on"]']];
 const CALIBRATED = [...CAMERA_ON, ['waitFor', '[data-eye="go"]', 40000], ['click', '[data-eye="go"]']];
 const CAMERA_OFF = 'js:window.__streams.length > 0 && window.__streams.every((s) => s.getTracks().every((t) => t.readyState === "ended"))';
-const PRIVATE = 'js:window.__net.every(([m, u, b]) => new URL(u, location.href).origin === location.origin && (m === "GET" || (m === "POST" && /\\/api\\/leaderboard/.test(u) && !/gaze|eye|recording|camera/i.test(b))))';
+// Nothing about the camera leaves the phone: only reads from this site, scores to the leaderboard,
+// and the setup saved with the key (js/backup.js: only its known items, such as the Eye Check on/off
+// setting; never gaze, video or pictures).
+const PRIVATE = 'js:window.__net.every(([m, u, b]) => new URL(u, location.href).origin === location.origin && (m === "GET"'
+  + ' || (m === "POST" && /\\/api\\/leaderboard/.test(u) && !/gaze|eye|recording|camera/i.test(b))'
+  + ` || (m === "POST" && /\\/api\\/license/.test(u) && Object.keys(JSON.parse(b).data ?? {}).every((k) => ${JSON.stringify(BACKUP_KEYS)}.includes(k)) && !/gaze|recording|camera|landmark|video|data:image/i.test(b))))`;
 const ONLY = (ids) => `autoready=1&only=${ids}`;
 
 export const SHOTS = [

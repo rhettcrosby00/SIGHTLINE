@@ -116,8 +116,14 @@ async function shoot(shot, size, theme) {
   const s = (m, p) => send(m, p, sessionId);
   try {
     await s('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: DPR, mobile: size !== 'desk' });
+    // ua: pretend to be that phone and browser (the install steps differ by device).
+    if (shot.ua) await s('Emulation.setUserAgentOverride', { userAgent: shot.ua });
+    // init: JavaScript run before the page's own (e.g. pretend it's the home-screen app: navigator.standalone).
+    if (shot.init) await s('Page.addScriptToEvaluateOnNewDocument', { source: shot.init });
     const auto = theme === 'auto-dark';
-    if (auto) await s('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
+    // media: more CSS media to pretend, e.g. [{ name: 'display-mode', value: 'standalone' }] (the home-screen app).
+    const media = [...(auto ? [{ name: 'prefers-color-scheme', value: 'dark' }] : []), ...(shot.media ?? [])];
+    if (media.length) await s('Emulation.setEmulatedMedia', { features: media });
     const set = { ...BASE, ...shot.set, appearance: auto ? 'auto' : theme };
     const q = new URLSearchParams(set);
     if (shot.cone) q.set('cone', JSON.stringify(shot.cone));
@@ -140,8 +146,19 @@ async function shoot(shot, size, theme) {
       }
     };
     let r = await s('Runtime.evaluate', { expression: STEP(shot.steps || [], !shot.url), awaitPromise: true, returnByValue: true });
+    // settle: let the page do its own thing for that long (such as restarting itself), then run `after` there.
+    if (shot.settle && !r.exceptionDetails) {
+      await new Promise((res) => setTimeout(res, shot.settle));
+      await loaded();
+      r = await s('Runtime.evaluate', { expression: STEP(shot.after || [], !shot.url), awaitPromise: true, returnByValue: true });
+    }
     // reopen: close the app and open it again (same phone, saved data kept), then run `after`.
     if (shot.reopen != null && !r.exceptionDetails) {
+      // offline: no network at all for the reopen (the app must come from its offline copy).
+      if (shot.offline) {
+        await s('Network.enable');
+        await s('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      }
       await s('Page.navigate', { url: `http://localhost:5175/?${shot.reopen}` });
       await new Promise((res) => setTimeout(res, 300));
       await loaded();
@@ -163,6 +180,17 @@ async function shoot(shot, size, theme) {
     const file = `${shot.name}__${size}-${theme}`;
     writeFileSync(join(OUT, `${file}.png`), Buffer.from(png.data, 'base64'));
     const out = { file, error: err, ...JSON.parse(c.result.value) };
+    // installable: Chrome's own check that the page can be installed as an app (what Lighthouse's
+    // old PWA audit ran), plus any manifest errors.
+    if (shot.installable) {
+      const { installabilityErrors = [] } = await s('Page.getInstallabilityErrors');
+      // in-incognito: every shot runs in a fresh private window (Target.createBrowserContext), where
+      // Chrome never offers install; it says nothing about the app, so only that reason is skipped.
+      for (const e of installabilityErrors.filter((x) => x.errorId !== 'in-incognito')) out.problems.push(`not installable: ${e.errorId} ${(e.errorArguments ?? []).map((a) => `${a.name}=${a.value}`).join(' ')}`);
+      const m = await s('Page.getAppManifest');
+      for (const e of m.errors ?? []) out.problems.push(`manifest: ${e.message}`);
+      if (!m.url) out.problems.push('manifest: none found');
+    }
     if (miss.length) out.problems.push(`EXPECTED but missing: ${miss.join(' | ')}`);
     return out;
   } finally {

@@ -18,8 +18,8 @@ const jsFiles = walk('js');
 const html = read('index.html');
 
 // FOCUS code: everything outside js/cone/ except the app shell, shared helpers (js/lib/),
-// the leaderboard (js/score/) and what both sides share (settings, presets, install).
-const SHARED = ['js/main.js', 'js/guide.js', 'js/migrate.js', 'js/features.js', 'js/settings.js', 'js/presets.js', 'js/install.js'];
+// the leaderboard (js/score/) and what both sides share (settings, presets, install, the setup saved with the key).
+const SHARED = ['js/main.js', 'js/guide.js', 'js/migrate.js', 'js/features.js', 'js/settings.js', 'js/presets.js', 'js/install.js', 'js/backup.js'];
 const FOCUS_FILES = jsFiles.filter((f) => !f.startsWith('js/cone/') && !f.startsWith('js/lib/') && !f.startsWith('js/score/') && !SHARED.includes(f));
 // Code without comments: what can actually reach a screen.
 const codeOf = (f) => read(f).replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, '');
@@ -154,7 +154,8 @@ test('"Run last" moves to the right side; old saves upgrade once and nothing is 
 
 test('Old links and home-screen shortcuts still open the app', () => {
   const manifest = JSON.parse(read('manifest.webmanifest'));
-  assert(manifest.start_url === './' && manifest.scope === './', 'home-screen shortcut points somewhere else');
+  // "/" is the app's address (app.sightrep.app/), the same place the old "./" pointed to.
+  assert(manifest.start_url === '/' && manifest.scope === '/' && manifest.id === '/', 'home-screen shortcut points somewhere else');
   assert(/src="js\/main\.js"/.test(html), 'app entry missing');
   // Old dev links (?autostart=1, ?only=…, ?speed=…) are still read by main.js.
   const main = read('js/main.js');

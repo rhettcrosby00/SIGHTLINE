@@ -134,7 +134,7 @@ test('Server: one phone at a time; a key moves to a new phone at most 3 times in
   assert(JSON.stringify(await keys.activate(a)) === '{"ok":true,"moved":false}', 'first phone');
   assert(JSON.stringify(await keys.activate(a)) === '{"ok":true,"moved":false}', 'same phone again');
   assert((await keys.check(a)).ok, 'its daily check');
-  assert(JSON.stringify(await keys.activate(b)) === '{"ok":true,"moved":true}', 'a second phone: the key moves');
+  assert(JSON.stringify(await keys.activate(b)) === '{"ok":true,"moved":true,"free":false}', 'a second phone: the key moves');
   assert(JSON.stringify(await keys.check(a)) === '{"ok":false,"reason":"moved"}', 'the first phone locks at its next check');
   assert((await keys.check(b)).ok, 'the second is fine');
   assert((await keys.activate(a)).moved && (await keys.activate(b)).moved, 'moves 2 and 3');
@@ -235,7 +235,7 @@ test('Startup: waiver, then the key, then the app; locks only on the home screen
   const main = read('js/main.js');
   assert(!('pro' in FEATURES), 'on everywhere: no switch left (approved for 6.0)');
   assert(isLiveHost('sightrep.pages.dev') && !isLiveHost('feature-unlock.sightrep.pages.dev'), 'live and preview addresses');
-  assert(/if \(license\.needed\(\)\) \{\s*gated = true;\s*await unlockScreen\(license\.lockedFor\(\)\);/.test(main), 'the unlock screen when there’s no good key');
+  assert(/if \(license\.needed\(\)\) \{\s*gated = true;\s*unlocked = await unlockScreen\(license\.lockedFor\(\)\);/.test(main), 'the unlock screen when there’s no good key');
   assert(/if \(license\.lockedFor\(\) === 'expired'\) await license\.recheck\(\{ force: true \}\);/.test(main), 'a phone offline for 30 days checks first, before asking again');
   assert(/^accepted\.then\(\(\) => license\.recheck\(\)\)/m.test(main), 'the daily check runs on every phone');
   assert(!/id="license-group"[^>]*hidden/.test(read('index.html')), 'Settings always shows the license row');

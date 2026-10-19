@@ -12,6 +12,8 @@ export const BASE = { length: 'standard', difficulty: 'normal', sound: 'off', gu
 const NO_KEY = 'license=0';
 const typeKey = (prefix) => ['eval', `const i = document.querySelector('#unlock-key'); i.value = '${prefix}' + Math.random().toString(36).slice(2, 10).toUpperCase(); i.dispatchEvent(new Event('input', { bubbles: true }))`];
 const UNLOCK = ['click', '#screen-unlock [data-act="unlock"]'];
+// A first unlock shows the home-screen steps (js/install.js); "I've added it" goes on to the app.
+const PAST_INSTALL = [['waitFor', '#screen-install.is-active', 8000], ['click', '[data-install="added"]']];
 const ONLY_UNLOCK = [
   '#screen-unlock.is-active', 'js:document.documentElement.dataset.gate === "unlock"',
   'js:[...document.querySelectorAll(".screen")].filter((s) => getComputedStyle(s).display !== "none").map((s) => s.id).join() === "screen-unlock"',
@@ -34,11 +36,11 @@ export const SHOTS = [
     expect: [...ONLY_UNLOCK, 'js:!document.getElementById("stage").children.length'], combos: 'few' },
 
   // ---- A good key ----
-  { name: 'unlock-good', params: NO_KEY, steps: [typeKey('TEST-OK-'), UNLOCK, ['waitFor', '#screen-start.is-active', 8000]],
+  { name: 'unlock-good', params: NO_KEY, steps: [typeKey('TEST-OK-'), UNLOCK, ...PAST_INSTALL, ['waitFor', '#screen-start.is-active', 8000]],
     expect: ['#screen-start.is-active', 'js:!document.documentElement.dataset.gate', 'Choose a preset', SAVED] },
-  { name: 'unlock-reopened', params: NO_KEY, steps: [typeKey('TEST-OK-'), UNLOCK, ['waitFor', '#screen-start.is-active', 8000]], reopen: 'noguide=1',
+  { name: 'unlock-reopened', params: NO_KEY, steps: [typeKey('TEST-OK-'), UNLOCK, ...PAST_INSTALL, ['waitFor', '#screen-start.is-active', 8000]], reopen: 'noguide=1',
     expect: ['#screen-start.is-active', 'js:!document.documentElement.dataset.gate', 'js:!document.getElementById("screen-unlock").children.length', SAVED], combos: 'few' },
-  { name: 'unlock-then-drill', params: `${NO_KEY}&autostart=1&session=activate&only=peripheral`, steps: [typeKey('TEST-OK-'), UNLOCK, ['waitFor', '.howto', 8000]],
+  { name: 'unlock-then-drill', params: `${NO_KEY}&autostart=1&session=activate&only=peripheral`, steps: [typeKey('TEST-OK-'), UNLOCK, ...PAST_INSTALL, ['waitFor', '.howto', 8000]],
     expect: ['Peripheral Flash', '#screen-session.is-active'], combos: 'few' },
 
   // ---- Locked, and offline too long ----

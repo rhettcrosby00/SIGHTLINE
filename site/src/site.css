@@ -137,6 +137,15 @@ textarea.rform__input { resize: vertical; min-height: 140px; }
 .rform__done { display: grid; gap: 10px; padding: 24px; margin-top: 12px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); }
 .doc .rform__done h2 { margin: 0; font: 800 2rem/1 var(--font-display); text-transform: uppercase; color: var(--lime); outline: none; }
 
+/* Install help (/install): the steps beside a picture of them in the app */
+.howto__grid { display: grid; gap: 20px; align-items: start; }
+.howto__steps { padding-left: 1.4em; display: grid; gap: 10px; }
+.howto__steps li { color: var(--muted); }
+.howto__steps b { color: var(--text); }
+.howto__shot { max-width: 240px; }
+.howto .btn { margin-top: 4px; }
+@media (min-width: 700px) { .howto__grid { grid-template-columns: 1fr 240px; } }
+
 /* Pages: waiver, privacy, terms */
 .doc { max-width: 46em; margin: 0 auto; padding: 40px var(--gutter) 56px; display: grid; gap: 14px; }
 .doc__meta { color: var(--muted); font-size: 0.9375rem; }

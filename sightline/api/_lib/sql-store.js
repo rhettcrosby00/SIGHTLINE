@@ -28,6 +28,13 @@ export function sqlStore(url) {
         device text not null,
         bound_at timestamptz not null default now(),
         moves jsonb not null default '[]')`;
+      // 6.4: the free move into a home-screen app ({ at, from }), once per key.
+      await sql`alter table lb_licenses add column if not exists app_move jsonb`;
+      // 6.4: each key's saved setup (js/backup.js), so it comes back in the home-screen app or on a new phone.
+      await sql`create table if not exists lb_key_data (
+        key_hash text primary key,
+        data jsonb not null,
+        saved_at timestamptz not null default now())`;
       // Website reviews: pending until the owner approves them in Coach tools.
       await sql`create table if not exists site_reviews (
         id bigserial primary key,
@@ -124,15 +131,24 @@ export function sqlStore(url) {
     },
 
     async getLicense(hash) {
-      const rows = await sql`select device, bound_at, moves from lb_licenses where key_hash = ${hash}`;
+      const rows = await sql`select device, bound_at, moves, app_move from lb_licenses where key_hash = ${hash}`;
       const r = rows[0];
-      return r ? { hash, device: r.device, boundAt: new Date(r.bound_at).getTime(), moves: (r.moves ?? []).map(Number) } : null;
+      return r ? { hash, device: r.device, boundAt: new Date(r.bound_at).getTime(), moves: (r.moves ?? []).map(Number), appMove: r.app_move ?? null } : null;
     },
-    async putLicense({ hash, device, boundAt, moves }) {
+    async putLicense({ hash, device, boundAt, moves, appMove = null }) {
       await sql`
-        insert into lb_licenses (key_hash, device, bound_at, moves)
-        values (${hash}, ${device}, ${new Date(boundAt).toISOString()}::timestamptz, ${JSON.stringify(moves)}::jsonb)
-        on conflict (key_hash) do update set device = excluded.device, bound_at = excluded.bound_at, moves = excluded.moves`;
+        insert into lb_licenses (key_hash, device, bound_at, moves, app_move)
+        values (${hash}, ${device}, ${new Date(boundAt).toISOString()}::timestamptz, ${JSON.stringify(moves)}::jsonb, ${appMove ? JSON.stringify(appMove) : null}::jsonb)
+        on conflict (key_hash) do update set device = excluded.device, bound_at = excluded.bound_at, moves = excluded.moves, app_move = excluded.app_move`;
+    },
+    async getKeyData(hash) {
+      const rows = await sql`select data from lb_key_data where key_hash = ${hash}`;
+      return rows[0]?.data ?? null;
+    },
+    async putKeyData(hash, data, at = Date.now()) {
+      await sql`
+        insert into lb_key_data (key_hash, data, saved_at) values (${hash}, ${JSON.stringify(data)}::jsonb, ${new Date(at).toISOString()}::timestamptz)
+        on conflict (key_hash) do update set data = excluded.data, saved_at = excluded.saved_at`;
     },
     async addReview({ name, sport, stars, text, connected = false, at }) {
       const rows = await sql`insert into site_reviews (name, sport, stars, body, connected, created_at)

@@ -17,6 +17,7 @@ import { createTrainingLog, WEEK_GOAL } from './lib/streak.js';
 import { initLeaderboard } from './score/ui.js';
 import { initRoutineBuilder } from './myroutine-ui.js';
 import { initInstall } from './install.js';
+import { createBackup, restoreBackup } from './backup.js';
 import { parseRunKey } from './presets.js';
 import { BRAND, hydrateLogos } from './brand.js';
 import { createWaiverStore, showWaiver, showFullWaiver } from './waiver.js';
@@ -31,7 +32,7 @@ import { isLiveHost } from './features.js';
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '6.3';
+export const APP_VERSION = '6.4';
 
 const $ = (id) => document.getElementById(id);
 
@@ -61,17 +62,39 @@ hydrateLogos();   // home and About (js/brand.js)
 // screen until both are done: the waiver accepted (this version), and a key
 // that unlocks this phone (sold on Gumroad). Everything that can open by
 // itself (the first-run setup, the ?autostart direct links) waits for `accepted`.
-// TODO accounts: once athletes sign in, also save acceptance on the account
-// and check it at login (js/waiver.js).
+// The setup saved with the key (js/backup.js), the waiver acceptance included, comes
+// back when the key is entered on a phone that has none yet: a new phone, or the
+// home-screen app on iPhone (its own storage, apart from Safari), which asks for the
+// key first. Then the app starts over with it. Right after a key first unlocks a phone:
+// how to put Sightrep on the home screen (js/install.js).
 const waiver = createWaiverStore();
 const license = createLicense();
-async function unlockScreen(reason) {
+const install = initInstall({ license });
+const backup = createBackup({ license });
+const standalone = install.standalone();
+const freshPhone = !license.hasRecord();   // no key was ever entered here
+const FIRST = 'sightrep.firstunlock';      // the first unlock, kept across the restart below (this visit only)
+async function unlockScreen(reason, { welcome = false } = {}) {
   document.documentElement.dataset.gate = 'unlock';
   show('unlock');
-  await showUnlock($('screen-unlock'), license, { reason, preview: !isLiveHost(location.hostname) });
+  return showUnlock($('screen-unlock'), license, { reason, welcome, preview: !isLiveHost(location.hostname),
+    activate: { app: standalone, restore: freshPhone } });
 }
+function restartWithSetup(out) {
+  if (!freshPhone || !out?.data || !restoreBackup(out.data, { keepWaiver: !waiver.needed() })) return false;
+  try { sessionStorage.setItem(FIRST, '1'); } catch { /* blocked */ }
+  location.reload();
+  return true;
+}
+let installNext = null;
 const accepted = (async () => {
   let gated = false;
+  let unlocked = null;
+  if (standalone && freshPhone && license.needed()) {
+    gated = true;
+    unlocked = await unlockScreen(null, { welcome: true });
+    if (restartWithSetup(unlocked)) return new Promise(() => {});
+  }
   if (waiver.needed()) {
     gated = true;
     show('waiver');
@@ -81,10 +104,21 @@ const accepted = (async () => {
   if (license.lockedFor() === 'expired') await license.recheck({ force: true });
   if (license.needed()) {
     gated = true;
-    await unlockScreen(license.lockedFor());
+    unlocked = await unlockScreen(license.lockedFor());
+    if (restartWithSetup(unlocked)) return new Promise(() => {});
+  }
+  let restarted = false;
+  try { restarted = sessionStorage.getItem(FIRST) === '1'; sessionStorage.removeItem(FIRST); } catch { /* blocked */ }
+  installNext = install.plan({ firstUnlock: (!!unlocked && freshPhone) || restarted });
+  if (installNext === 'screen') {
+    gated = true;
+    document.documentElement.dataset.gate = 'install';
+    show('install');
+    await install.showScreen($('screen-install'));
   }
   document.documentElement.removeAttribute('data-gate');
   if (gated) show('start');
+  backup.saveSoon(unlocked || restarted ? 0 : 4000);
 })();
 
 // Once a day (when online), check the key is still good on this phone. A key
@@ -126,14 +160,13 @@ const variety = createVariety();
 const lastRuns = createLastRuns();
 const trainingLog = createTrainingLog();   // training days, for the weekly streak (this phone only)
 const week = () => ({ ...trainingLog.summary(), goal: WEEK_GOAL });
-const install = initInstall();
 
 // ---- Settings, reachable from home and from FOCUS (Advanced → Options) ----
 let focus = null;
 let move = null;
 let settingsFrom = 'start';
 const getSettings = initSettings({
-  onChange: (s) => { setMusicMode(s.music === 'on'); renderHome(); },
+  onChange: (s) => { setMusicMode(s.music === 'on'); renderHome(); backup.saveSoon(); },
 });
 function renderLicense() {
   $('license-title').textContent = PRO.settings.title;
@@ -150,6 +183,27 @@ const closeSettings = () => { if (settingsFrom === 'focus') focus.renderHub(); s
 $('btn-settings').addEventListener('click', () => openSettings('start'));
 $('btn-settings-back').addEventListener('click', closeSettings);
 $('btn-settings-done').addEventListener('click', closeSettings);
+$('btn-settings-install').addEventListener('click', async () => {
+  show('install');
+  await install.showScreen($('screen-install'), { fromSettings: true });
+  show('settings', { back: true });
+});
+
+// "Remind me later": a small banner on the home screen, on the next 2 visits (js/install.js).
+accepted.then(() => {
+  if (installNext !== 'banner') return;
+  $('install-banner').hidden = false;
+  install.bannerShown();
+});
+$('btn-install-banner-x').addEventListener('click', () => { $('install-banner').hidden = true; });
+$('btn-install-banner').addEventListener('click', async () => {
+  show('install');
+  const choice = await install.showScreen($('screen-install'));
+  $('install-banner').hidden = choice === 'added' || choice === 'later';
+  show('start', { back: true });
+});
+// Save the setup with the key when the app goes to the background (js/backup.js).
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') backup.saveNow(); });
 
 // ---- Leaderboard ----
 const leaderboard = initLeaderboard({ show, getSettings });
@@ -157,7 +211,7 @@ $('btn-board').addEventListener('click', () => leaderboard.openBoard('start'));
 $('btn-done-board').addEventListener('click', () => leaderboard.openBoard('done', { side: 'focus' }));
 
 // ---- The two sides ----
-// After a FOCUS session: the install tip, and "Next: Move" after a Game Day preset
+// After a FOCUS session: save the setup with the key, and "Next: Move" after a Game Day preset
 // (Game Speed: set the phone down, the countdown gives time to get to the start).
 const NEXT_MOVE = 'game:speed';
 focus = initFocus({
@@ -167,7 +221,7 @@ focus = initFocus({
   onOptions: () => openSettings('focus'),
   onRoutine: () => builder.open(),
   afterSession: ({ key }) => {
-    install.finished($('done-install'));
+    backup.saveSoon();
     const next = parseRunKey(key)?.day === 'game';
     $('btn-next-move').hidden = !next;
     if (next) $('next-move-desc').textContent = move.describeRun(NEXT_MOVE);
@@ -187,10 +241,10 @@ move = initMove({
   show, dev, leaderboard, sport, getSettings, updateSetting, week,
   onRun: (key) => lastRuns.set('move', key),
   onTrained: () => trainingLog.add(),
-  afterSession: ({ slot }) => install.finished(slot),
+  afterSession: () => backup.saveSoon(),
 });
 $('btn-next-move').addEventListener('click', () => move.run(NEXT_MOVE));
-$('btn-done').addEventListener('click', () => { $('summary-board').innerHTML = ''; $('done-install').innerHTML = ''; });
+$('btn-done').addEventListener('click', () => { $('summary-board').innerHTML = ''; });
 
 // ---- Home: two choices, each with "Run last" (one tap) once something has run ----
 function renderHome() {
