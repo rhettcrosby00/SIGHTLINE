@@ -27,16 +27,18 @@ function cert(host) {
 
 const OPTIONAL = process.env.GETSIGHTREP ? ['getsightrep.com', 'www.getsightrep.com'] : [];
 // Each address: what it should do. One app address (app.sightrep.app), so a
-// phone's saved data and its key live in one place; sightrep.app points there
-// until the marketing site exists.
+// phone's saved data and its key live in one place; sightrep.app is the
+// website (site/), www goes to it, and the old address goes to the app.
 const APP = 'https://app.sightrep.app/';
+const SITE = 'https://sightrep.app/';
 const SITES = [
   { url: APP, expect: 200, cloudflare: true },
-  { url: 'https://sightrep.app/', expect: [301, 308], to: APP },
-  { url: 'https://www.sightrep.app/', expect: [301, 308], to: APP },
+  { url: SITE, expect: 200, cloudflare: true, says: 'Reps for your eyes.' },
+  { url: 'https://www.sightrep.app/', expect: [301, 308], to: SITE },
   { url: 'http://app.sightrep.app/', expect: [301, 308], to: APP },
-  { url: 'http://sightrep.app/', expect: [301, 308], to: ['https://sightrep.app/', APP] },
-  ...OPTIONAL.map((h) => ({ url: `https://${h}/`, expect: [301, 308], to: APP })),
+  { url: 'http://sightrep.app/', expect: [301, 308], to: SITE },
+  { url: 'https://sightline-psi.vercel.app/', expect: [301, 308], to: APP },
+  ...OPTIONAL.map((h) => ({ url: `https://${h}/`, expect: [301, 308], to: SITE })),
 ];
 
 for (const s of SITES) {
@@ -46,6 +48,10 @@ for (const s of SITES) {
     const lands = !s.to || (r.location && [].concat(s.to).includes(new URL(r.location, s.url).href));
     ok(`${s.url} → ${[].concat(s.to ?? 'page')[0]}`, codes.includes(r.status) && lands, `${r.status}${r.location ? ` → ${r.location}` : ''}`);
     if (s.cloudflare) ok(`${s.url} is served by Cloudflare Pages`, r.server === 'cloudflare' && !r.vercel, `server: ${r.server}${r.vercel ? ', still Vercel' : ''}`);
+    if (s.says) {
+      const text = await (await fetch(s.url, { cache: 'no-store' })).text();
+      ok(`${s.url} is the website`, text.includes(s.says), text.includes(s.says) ? `says "${s.says}"` : 'not the website yet');
+    }
   } catch (e) {
     ok(s.url, false, e.message);
   }

@@ -7,3 +7,4 @@ tools/screens/sheets/
 tools/screens/prof.*
 tools/screens/report-*.json
 sightline/dist/
+site/dist/

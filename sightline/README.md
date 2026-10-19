@@ -263,13 +263,13 @@ a session). The version number shows at the bottom of the start screen.
 | Address | What it is |
 |---|---|
 | https://app.sightrep.app | the app (Cloudflare Pages custom domain) |
-| https://sightrep.app | permanent (301) redirect to app.sightrep.app until the marketing site exists (one app address, so a phone's saved data lives in one place) |
-| https://www.sightrep.app | permanent (301) redirect to app.sightrep.app |
-| sightrep.pages.dev | Cloudflare's own name for the live site |
-| sightline-psi.vercel.app | the old address, on Vercel (no longer deployed from this repo). Home shows "Sightrep has a new home" with a button to app.sightrep.app (`movedFrom` in `js/brand.js`); next: a permanent redirect to app.sightrep.app (Vercel → Settings → Domains → Edit). |
+| https://sightrep.app | the website (`../site/`, Cloudflare Pages project "sightrep-site"): what Sightrep is, Buy, Safety waiver, Privacy, Terms |
+| https://www.sightrep.app | permanent (301) redirect to sightrep.app |
+| sightrep.pages.dev | Cloudflare's own name for the live app |
+| sightline-psi.vercel.app | the old address: a permanent (308) redirect to app.sightrep.app, set in Vercel → Settings → Domains. For that, app.sightrep.app is also listed in the Vercel project, as a name only (it shows "Invalid Configuration"; its DNS points to Cloudflare). Don't remove it there, or the redirect stops. |
 
-DNS is on Cloudflare. `app` is the Pages custom domain (Cloudflare manages that record); the
-`sightrep.app` and `www` redirects are Cloudflare Redirect Rules. Cloudflare Email Routing adds
+DNS is on Cloudflare. `app` and `sightrep.app` are Pages custom domains (Cloudflare manages
+those records); the `www` redirect is a Cloudflare Redirect Rule. Cloudflare Email Routing adds
 and locks its own MX, SPF and DKIM records (support@ and hello@ forward to the team inbox); leave
 them alone. `node ../tools/domains/check.mjs [version]` checks every address from outside: HTTPS
 certificates, redirects, that Cloudflare serves the app, the app version, the server's health,

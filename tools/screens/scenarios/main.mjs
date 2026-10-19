@@ -7,7 +7,8 @@
 //     | ['hold', sel, ms] (a finger held down on sel for ms) | ['until', jsExpression, ms]
 //   expect: text that must be on screen, a selector ('#…' / '.…') that must match, or 'js:expression' that must be true
 //   reopen: close and reopen the app (saved data kept) at /?<reopen>, then run the `after` steps
-//   combos: 'few' = SE dark and Pro Max light only
+//   combos: 'few' = SE dark and Pro Max light only; sizes: ['pm'] / themes: ['dark'] pick exact ones
+//   url: open that page as it is (the website) instead of the app
 export const BASE = { length: 'standard', difficulty: 'normal', sound: 'off', guide: 'full', cue: 'ATTACK' };
 
 const LAST = { focus: 'game:standard', move: 'game:speed' };
