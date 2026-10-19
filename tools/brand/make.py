@@ -15,6 +15,9 @@ from the repo root. It writes:
                           favicon SVG (reticle) + 32 / 16 px PNGs
   sightline/assets/share.png   the link-preview picture, 1200 x 630, with the tagline
   sightline/splash/       iPhone home-screen launch pictures (one per screen size)
+With --store, only the Gumroad store pictures, into design/gumroad/ (not shipped):
+  gumroad-cover.png       2560 x 1440, the product page's cover (Gumroad: horizontal, at least 1280 x 720)
+  gumroad-thumbnail.png   1200 x 1200, the square thumbnail (Gumroad: at least 600 x 600)
 Pictures are drawn by headless Chrome (nothing opens on screen).
 """
 import json, os, re, subprocess, sys, tempfile
@@ -159,7 +162,29 @@ def pictures(sizes):
               open(os.path.join(ROOT, 'splash', 'sizes.json'), 'w'), indent=1)
 
 
+def store(out_dir=os.path.join(ROOT, '..', 'design', 'gumroad')):
+    """The Gumroad store pictures: a wide cover (logo, tagline, one line on what it is) and a square thumbnail (the icon)."""
+    from PIL import Image
+    os.makedirs(out_dir, exist_ok=True)
+    src = lambda name: f'file://{os.path.join(LOGO, name)}'
+    font = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" '
+            'href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600&display=block">')
+    cover = os.path.join(out_dir, 'gumroad-cover.png')
+    shoot(page(f'<img src="{src("logo-horizontal.svg")}" width="1560">'
+               f'<p style="margin:96px 0 0;color:#F2F4EC;font:600 92px \'Schibsted Grotesk\',system-ui,sans-serif;letter-spacing:0.01em">{BRAND}</p>'
+               f'<p style="margin:36px 0 0;color:#A2A895;font:500 54px \'Schibsted Grotesk\',system-ui,sans-serif">Pre-game focus and reaction warm-up for athletes</p>',
+               extra=font), 2560, 1440, cover)
+    thumb = os.path.join(out_dir, 'gumroad-thumbnail.png')
+    shoot(page(f'<img src="{src("logo-icon.svg")}" width="780">'), 1200, 1200, thumb)
+    for f in (cover, thumb):
+        Image.open(f).convert('RGB').save(f, dpi=(72, 72), optimize=True)
+    return cover, thumb
+
+
 if __name__ == '__main__':
+    if '--store' in sys.argv:
+        print('done:', store())
+        sys.exit(0)
     sizes = logos()
     if '--svg-only' not in sys.argv:
         pictures(sizes)

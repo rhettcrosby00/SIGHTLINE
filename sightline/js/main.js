@@ -21,13 +21,17 @@ import { parseRunKey } from './presets.js';
 import { BRAND, APP_URL, movedFrom, hydrateLogos } from './brand.js';
 import { createWaiverStore, showWaiver, showFullWaiver } from './waiver.js';
 import { DISCLAIMER } from './content/safety.js';
+import { createLicense } from './license.js';
+import { showUnlock } from './unlock.js';
+import { PRO } from './content/pro.js';
+import { isLiveHost } from './features.js';
 
 // Sightline is now Sightrep: move this phone's saved data to the new keys
 // before anything below reads it.
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '5.3';
+export const APP_VERSION = '6.0';
 
 const $ = (id) => document.getElementById(id);
 
@@ -52,21 +56,50 @@ function show(name, { back = false } = {}) {
 hydrateIcons();
 hydrateLogos();   // home and About (js/brand.js)
 
-// ---- The safety waiver comes first, on every device (js/waiver.js) ----
+// ---- First the safety waiver (js/waiver.js), then the key (js/unlock.js) ----
 // index.html starts with <html data-gate="waiver">, which hides every other
-// screen. It's lifted only once this version of the waiver is accepted.
-// Everything that can open by itself (the first-run setup, the ?autostart
-// direct links) waits for `accepted`.
+// screen until both are done: the waiver accepted (this version), and a key
+// that unlocks this phone (sold on Gumroad). Everything that can open by
+// itself (the first-run setup, the ?autostart direct links) waits for `accepted`.
 // TODO accounts: once athletes sign in, also save acceptance on the account
 // and check it at login (js/waiver.js).
 const waiver = createWaiverStore();
-const accepted = waiver.needed()
-  ? (show('waiver'), showWaiver($('screen-waiver')).then((checks) => {
-    waiver.accept(checks);
-    document.documentElement.removeAttribute('data-gate');
-    show('start');
-  }))
-  : Promise.resolve().then(() => document.documentElement.removeAttribute('data-gate'));
+const license = createLicense();
+async function unlockScreen(reason) {
+  document.documentElement.dataset.gate = 'unlock';
+  show('unlock');
+  await showUnlock($('screen-unlock'), license, { reason, preview: !isLiveHost(location.hostname) });
+}
+const accepted = (async () => {
+  let gated = false;
+  if (waiver.needed()) {
+    gated = true;
+    show('waiver');
+    waiver.accept(await showWaiver($('screen-waiver')));
+  }
+  // Last good check over 30 days ago: check now, before asking for the key again.
+  if (license.lockedFor() === 'expired') await license.recheck({ force: true });
+  if (license.needed()) {
+    gated = true;
+    await unlockScreen(license.lockedFor());
+  }
+  document.documentElement.removeAttribute('data-gate');
+  if (gated) show('start');
+})();
+
+// Once a day (when online), check the key is still good on this phone. A key
+// moved to another phone, or refunded, locks this one, but only on the home
+// screen, never mid-session.
+let lockReason = null;
+async function lockIfDue() {
+  if (!lockReason || !$('screen-start').classList.contains('is-active')) return;
+  const reason = lockReason;
+  lockReason = null;
+  await unlockScreen(reason);
+  document.documentElement.removeAttribute('data-gate');
+  show('start');
+}
+accepted.then(() => license.recheck()).then((reason) => { lockReason = reason; lockIfDue(); });
 $('btn-about-waiver').addEventListener('click', () => showFullWaiver());
 $('btn-settings-waiver').addEventListener('click', () => showFullWaiver());
 $('disclaimer').textContent = DISCLAIMER;
@@ -105,7 +138,13 @@ let settingsFrom = 'start';
 const getSettings = initSettings({
   onChange: (s) => { setMusicMode(s.music === 'on'); renderHome(); },
 });
+function renderLicense() {
+  $('license-title').textContent = PRO.settings.title;
+  $('license-status').textContent = license.last4() ? `${PRO.settings.on} · ${PRO.settings.key(license.last4())}` : PRO.settings.on;
+  $('license-hint').textContent = PRO.settings.move;
+}
 function openSettings(from) {
+  renderLicense();
   settingsFrom = from;
   $('settings-back-label').textContent = from === 'focus' ? 'Focus' : 'Home';
   show('settings');
@@ -169,7 +208,7 @@ function renderHome() {
   $('btn-move-open').hidden = !!m;
   $('move-last-desc').textContent = m;
 }
-onHome = renderHome;
+onHome = () => { renderHome(); lockIfDue(); };
 renderHome();
 
 $('btn-focus').addEventListener('click', () => focus.openHub());

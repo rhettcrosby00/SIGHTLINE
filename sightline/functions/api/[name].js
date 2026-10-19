@@ -1,11 +1,12 @@
-// Cloudflare Pages Functions: /api/leaderboard and /api/partner. Turns
+// Cloudflare Pages Functions: /api/leaderboard, /api/partner and /api/license. Turns
 // Cloudflare's request into the plain { method, query, body, ip } that the
 // handlers in api/ take, with the project settings (DATABASE_URL, COACH_PIN)
 // from Cloudflare (context.env). Everything else on the site is plain files.
 import { handle as leaderboard } from '../../api/leaderboard.js';
 import { handle as partner } from '../../api/partner.js';
+import { handle as license } from '../../api/license.js';
 
-const ROUTES = { leaderboard, partner };
+const ROUTES = { leaderboard, partner, license };
 
 const json = (status, body) => new Response(JSON.stringify(body), {
   status,

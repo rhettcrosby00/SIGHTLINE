@@ -22,6 +22,12 @@ export function sqlStore(url) {
       await sql`create index if not exists lb_scores_key on lb_scores (name_key)`;
       await sql`create table if not exists lb_meta (key text primary key, value text not null)`;
       await sql`create table if not exists lb_hits (bucket text primary key, count integer not null, reset_at timestamptz not null)`;
+      // License keys: which phone each key is on. A hash of the key, never the key.
+      await sql`create table if not exists lb_licenses (
+        key_hash text primary key,
+        device text not null,
+        bound_at timestamptz not null default now(),
+        moves jsonb not null default '[]')`;
     },
 
     async hit(bucket, windowS, { peek = false } = {}) {
@@ -103,6 +109,22 @@ export function sqlStore(url) {
     },
     async setMeta(k, v) {
       await sql`insert into lb_meta (key, value) values (${k}, ${v}) on conflict (key) do update set value = excluded.value`;
+    },
+
+    async getLicense(hash) {
+      const rows = await sql`select device, bound_at, moves from lb_licenses where key_hash = ${hash}`;
+      const r = rows[0];
+      return r ? { hash, device: r.device, boundAt: new Date(r.bound_at).getTime(), moves: (r.moves ?? []).map(Number) } : null;
+    },
+    async putLicense({ hash, device, boundAt, moves }) {
+      await sql`
+        insert into lb_licenses (key_hash, device, bound_at, moves)
+        values (${hash}, ${device}, ${new Date(boundAt).toISOString()}::timestamptz, ${JSON.stringify(moves)}::jsonb)
+        on conflict (key_hash) do update set device = excluded.device, bound_at = excluded.bound_at, moves = excluded.moves`;
+    },
+    async resetLicense(hash) {
+      const rows = await sql`delete from lb_licenses where key_hash = ${hash} returning key_hash`;
+      return rows.length > 0;
     },
   };
 }

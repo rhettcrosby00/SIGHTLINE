@@ -25,3 +25,8 @@ Every shot starts with the safety waiver already accepted, so it opens where the
 normally would. `params: 'waiver=0'` starts on a brand-new phone (the waiver first);
 `waiver=old` pretends only the previous version was accepted (the new one shows).
 `nostorage=1` blocks saved data altogether (the waiver shows every visit).
+
+Every shot also starts with a Sightrep key already unlocking the phone (checked just now).
+`license=0` is a phone with no key (the unlock screen after the waiver), `license=locked` one
+whose key moved to another phone, `license=old` one whose last good check was 40 days ago.
+Locally, test keys work: `TEST-OK-anything`, `TEST-REFUNDED-anything`.

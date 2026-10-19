@@ -65,7 +65,7 @@
     @media (prefers-reduced-motion: reduce) { .splash { transition: none; } }
     /* The safety waiver comes first: until it's accepted (js/main.js lifts the
        gate), no other screen is shown or reachable, even before the app loads. */
-    :root[data-gate] .screen:not(#screen-waiver) { display: none !important; }
+    :root[data-gate] .screen:not(#screen-waiver):not(#screen-unlock) { display: none !important; }
   </style>
 </head>
 <body>
@@ -77,6 +77,8 @@
 
   <!-- The safety waiver: the first screen on every device until it's accepted (js/waiver.js) -->
   <section id="screen-waiver" class="screen screen--waiver" aria-labelledby="waiver-title"></section>
+  <!-- Then the key that unlocks this phone (js/unlock.js) -->
+  <section id="screen-unlock" class="screen screen--unlock" aria-labelledby="unlock-title"></section>
 
   <!-- Home: the two sides -->
   <section id="screen-start" class="screen screen--home is-active" aria-labelledby="app-title">
@@ -158,6 +160,13 @@
       <h2 id="settings-title" class="nav__title">Settings</h2>
     </header>
     <div id="settings-body" class="groups"></div>
+    <section id="license-group" class="group" aria-labelledby="license-title">
+      <h3 id="license-title" class="group__title"></h3>
+      <div class="group__rows"><div class="setting setting--stack">
+        <span id="license-status" class="setting__label"></span>
+        <p id="license-hint" class="setting__hint"></p>
+      </div></div>
+    </section>
     <section class="group" aria-labelledby="legal-title">
       <h3 id="legal-title" class="group__title">Legal</h3>
       <div class="list">
