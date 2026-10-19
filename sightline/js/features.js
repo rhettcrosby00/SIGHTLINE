@@ -9,10 +9,9 @@ export const FEATURES = {
 };
 
 // The live site's addresses. Anything else (preview links, localhost) is a preview.
-// app.sightrep.app is the app; sightrep.app the marketing site; the vercel.app
-// address is the old one. On Cloudflare Pages, <project>.pages.dev is the live
-// site and <branch>.<project>.pages.dev a preview.
-const LIVE_HOSTS = ['app.sightrep.app', 'sightrep.app', 'sightline-psi.vercel.app'];
+// app.sightrep.app is the app; sightrep.app the website. On Cloudflare Pages,
+// <project>.pages.dev is the live site and <branch>.<project>.pages.dev a preview.
+const LIVE_HOSTS = ['app.sightrep.app', 'sightrep.app'];
 export const isLiveHost = (host) => LIVE_HOSTS.includes(host) || /^[^.]+\.pages\.dev$/.test(host);
 
 export function isOn(name, { host = globalThis.location?.hostname ?? '', search = globalThis.location?.search ?? '' } = {}) {

@@ -164,7 +164,7 @@ test('Old links and home-screen shortcuts still open the app', () => {
 test('Feature flags: approved features don’t linger as switches; previews stay off live; parked ones are off', () => {
   const stale = Object.entries(FEATURES).filter(([, v]) => v !== 'preview' && v !== false).map(([k]) => k);
   assert(stale.length === 0, `approved flags to remove: ${stale}`);
-  for (const host of ['sightline-psi.vercel.app', 'sightline-git-x.vercel.app', 'localhost']) assert(!isOn('partner', { host, search: '' }), `Partner mode is parked, but on at ${host}`);
+  for (const host of ['app.sightrep.app', 'feature-x.sightrep.pages.dev', 'localhost']) assert(!isOn('partner', { host, search: '' }), `Partner mode is parked, but on at ${host}`);
   // The Sightrep addresses count as live: preview features stay off there.
   FEATURES.__live = 'preview';
   try {
@@ -176,8 +176,8 @@ test('Feature flags: approved features don’t linger as switches; previews stay
   // The mechanism still works for the next preview feature.
   FEATURES.__test = 'preview';
   try {
-    assert(!isOn('__test', { host: 'sightline-psi.vercel.app', search: '' }), 'a preview flag is off on the live site');
-    assert(isOn('__test', { host: 'sightline-git-x.vercel.app', search: '' }) && isOn('__test', { host: 'localhost', search: '' }), 'on in previews');
+    assert(!isOn('__test', { host: 'app.sightrep.app', search: '' }), 'a preview flag is off on the live site');
+    assert(isOn('__test', { host: 'feature-x.sightrep.pages.dev', search: '' }) && isOn('__test', { host: 'localhost', search: '' }), 'on in previews');
   } finally {
     delete FEATURES.__test;
   }

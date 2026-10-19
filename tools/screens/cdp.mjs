@@ -155,7 +155,11 @@ async function shoot(shot, size, theme) {
         ? `!!document.querySelector(${JSON.stringify(want)})` : `document.body.innerText.toLowerCase().includes(${JSON.stringify(want.toLowerCase())})` });
       if (!ok.result.value) miss.push(want);
     }
-    const png = await s('Page.captureScreenshot', { format: 'png' });
+    // fullPage: the whole page top to bottom (the website), not just the first screen.
+    const tall = shot.fullPage ? (await s('Runtime.evaluate', { expression: 'document.documentElement.scrollHeight', returnByValue: true })).result.value : 0;
+    const png = await s('Page.captureScreenshot', shot.fullPage
+      ? { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: tall, scale: 1 } }
+      : { format: 'png' });
     const file = `${shot.name}__${size}-${theme}`;
     writeFileSync(join(OUT, `${file}.png`), Buffer.from(png.data, 'base64'));
     const out = { file, error: err, ...JSON.parse(c.result.value) };

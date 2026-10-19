@@ -17,9 +17,7 @@ const MOVE_QUICK = [['click', '#btn-move'], ['click', '[data-run="game:quick"]']
 
 export const SHOTS = [
   // Home: two choices only, each with Run last once something has run.
-  { name: 'home', expect: ['#moved[hidden]', '#btn-focus-open:not([hidden])', '#btn-move-open:not([hidden])', 'Choose a preset', 'Reps for your eyes.', 'js:document.title === "Sightrep"', 'js:!/sightline/i.test(document.body.innerText)'] },
-  // The old address only: "Sightrep has a new home" (?moved=1 shows it here). The plain home shot shows none.
-  { name: 'home-moved', params: 'moved=1', last: { focus: 'game:standard', move: 'game:speed' }, expect: ['Sightrep has a new home', 'Open the new app', '#moved:not([hidden])'] },
+  { name: 'home', expect: ['#btn-focus-open:not([hidden])', '#btn-move-open:not([hidden])', 'Choose a preset', 'Reps for your eyes.', 'js:document.title === "Sightrep"', 'js:!/sightline/i.test(document.body.innerText)'] },
   // A phone with Sightline-era saved data: everything carries over under the new keys.
   { name: 'home-migrated', params: 'legacy=1', set: { appearance: 'dark', cue: 'EYES UP' }, last: { focus: 'game:standard', move: 'game:speed' }, player: 'Jordan',
     expect: ['Run last', 'Standard · 8 min', 'js:document.documentElement.dataset.appearance === JSON.parse(localStorage.getItem("sightrep.settings.v1")).appearance', 'js:JSON.parse(localStorage.getItem("sightrep.name.v1")) === "Jordan"',
