@@ -59,6 +59,17 @@ test('Sale notice: checked with Gumroad, kept with the key encrypted, one Start 
   const note = JSON.parse(await v.store.getMeta('ping'));
   assert(note.status === 'no license key in the notice' && note.fields.join() === 'email,product_id,sale_id' && !JSON.stringify(note).includes(BUYER), `field names only: ${JSON.stringify(note)}`);
   assert(v.store.purchaseRows().length === 0, 'nothing kept');
+  // The email doesn't send (Resend down or the key wrong): noted, and Gumroad's retry sends it.
+  const f = world();
+  const send = f.sent.push.bind(f.sent);
+  let down = true;
+  f.sent.push = (m) => { if (down) throw new Error('resend down'); return send(m); };
+  let threw = false;
+  try { await f.p.sale(SALE); } catch { threw = true; }
+  assert(threw && JSON.parse(await f.store.getMeta('ping')).status === 'the email didn’t send (Resend)', 'a failed send is noted for Coach tools');
+  down = false;
+  assert((await f.p.sale(SALE)).ok && f.sent.length === 1 && f.store.purchaseRows().length === 1, 'Gumroad’s retry sends it');
+  assert((await f.p.sale(SALE)).again && f.sent.length === 1, 'once');
 });
 
 test('Sale notice endpoint: only with the secret in its address; answers Gumroad as a form', async () => {

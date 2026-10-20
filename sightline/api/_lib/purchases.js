@@ -98,7 +98,8 @@ export function createPurchases(store, { verify, licensing, mail, secret, origin
       if (known?.emailedAt) { await note('ok (already sent)'); return { ok: true, again: true }; }   // Gumroad retried
       const purchase = known ?? { saleId, email, keyEnc: await sealKey(key, secret), keyHash: keyHash(key), at: now() };
       if (!known) await store.putPurchase(purchase);
-      await sendLink(purchase);
+      // A failed send answers 500 (Gumroad tries again within 3 hours); noted so it shows.
+      try { await sendLink(purchase); } catch (err) { await note('the email didn’t send (Resend)'); throw err; }
       await store.markEmailed(saleId, now());
       await note(form.test === 'true' ? 'ok (test sale)' : 'ok');
       return { ok: true };
