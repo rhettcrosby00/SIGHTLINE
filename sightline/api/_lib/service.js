@@ -206,7 +206,8 @@ export function createService(store, { pin = '', secret = 'sightline', now = () 
           return { at: r.at, how: r.how, who: p ? maskEmail(p.email) : `key •••${r.keyHash.slice(-4)}`, phones: await store.phonesFor(r.keyHash, since) };
         }));
         const ping = JSON.parse((await store.getMeta('ping')) ?? 'null');
-        return { signins, ping };
+        const refused = JSON.parse((await store.getMeta('ping-refused')) ?? 'null');   // a wrong k in Gumroad's Ping address
+        return { signins, ping, refused };
       }
       if (action === 'setup-steps') {   // the last 30 days, in the order of the setup
         const totals = await store.stepTotals(now() - 30 * 86400000);

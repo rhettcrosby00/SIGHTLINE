@@ -11,6 +11,7 @@ import { createService } from '../api/_lib/service.js';
 import { memoryStore } from '../api/_lib/memory-store.js';
 import { OUTBOX } from '../api/_lib/mail.js';
 import { handle as gumroad } from '../api/gumroad.js';
+import { openStore } from '../api/_lib/open-store.js';
 import { startEmail, codeEmail } from '../api/_lib/email-words.js';
 import { createLicense } from '../js/license.js';
 
@@ -70,6 +71,12 @@ test('Sale notice: checked with Gumroad, kept with the key encrypted, one Start 
   down = false;
   assert((await f.p.sale(SALE)).ok && f.sent.length === 1 && f.store.purchaseRows().length === 1, 'Gumroad’s retry sends it');
   assert((await f.p.sale(SALE)).again && f.sent.length === 1, 'once');
+  // Gumroad's license check doesn't answer: noted, and Gumroad retries.
+  const d = world();
+  const noCheck = createPurchases(d.store, { verify: async () => { throw new Error('down'); }, licensing: d.licensing, mail: { send: async () => ({ ok: true }) }, secret: 'link-secret', now: d.now });
+  let failed = false;
+  try { await noCheck.sale(SALE); } catch { failed = true; }
+  assert(failed && JSON.parse(await d.store.getMeta('ping')).status === 'couldn’t reach Gumroad’s license check', 'a failed license check is noted');
 });
 
 test('Sale notice endpoint: only with the secret in its address; answers Gumroad as a form', async () => {
@@ -82,6 +89,18 @@ test('Sale notice endpoint: only with the secret in its address; answers Gumroad
   const ok = await gumroad({ method: 'POST', query: { k: 'ping-secret-123' }, body: form }, env);
   assert(ok.status === 200 && ok.body.ok && OUTBOX.length === before + 1 && OUTBOX.at(-1).text.includes('http://localhost:5175/?start#t='), 'right secret: the email (to the local outbox without RESEND_API_KEY)');
   assert((await gumroad({ method: 'GET', query: { action: 'outbox' } }, env)).status === 404, 'the outbox only shows with TEST_MAIL=1');
+  // A line break pasted with the secret is ignored; a wrong k is noted (its time only) for Coach tools.
+  const pasted = await gumroad({ method: 'POST', query: { k: 'ping-secret-123' }, body: { ...form, sale_id: 'T-2' } }, { ...env, PING_SECRET: 'ping-secret-123\n' });
+  assert(pasted.status === 200 && pasted.body.ok, 'a pasted line break doesn’t matter');
+  const store = await openStore(env);
+  const later = Date.now() + DAY;
+  const refuse = (ms) => gumroad({ method: 'POST', query: { k: 'nope' }, body: form }, env, { now: () => later + ms });
+  assert((await refuse(0)).status === 403 && JSON.parse(await store.getMeta('ping-refused')).at === later, 'a wrong k is noted');
+  await refuse(60000);
+  assert(JSON.parse(await store.getMeta('ping-refused')).at === later, 'at most every 10 minutes');
+  await refuse(11 * 60000);
+  assert(JSON.parse(await store.getMeta('ping-refused')).at === later + 11 * 60000, 'then again');
+  assert(!(await store.getMeta('ping-refused')).includes('nope'), 'only the time');
   const adapter = read('functions/api/[name].js');
   assert(/application\\\/x-www-form-urlencoded/.test(adapter) && /gumroad/.test(adapter), 'Gumroad’s form is read; the route exists');
 });
@@ -160,9 +179,10 @@ test('Sign-in log: every unlock, how it happened; Coach tools mask the email and
   assert(out.signins.every((s) => s.who === 'j•••@example.com' && s.phones === 4), JSON.stringify(out.signins[0]));
   assert(!JSON.stringify(out).includes('jordan') && !JSON.stringify(out).includes(KEY), 'no full email or key leaves the server');
   assert(maskEmail('A@b.co') === 'a•••@b.co', 'masking');
-  assert(out.ping?.status === 'ok', 'the last sale notice, for setting up');
+  assert(out.ping?.status === 'ok' && out.refused === null, 'the last sale notice, for setting up');
   const ui = read('js/score/ui.js');
   assert(/Recent sign-ins/.test(ui) && /is-flagged/.test(ui) && /x\.phones >= 3/.test(ui), 'Coach tools show them, 3+ phones flagged');
+  assert(/s\.refused\.at > s\.ping\.at/.test(ui) && /turned away/.test(ui), 'and a turned-away notice, when it’s newer than the last good one');
 });
 
 test('The phone: a link or code saves the key like a pasted one; the link leaves the address bar', async () => {

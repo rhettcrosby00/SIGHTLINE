@@ -88,7 +88,8 @@ export function createPurchases(store, { verify, licensing, mail, secret, origin
       const key = cleanKey(form.license_key);
       if (!saleId || !EMAIL.test(email)) { await note('missing sale or email'); return { ok: false, reason: 'missing' }; }
       if (!key) { await note('no license key in the notice'); return { ok: false, reason: 'no-key' }; }
-      const g = await verify(key);
+      let g;
+      try { g = await verify(key); } catch (err) { await note('couldn’t reach Gumroad’s license check'); throw err; }
       const test = testKeys && key.startsWith('TEST-');   // previews and local runs only
       if (!g.valid || (!test && (cleanEmail(g.email) !== email || (g.saleId && g.saleId !== saleId)))) {
         await note('the key didn’t match the sale');
