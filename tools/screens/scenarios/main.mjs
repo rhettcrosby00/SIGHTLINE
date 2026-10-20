@@ -57,7 +57,7 @@ export const SHOTS = [
   // Coach tools (PIN 2468 on the local test API): website reviews wait here for the owner.
   // Pending ones come from the site-reviews set (run it first to see them listed).
   { name: 'coach-reviews', steps: [['click', '#btn-board'], ['click', '.lb-coach'], ['type', '#lb-pin', '2468'], ['click', '[data-act="unlock"]'], ['waitFor', '.lb-review', 8000], ['wait', 300]],
-    expect: ['Website reviews', 'Waiting for you', 'Approve every honest review, good or bad. Reject only spam, abuse, or reviews not about Sightrep.', 'On the website', 'Got it free or knows the team', 'Add the “Got it free” label', 'First-time setup (last 30 days)', 'Unlocked a new phone'] },
+    expect: ['Website reviews', 'Waiting for you', 'Approve every honest review, good or bad. Reject only spam, abuse, or reviews not about Sightrep.', 'On the website', 'Got it free or knows the team', 'Add the “Got it free” label', 'First-time setup (last 30 days)', 'Unlocked a new phone', 'Recent sign-ins', 'Last sale notice from Gumroad'] },
   { name: 'settings', steps: [['click', '#btn-settings']], expect: ['Cue word', 'Sounds'] },
   { name: 'settings-end', steps: [['click', '#btn-settings'], ['scrollEnd']], expect: ['Countdown before the first set'], combos: 'few' },
   { name: 'about', steps: [['click', '#btn-about']] },

@@ -37,6 +37,8 @@ export function stepLabel(id, { installStep = true } = {}) {
 }
 
 const safeStorage = () => { try { return globalThis.localStorage ?? null; } catch { return null; } };
+// The purchase email, when the phone unlocked by the email's link or a code (this visit only).
+const buyerEmail = () => { try { return globalThis.sessionStorage?.getItem('sightrep.email') ?? ''; } catch { return ''; } };
 
 export function createOnboarding({ storage = safeStorage(), skip = false, install, lastName, updateSetting = () => {}, fetch: fetchFn = (...a) => fetch(...a) } = {}) {
   const read = () => { try { return JSON.parse(storage.getItem(KEY) ?? 'null'); } catch { return null; } };
@@ -63,7 +65,7 @@ export function createOnboarding({ storage = safeStorage(), skip = false, instal
       <div class="ob__body ob__body--center">
         <svg class="ob__check" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29"/><path d="M19 33l9 9 17-18"/></svg>
         <h1 id="onboard-title" class="screen-title">${esc(FIRST.ready.title)}</h1>
-        <p class="ob__lead">${esc(FIRST.ready.line)}</p>
+        <p class="ob__lead">${esc(buyerEmail() ? FIRST.ready.lineFor(buyerEmail()) : FIRST.ready.line)}</p>
       </div>
       <div class="screen__foot ob__foot"><button type="button" class="btn btn--primary btn--big btn--block" data-ob="next">${esc(FIRST.ready.next)}</button></div>`,
     yours: (pick) => {

@@ -35,7 +35,7 @@ import { isLiveHost } from './features.js';
 renameSavedData();
 
 // Keep in step with CACHE_VERSION in sw.js.
-export const APP_VERSION = '6.5';
+export const APP_VERSION = '6.6';
 
 const $ = (id) => document.getElementById(id);
 
@@ -81,16 +81,17 @@ const standalone = install.standalone();
 const freshPhone = !license.hasRecord();   // no key was ever entered here
 const fromStart = params.has('start');     // "Start Sightrep" on the Gumroad page
 const handoff = /^#h=/.test(location.hash) ? location.hash.slice(3) : '';   // a computer's QR code
-if (handoff) history.replaceState(null, '', location.pathname + location.search);   // the secret leaves the address bar
+const linkToken = /^#t=/.test(location.hash) ? location.hash.slice(3) : '';   // the purchase email's Start Sightrep link
+if (handoff || linkToken) history.replaceState(null, '', location.pathname + location.search);   // the secret leaves the address bar
 const onboarding = createOnboarding({ install, lastName, skip: params.has('noguide') || params.has('autostart'),
   updateSetting: (k, v) => updateSetting(k, v) });
 let startFirst = () => {};   // the first session, once FOCUS is set up (below)
-async function unlockScreen(reason, { autoKey = '', note = '' } = {}) {
+async function unlockScreen(reason, { autoKey = '', note = '', token = '' } = {}) {
   document.documentElement.dataset.gate = 'unlock';
   show('unlock');
   const opts = { reason, preview: !isLiveHost(location.hostname), activate: { app: standalone, restore: freshPhone } };
-  if (fromStart && !handoff && !reason && install.device().os === 'desktop') return showDesktopStart($('screen-unlock'), license, opts);
-  return showUnlock($('screen-unlock'), license, { ...opts, autoKey, note, mode: standalone ? 'app' : fromStart || handoff ? 'buyer' : 'sales' });
+  if (fromStart && !handoff && !reason && install.device().os === 'desktop') return showDesktopStart($('screen-unlock'), license, { ...opts, token });
+  return showUnlock($('screen-unlock'), license, { ...opts, autoKey, autoToken: token, note, mode: standalone ? 'app' : fromStart || handoff || token ? 'buyer' : 'sales' });
 }
 function restartWithSetup(out) {
   if (!freshPhone || !out?.data || !restoreBackup(out.data, { keepWaiver: !waiver.needed() })) return false;
@@ -107,7 +108,7 @@ const accepted = (async () => {
     gated = true;
     if (fromStart && freshPhone) onboarding.track('opened');
     const fromQr = handoff ? await takeHandoff(handoff) : {};
-    unlocked = await unlockScreen(license.lockedFor(), { autoKey: fromQr.key, note: fromQr.problem });
+    unlocked = await unlockScreen(license.lockedFor(), { autoKey: fromQr.key, note: fromQr.problem, token: linkToken });
     if (freshPhone) onboarding.track('unlocked');
     if (restartWithSetup(unlocked)) return new Promise(() => {});
   }

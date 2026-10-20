@@ -54,7 +54,8 @@ export async function gumroadVerify(key, { productId, testKeys = false, fetch = 
   if (!res.ok || !body) throw new HttpError(503, 'The store didn’t answer.');
   if (!body.success) return { valid: false };
   const p = body.purchase ?? {};
-  return { valid: true, refunded: !!(p.refunded || p.chargebacked || p.disputed) };
+  // email and saleId: checked against Gumroad's sale notice (api/_lib/purchases.js).
+  return { valid: true, refunded: !!(p.refunded || p.chargebacked || p.disputed), email: p.email ?? '', saleId: p.sale_id ?? '' };
 }
 
 // Why a saved setup can't be kept, or '' when it's fine: an object of the BACKUP_KEYS items, as text.
@@ -67,7 +68,11 @@ export function backupProblem(data) {
 // verify(key) → { valid, refunded }. Answers { ok: true, moved?, free?, data? } or { ok: false, reason }:
 // invalid | refunded | moved (the key is on another phone) | installed (it moved into this
 // phone's home-screen app) | moves (moved too often) | busy.
-export function createLicensing(store, { verify, now = () => Date.now() }) {
+// How a phone got its key, for the sign-in log in Coach tools (sharing shows up there).
+export const HOW = ['paste', 'typed', 'qr', 'link', 'code'];
+
+// log({ hash, device, how }): called after each successful unlock (api/_lib/purchases.js keeps it).
+export function createLicensing(store, { verify, now = () => Date.now(), log = async () => {} }) {
   const read = ({ key, device } = {}) => {
     if (!PHONE.test(String(device ?? ''))) throw new HttpError(400, 'Bad request.');
     return { key: cleanKey(key), device: String(device) };
@@ -91,13 +96,15 @@ export function createLicensing(store, { verify, now = () => Date.now() }) {
       const rec = await store.getLicense(hash);
       const t = now();
       const saved = async () => (input.restore === true ? { data: await store.getKeyData(hash) } : {});
+      const how = HOW.includes(input.how) ? input.how : 'typed';
       if (!rec) await store.putLicense({ hash, device, boundAt: t, moves: [], appMove: null });
-      if (!rec || rec.device === device) return { ok: true, moved: false, ...(await saved()) };
+      if (!rec || rec.device === device) { await log({ hash, device, how }); return { ok: true, moved: false, ...(await saved()) }; }
       const moves = rec.moves.filter((m) => m > t - KEYS.moveDays * DAY);
       const free = input.app === true && !rec.appMove;   // the first move into a home-screen app
       if (!free && moves.length >= KEYS.moves) return { ok: false, reason: 'moves' };
       await store.putLicense({ hash, device, boundAt: t, moves: free ? moves : [...moves, t],
         appMove: free ? { at: t, from: rec.device } : rec.appMove ? { at: rec.appMove.at, from: null } : null });
+      await log({ hash, device, how });
       return { ok: true, moved: true, free, ...(await saved()) };
     },
 

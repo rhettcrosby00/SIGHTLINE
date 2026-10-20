@@ -5,6 +5,8 @@
 // secret after the "#", which browsers never send to a server, so the server can't read the
 // key and nothing readable is in the link. The phone takes the copy once and decrypts it.
 // "Continue on this computer" unlocks the computer instead. Words: js/content/firstrun.js.
+// The purchase email's "Start Sightrep" link opened on a computer (6.6): the QR code is that same
+// link (still unused), so the phone uses it; or the computer does, with Continue on this computer.
 
 import { FIRST } from './content/firstrun.js';
 import { PRO } from './content/pro.js';
@@ -56,7 +58,8 @@ export async function takeHandoff(part, { fetch: fetchFn = (...a) => fetch(...a)
 
 // On a computer: paste the key → a QR code for the phone, or Continue on this computer.
 // Resolves with license.activate's answer when this computer is unlocked.
-export function showDesktopStart(el, license, { activate = {}, preview = false, origin = location.origin, fetch: fetchFn = (...a) => fetch(...a) } = {}) {
+export function showDesktopStart(el, license, { activate = {}, preview = false, origin = location.origin, token = '', fetch: fetchFn = (...a) => fetch(...a) } = {}) {
+  if (token) return linkOnDesktop(el, license, { activate, origin, token });
   const canPaste = !!globalThis.navigator?.clipboard?.readText;
   el.innerHTML = `
     <header class="unlock__head">
@@ -118,6 +121,45 @@ export function showDesktopStart(el, license, { activate = {}, preview = false, 
       if (out.ok) { say(PRO.unlocked); setTimeout(resolve, 900, out); return; }
       here.disabled = false;
       say(PRO.errors[out.reason] ?? PRO.errors.store, true);
+    });
+  });
+}
+
+// The email link on a computer: a QR code of the same link, or Continue on this computer.
+function linkOnDesktop(el, license, { activate, origin, token }) {
+  el.innerHTML = `
+    <header class="unlock__head">
+      <div class="unlock__logo">${logo('horizontal')}</div>
+      <h1 id="unlock-title" class="screen-title">${esc(FIRST.desktop.heading)}</h1>
+    </header>
+    <figure class="handoff">
+      <div class="handoff__code">${qrSvg(`${origin}/?start#t=${token}`, { label: 'QR code: opens your Start Sightrep link on your phone' })}</div>
+      <figcaption class="unlock__help">${esc(FIRST.link.qr)}</figcaption>
+    </figure>
+    <button type="button" class="btn btn--secondary btn--block" data-act="here">${esc(FIRST.desktop.here)}</button>
+    <p class="lbn__hint unlock__msg" role="status" aria-live="polite"></p>
+    <button type="button" class="btn btn--secondary btn--block" data-act="resend" hidden>${esc(FIRST.link.resend)}</button>`;
+  const msg = el.querySelector('.unlock__msg');
+  const say = (text, bad = false) => { msg.textContent = text; msg.classList.toggle('is-bad', bad); };
+  return new Promise((resolve) => {
+    el.querySelector('[data-act="here"]').addEventListener('click', async (e) => {
+      e.currentTarget.disabled = true;
+      say(FIRST.link.unlocking);
+      const out = await license.redeem(token, activate);
+      if (out.ok) {
+        try { if (out.email) sessionStorage.setItem('sightrep.email', out.email); } catch { /* blocked */ }
+        say(PRO.unlocked);
+        setTimeout(resolve, 900, out);
+        return;
+      }
+      e.currentTarget.disabled = false;
+      say(out.said ?? PRO.errors[out.reason] ?? PRO.errors.store, true);
+      if (out.reason === 'link-expired') el.querySelector('[data-act="resend"]').hidden = false;
+    });
+    el.querySelector('[data-act="resend"]').addEventListener('click', async (e) => {
+      e.currentTarget.disabled = true;
+      const out = await license.resend(token);
+      say(out.ok ? FIRST.link.sent : out.said ?? PRO.errors[out.reason] ?? PRO.errors.store, !out.ok);
     });
   });
 }

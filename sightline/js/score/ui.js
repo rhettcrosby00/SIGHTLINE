@@ -294,7 +294,9 @@ export function initLeaderboard({ show, getSettings }) {
   });
 
   // ---- Coach tools (PIN) ------------------------------------------------------
-  const coachState = { players: [], player: '', panel: '', msg: '', bad: false, scores: [], reviews: { pending: [], approved: [] }, steps: [] };
+  const HOW_WORDS = { link: 'email link', code: 'email code', paste: 'pasted key', typed: 'typed key', qr: 'QR code' };
+  const day = (at) => new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const coachState = { players: [], player: '', panel: '', msg: '', bad: false, scores: [], reviews: { pending: [], approved: [] }, steps: [], signins: [], ping: null, refused: null };
 
   async function renderCoach() {
     const s = coachState;
@@ -359,6 +361,16 @@ export function initLeaderboard({ show, getSettings }) {
             : '<p class="setting__hint">No numbers yet.</p>'}
         </div>
       </div></section>
+      <section class="group"><h3 class="group__title">Recent sign-ins</h3><div class="group__rows">
+        <div class="setting setting--stack">
+          <p class="setting__hint">Each phone unlocked: when, how, and whose purchase. 3 or more phones for one key in 30 days is flagged.</p>
+          <p class="setting__hint">Last sale notice from Gumroad: ${s.ping ? `${esc(day(s.ping.at))} · ${esc(s.ping.status)}` : 'none yet'}</p>
+          ${s.refused && (!s.ping || s.refused.at > s.ping.at) ? `<p class="setting__hint">A sale notice was turned away ${esc(day(s.refused.at))}: the secret after k= in Gumroad’s Ping address doesn’t match PING_SECRET.</p>` : ''}
+          ${s.signins.length ? `<ul class="lb-scores lb-signins">${s.signins.map((x) => `<li${x.phones >= 3 ? ' class="is-flagged"' : ''}>
+            <span>${esc(day(x.at))} · ${esc(HOW_WORDS[x.how] ?? x.how)} · ${esc(x.who)}</span><b>${x.phones} ${x.phones === 1 ? 'phone' : 'phones'}</b></li>`).join('')}</ul>`
+            : '<p class="setting__hint">No sign-ins yet.</p>'}
+        </div>
+      </div></section>
       <section class="group"><h3 class="group__title">Player</h3><div class="group__rows">
         <div class="setting setting--stack">
           <label class="setting__label" for="lb-player">Name</label>
@@ -418,6 +430,7 @@ export function initLeaderboard({ show, getSettings }) {
     coachState.scores = coachState.player && token ? (await coach.run(token, 'scores', { name: coachState.player }).catch(() => ({ scores: [] }))).scores : [];
     if (token) coachState.reviews = await coach.run(token, 'reviews').catch(() => coachState.reviews);
     if (token) coachState.steps = (await coach.run(token, 'setup-steps').catch(() => ({ steps: coachState.steps }))).steps;
+    if (token) Object.assign(coachState, await coach.run(token, 'signins').catch(() => ({})));
   }
 
   coachEl.addEventListener('change', async (e) => {

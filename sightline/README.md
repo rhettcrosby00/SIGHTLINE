@@ -179,6 +179,20 @@ distance, rep style (Out and back, First step, Cone to cone) and pace.
     secret that only the QR link carries after the `#` (browsers never send that part), so the
     server keeps only a scrambled copy it can't read (`lb_handoffs`), for 10 minutes, once.
     "Continue on this computer" unlocks the computer instead.
+  - **Start Sightrep by email** (6.6, `api/gumroad.js`, `api/_lib/purchases.js`, `api/_lib/mail.js`):
+    Gumroad's sale notice (Settings → Advanced → Ping:
+    `https://app.sightrep.app/api/gumroad?k=<PING_SECRET>`) is checked with Gumroad's license check
+    (the email and sale must match) and kept: email, sale ID, the key encrypted with `LINK_SECRET`
+    (never change it: stored keys couldn't be read), the key's hash. Our "Start Sightrep" email
+    (Resend, `RESEND_API_KEY`, from start@sightrep.app, replies to support@) has one button:
+    `app.sightrep.app/?start#t=<token>`, once, for 7 days, stored only as a hash; it unlocks the
+    phone with the usual rules (moves, the device limit). A used or expired link offers "Email me
+    a new link". "Get a code by email" (and the home-screen app's welcome) sends a 6-digit code:
+    10 minutes, 5 tries, the same answer for any address. On a computer, the link shows a QR code
+    of itself. Every unlock (link, code, pasted, typed, QR) is logged for Coach tools → Recent
+    sign-ins (masked email, phones in 30 days, 3+ flagged), with the last sale notice's status
+    (field names only). Without `RESEND_API_KEY` nothing is sent: the local test API shows the
+    outbox at `/api/gumroad?action=outbox` (TEST_MAIL=1).
   - **Step totals:** each setup step reached is counted once per phone, as that day's total
     (`lb_funnel`: day, step, count; nothing else). Coach tools → First-time setup (last 30 days).
 - **Install** (`js/install.js`, 6.4): right after a key first unlocks a phone, a full screen shows
@@ -284,8 +298,9 @@ a session). The version number shows at the bottom of the start screen.
 - `api/leaderboard.js`: the leaderboard server (served through `functions/api/[name].js`). It
   checks every score against the most its session could earn, rate-limits, and guards coach
   tools with `COACH_PIN`.
-- Setup: `DATABASE_URL` and `COACH_PIN` in Cloudflare's project settings (see Hosting). The
-  database address never appears in the app.
+- Setup: `DATABASE_URL` and `COACH_PIN` in Cloudflare's project settings (see Hosting), and for
+  email sign-in `RESEND_API_KEY`, `LINK_SECRET` and `PING_SECRET`. The database address never
+  appears in the app.
 - `/api/leaderboard?action=health` shows `{ db, coach }` (true/false only).
 
 ## Website reviews

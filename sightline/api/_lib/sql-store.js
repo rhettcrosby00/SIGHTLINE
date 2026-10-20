@@ -42,6 +42,35 @@ export function sqlStore(url) {
         step text not null,
         count integer not null default 0,
         primary key (day, step))`;
+      // 6.6: purchases from Gumroad's sale notice (the key only encrypted), "Start Sightrep" links
+      // and sign-in codes (only hashes), and every unlock (Coach tools: Recent sign-ins).
+      await sql`create table if not exists lb_purchases (
+        sale_id text primary key,
+        email text not null,
+        key_enc text not null,
+        key_hash text not null,
+        created_at timestamptz not null default now(),
+        emailed_at timestamptz)`;
+      await sql`create index if not exists lb_purchases_email on lb_purchases (email)`;
+      await sql`create index if not exists lb_purchases_key on lb_purchases (key_hash)`;
+      await sql`create table if not exists lb_tokens (
+        token_hash text primary key,
+        sale_id text not null,
+        expires_at timestamptz not null,
+        used_at timestamptz)`;
+      await sql`create table if not exists lb_codes (
+        email_hash text primary key,
+        sale_id text not null,
+        code_hash text not null,
+        expires_at timestamptz not null,
+        tries integer not null default 0)`;
+      await sql`create table if not exists lb_signins (
+        id bigserial primary key,
+        at timestamptz not null default now(),
+        key_hash text not null,
+        device text not null,
+        how text not null)`;
+      await sql`create index if not exists lb_signins_key on lb_signins (key_hash, at)`;
       await sql`create table if not exists lb_key_data (
         key_hash text primary key,
         data jsonb not null,
@@ -151,6 +180,60 @@ export function sqlStore(url) {
         insert into lb_licenses (key_hash, device, bound_at, moves, app_move)
         values (${hash}, ${device}, ${new Date(boundAt).toISOString()}::timestamptz, ${JSON.stringify(moves)}::jsonb, ${appMove ? JSON.stringify(appMove) : null}::jsonb)
         on conflict (key_hash) do update set device = excluded.device, bound_at = excluded.bound_at, moves = excluded.moves, app_move = excluded.app_move`;
+    },
+    async putPurchase({ saleId, email, keyEnc, keyHash, at }) {
+      await sql`insert into lb_purchases (sale_id, email, key_enc, key_hash, created_at)
+        values (${saleId}, ${email}, ${keyEnc}, ${keyHash}, ${new Date(at).toISOString()}::timestamptz) on conflict (sale_id) do nothing`;
+    },
+    async getPurchase(saleId) {
+      const r = (await sql`select sale_id, email, key_enc, key_hash, created_at, emailed_at from lb_purchases where sale_id = ${saleId}`)[0];
+      return r ? { saleId: r.sale_id, email: r.email, keyEnc: r.key_enc, keyHash: r.key_hash, at: new Date(r.created_at).getTime(), emailedAt: r.emailed_at ? new Date(r.emailed_at).getTime() : null } : null;
+    },
+    async purchasesByEmail(email) {
+      const rows = await sql`select sale_id, email from lb_purchases where email = ${email} order by created_at desc limit 5`;
+      return rows.map((r) => ({ saleId: r.sale_id, email: r.email }));
+    },
+    async purchaseByKeyHash(hash) {
+      const r = (await sql`select sale_id, email from lb_purchases where key_hash = ${hash} order by created_at desc limit 1`)[0];
+      return r ? { saleId: r.sale_id, email: r.email } : null;
+    },
+    async markEmailed(saleId, at) {
+      await sql`update lb_purchases set emailed_at = ${new Date(at).toISOString()}::timestamptz where sale_id = ${saleId}`;
+    },
+    async putToken({ hash, saleId, expiresAt }) {
+      await sql`insert into lb_tokens (token_hash, sale_id, expires_at) values (${hash}, ${saleId}, ${new Date(expiresAt).toISOString()}::timestamptz)`;
+    },
+    async getToken(hash) {
+      const r = (await sql`select sale_id, expires_at, used_at from lb_tokens where token_hash = ${hash}`)[0];
+      return r ? { saleId: r.sale_id, expiresAt: new Date(r.expires_at).getTime(), usedAt: r.used_at ? new Date(r.used_at).getTime() : null } : null;
+    },
+    async useToken(hash, at) {
+      await sql`update lb_tokens set used_at = ${new Date(at).toISOString()}::timestamptz where token_hash = ${hash}`;
+    },
+    async putCode({ emailHash, saleId, codeHash, expiresAt }) {
+      await sql`insert into lb_codes (email_hash, sale_id, code_hash, expires_at, tries)
+        values (${emailHash}, ${saleId}, ${codeHash}, ${new Date(expiresAt).toISOString()}::timestamptz, 0)
+        on conflict (email_hash) do update set sale_id = excluded.sale_id, code_hash = excluded.code_hash, expires_at = excluded.expires_at, tries = 0`;
+    },
+    async getCode(emailHash) {
+      const r = (await sql`select sale_id, code_hash, expires_at, tries from lb_codes where email_hash = ${emailHash}`)[0];
+      return r ? { saleId: r.sale_id, codeHash: r.code_hash, expiresAt: new Date(r.expires_at).getTime(), tries: r.tries } : null;
+    },
+    async bumpCode(emailHash) {
+      const r = (await sql`update lb_codes set tries = tries + 1 where email_hash = ${emailHash} returning tries`)[0];
+      return r ? r.tries : Infinity;
+    },
+    async deleteCode(emailHash) { await sql`delete from lb_codes where email_hash = ${emailHash}`; },
+    async addSignin({ at, keyHash, device, how }) {
+      await sql`insert into lb_signins (at, key_hash, device, how) values (${new Date(at).toISOString()}::timestamptz, ${keyHash}, ${device}, ${how})`;
+    },
+    async recentSignins(limit = 40) {
+      const rows = await sql`select at, key_hash, device, how from lb_signins order by at desc limit ${limit}`;
+      return rows.map((r) => ({ at: new Date(r.at).getTime(), keyHash: r.key_hash, device: r.device, how: r.how }));
+    },
+    async phonesFor(keyHash, sinceAt) {
+      const r = (await sql`select count(distinct device)::int as n from lb_signins where key_hash = ${keyHash} and at >= ${new Date(sinceAt).toISOString()}::timestamptz`)[0];
+      return r?.n ?? 0;
     },
     async putHandoff(hash, blob, expiresAt) {
       await sql`delete from lb_handoffs where expires_at < now()`;

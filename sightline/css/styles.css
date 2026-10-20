@@ -669,7 +669,14 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .lb-select { width: 100%; min-height: 56px; padding: 0 var(--space-3); border-radius: var(--radius-m); border: var(--line-w) solid var(--line); background: var(--surface); color: var(--text); font: 600 var(--text-body) var(--font-body); }
 .lb-scores { list-style: none; }
 .lb-scores li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--space-3); min-height: var(--tap); border-bottom: var(--line-w) solid var(--line); font-variant-numeric: tabular-nums; }
-.lb-steps li { grid-template-columns: 1fr auto; }
+.lb-steps li, .lb-signins li { grid-template-columns: 1fr auto; }
+.lb-signins li { font-size: 0.9375rem; }
+.lb-signins li.is-flagged b { color: var(--bad); }
+.unlock__email[hidden], .unlock__code[hidden], .unlock__resend[hidden] { display: none; }
+.unlock__email, .unlock__code { display: grid; gap: var(--space-2); }
+.unlock__buyline { margin-top: auto; padding-top: var(--space-3); border-top: var(--line-w) solid var(--line); color: var(--muted); font-size: 0.9375rem; }
+.unlock__buyline a { color: var(--text); font-weight: 600; }
+.unlock__codein { font: 800 1.5rem var(--font-num); letter-spacing: 0.3em; text-align: center; }
 .lb-reviews { list-style: none; }
 .lb-review { display: grid; gap: var(--space-2); padding-block: var(--space-3); border-bottom: var(--line-w) solid var(--line); }
 .lb-review__stars { color: var(--accent-text); font-size: 1.125rem; letter-spacing: 0.1em; }
