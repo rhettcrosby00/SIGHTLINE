@@ -208,6 +208,7 @@ test('The emails: one big Start Sightrep button, install steps, help; the code e
   const s = startEmail({ link: 'https://app.sightrep.app/?start#t=abc' });
   assert(s.subject === 'Start Sightrep' && s.html.includes('href="https://app.sightrep.app/?start#t=abc"') && />Start Sightrep</.test(s.html), 'the button');
   assert(/Add to Home Screen/.test(s.text) && /Install Sightrep/.test(s.text) && /sightrep\.app\/install/.test(s.text) && /once, for 7 days/.test(s.text), 'iPhone, Android, help, and how long it works');
+  assert([s.text, s.html].every((t) => /if your email app asks which browser, choose Safari/.test(t)), 'iPhone: Safari, when the email app asks (only Safari adds to the home screen)');
   const c = codeEmail({ code: '482913' });
   assert(c.subject === '482913 is your Sightrep code' && /10 minutes/.test(c.text), 'the code email');
   const mail = read('api/_lib/mail.js');

@@ -18,7 +18,7 @@ export function startEmail({ link, help = 'https://sightrep.app/install' }) {
     subject: 'Start Sightrep',
     text: `Thanks for buying Sightrep!
 
-Tap this link on your phone to start. It opens Sightrep, already unlocked:
+Tap this link on your phone to start. It opens Sightrep, already unlocked. On iPhone, if your email app asks which browser, choose Safari.
 ${link}
 
 Then put it on your home screen:
@@ -29,7 +29,7 @@ Help: ${help}
 The link works once, for 7 days. If it has expired, open it anyway and tap "Email me a new link."`,
     html: page(`
 <h1 style="margin:0 0 12px;font:800 28px/1.1 Arial,sans-serif;text-transform:uppercase;">Your eyes move first.</h1>
-<p style="margin:0 0 24px;">Thanks for buying Sightrep! Tap the button on your phone. Sightrep opens, already unlocked. No key to type.</p>
+<p style="margin:0 0 24px;">Thanks for buying Sightrep! Tap the button on your phone. Sightrep opens, already unlocked. No key to type. On iPhone, if your email app asks which browser, choose Safari.</p>
 <p style="margin:0 0 28px;"><a href="${esc(link)}" style="display:inline-block;padding:16px 32px;border-radius:14px;background:${LIME};color:${INK};font:800 20px/1 Arial,sans-serif;text-decoration:none;text-transform:uppercase;">Start Sightrep</a></p>
 <p style="margin:0 0 8px;font-weight:700;">Then put it on your home screen</p>
 <p style="margin:0 0 8px;"><b>iPhone (Safari):</b> tap Share, then “Add to Home Screen,” then “Add.” Open the new icon and get a 6-digit code at this email to sign in there (one time).</p>
